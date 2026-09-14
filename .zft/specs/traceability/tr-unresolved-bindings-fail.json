@@ -1,0 +1,20 @@
+{
+  "node_id": "01a06976-64ff-781d-b7ef-088c624bdfd2",
+  "alias": "TR-UNRESOLVED-BINDINGS-FAIL",
+  "domain": "traceability",
+  "title": "Unresolved bindings fail L0",
+  "status": "VALIDATED",
+  "version": 2,
+  "content_hash": "1e2f68e59bb04ea133bad03ed85583dc3ef56ec95c392c4fe85750030eac1650",
+  "invariants": [
+    {
+      "id": "TR-INV-01",
+      "statement": "WHEN a binding references a clause alias that does not exist in the store, THE SYSTEM SHALL fail the L0 gate reporting the offending file and line.",
+      "property": "forall bindings b: resolvable(alias(b)) or fails_L0(location(b))",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

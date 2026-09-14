@@ -1,0 +1,45 @@
+.venv/
+.venv*/
+__pycache__/
+*.pyc
+.hypothesis/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+private/
+
+# generated ZFT artifacts (specs/ and contracts/ remain tracked)
+.zft/gherkin/
+.zft/runs/
+.zft/sandbox/
+.zft/cache/
+.zft/baseline/
+.zft/attest.json
+.zft/attest.pub.json
+.zft/audit.log
+.zft/tmp_oracle_batch.*
+.mutmut*
+# mutation-campaign workspaces, incl. renamed archives (mutants-prev-*) —
+# never evidence, see lineage.extract.skipped_dir
+mutants*/
+
+# Phase-B batch artifacts
+scratch/
+jobs/out-*.log
+jobs/err-*.log
+jobs/done-*
+jobs/.*.lock
+jobs/junit-*.xml
+jobs/hyp-db/
+jobs/kick.log
+jobs/
+.traceagent/attest.json
+.traceagent/attest-key.pub.json
+.traceagent/cache/
+.traceagent/runs/
+.traceagent/gherkin/
+.traceagent/sandbox/
+texput.log
+.slim/deepwork/
+build/
+dist/

@@ -1,0 +1,20 @@
+{
+ "node_id": "01a0922c-3b73-761a-9aff-8108dab5e655",
+ "alias": "DRIVER-GATE-GREEN",
+ "domain": "gates",
+ "title": "Driver gate green verdict on a seeded workspace",
+ "status": "VALIDATED",
+ "version": 1,
+ "invariants": [
+  {
+   "id": "DRIVER-GATE-INV-01",
+   "statement": "WHEN the driver gate runs over a seeded green workspace, THE SYSTEM SHALL report ok=true with every stage verdict true (ears, l0, l1, l2_fast) while leaving the workspace byte-identical (no ledger, no verdict cache, no bytecode written).",
+   "property": "forall runs r: green_workspace(r) => ok(r) and stages(r) == {ears, l0, l1, l2_fast} and unchanged_workspace(r)",
+   "check": {
+    "kind": "test"
+   }
+  }
+ ],
+ "external_links": [],
+ "content_hash": "28646250b6dc24536edae9f2cb0cd80ce24852f69d41662c5f199c0c806ba902"
+}

@@ -1,0 +1,21 @@
+{
+  "node_id": "01a06976-6500-7fc0-81e3-b2531a762a35",
+  "alias": "PRT-TYPED-REFUSAL",
+  "domain": "protocol",
+  "title": "Typed refusal on missing capability",
+  "status": "VALIDATED",
+  "version": 2,
+  "content_hash": "60f896b8a18e917cd7fc9f95cd6ab8b294e29bfba3ea07c77c9e35b72e33e5b4",
+  "invariants": [
+    {
+      "id": "PRT-INV-01",
+      "statement": "WHEN a producer lacks a capability a clause requires, THE SYSTEM SHALL respond with a pre-commitment refusal rather than accepting the task.",
+      "property": "forall tasks t, producers p: missing_capability(p, t) => responds(p, refuse(t)) and stage(t) == PRE_COMMITMENT",
+      "check": {
+        "kind": "test",
+        "notes": "FIPA refuse semantics (pre-commitment)"
+      }
+    }
+  ],
+  "external_links": []
+}

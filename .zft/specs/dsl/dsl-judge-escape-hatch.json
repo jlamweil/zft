@@ -1,0 +1,20 @@
+{
+  "node_id": "01a06976-6500-7c92-ad62-32818dc45a97",
+  "alias": "DSL-JUDGE-ESCAPE-HATCH",
+  "domain": "dsl",
+  "title": "Escape hatch requires judge kind",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "c63928bce2d8675eccf30b1f47db1d3baaacb96dab5de548b5cc06ef43872dcc",
+  "invariants": [
+    {
+      "id": "DSL-INV-01",
+      "statement": "WHERE a clause cannot be expressed in the DSL, THE SYSTEM SHALL require its check kind be judge with recorded rationale before validation.",
+      "property": "forall clauses c: not expressible(c) => kind(c)==judge and rationale(c) != empty",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

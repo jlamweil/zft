@@ -1,0 +1,21 @@
+{
+  "node_id": "01a06976-64ff-75b7-b988-3abc3f28d678",
+  "alias": "ATT-SIGNED-ACCEPTANCE",
+  "domain": "attestation",
+  "title": "Signed acceptance attestation",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "e2fbea68630bf5b37246083bcd2259413e13e419df56212361eafea60aacf4cf",
+  "invariants": [
+    {
+      "id": "ATT-INV-01",
+      "statement": "WHEN a deliverable is accepted, THE SYSTEM SHALL emit an attestation binding contract version, clause content hashes, deliverable tree hash, gate log, and tool versions.",
+      "property": "forall acceptances a: signed(a, bind(contract_ver, clause_hashes, tree_hash, gate_log, tools))",
+      "check": {
+        "kind": "test",
+        "notes": "format: in-toto DSSE statement with TraceManifest predicate"
+      }
+    }
+  ],
+  "external_links": []
+}

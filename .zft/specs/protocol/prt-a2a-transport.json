@@ -1,0 +1,21 @@
+{
+  "node_id": "01a0833a-f67a-7996-a5dd-0b49957b44de",
+  "alias": "PRT-A2A-TRANSPORT",
+  "domain": "protocol",
+  "title": "Negotiation on the A2A SendMessage wire",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "e697cb4490d4ba1eabe9bfd9e68012cb1d7f2528a3fc51f6c34e23b96a9402cf",
+  "invariants": [
+    {
+      "id": "PRT-INV-02",
+      "statement": "THE SYSTEM SHALL accept negotiation actions as A2A SendMessage JSON-RPC requests interoperable with the official a2a-sdk client, answering each turn with the task envelope and a typed error object on refusal.",
+      "property": "forall turns t: (valid(t) => applies(sm, t) and ledgered(t) and sdk_parseable(answer(t))) and (invalid(t) => typed_error(t))",
+      "check": {
+        "kind": "test",
+        "notes": "tests/unit/test_negotiate_transport.py + tests/e2e/test_negotiate_transport_resumption.py \u2014 a2a-sdk JsonRpcTransport as the client; kill -9 mid-wire-protocol, restart resumes the same run"
+      }
+    }
+  ],
+  "external_links": []
+}

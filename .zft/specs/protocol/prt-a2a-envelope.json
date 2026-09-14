@@ -1,0 +1,21 @@
+{
+  "node_id": "01a06976-6500-78ba-ad6a-0c3fdeafeeea",
+  "alias": "PRT-A2A-ENVELOPE",
+  "domain": "protocol",
+  "title": "Contract exchange on A2A artifacts",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "fd32bdc3cdec961b87dc13466ac326fc676e63e5ec961816e96a1393e5926838",
+  "invariants": [
+    {
+      "id": "PRT-INV-01",
+      "statement": "THE SYSTEM SHALL exchange contract, deliverable, and trace manifest as A2A artifacts between producer and consumer.",
+      "property": "forall exchanges x: envelope(x) == a2a_artifact",
+      "check": {
+        "kind": "test",
+        "notes": "official a2a-python SDK"
+      }
+    }
+  ],
+  "external_links": []
+}

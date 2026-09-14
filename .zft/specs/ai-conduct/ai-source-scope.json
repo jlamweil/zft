@@ -1,0 +1,20 @@
+{
+  "node_id": "01a08eeb-0578-7ff1-86a4-048f82498c89",
+  "alias": "AI-SOURCE-SCOPE",
+  "domain": "ai-conduct",
+  "title": "Source-only extraction scope",
+  "status": "PROPOSED",
+  "version": 1,
+  "content_hash": "178c7affa533bf5e7aaa23c39b6bcaeffd5659fc89741737506f48048cc8b7e3",
+  "invariants": [
+    {
+      "id": "AI-SOURCE-SCOPE-INV-01",
+      "statement": "WHEN the gate extracts trace bindings, THE SYSTEM SHALL read only declared source scope and never caches, sandboxes, or dependency trees",
+      "property": "forall b in bindings: in_scope(b.file)",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

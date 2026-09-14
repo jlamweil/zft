@@ -1,0 +1,21 @@
+{
+  "node_id": "01a06976-64ff-7638-b381-cc11937368f8",
+  "alias": "GATE-L0-HASH-VERIFY",
+  "domain": "gates",
+  "title": "L0 verifies clause content hashes",
+  "status": "VALIDATED",
+  "version": 2,
+  "content_hash": "4a2c43592d502a84fdf8d45ceeb4132687971f22e6d69d891154d99f11d9cc37",
+  "invariants": [
+    {
+      "id": "GATE-INV-01",
+      "statement": "WHEN any gate runs, THE SYSTEM SHALL first verify the content hash of every involved clause node against \u00a75.2 canonicalization.",
+      "property": "forall gates g, clauses c: member_of(c, g) => recomputed(c) == stored(c)",
+      "check": {
+        "kind": "test",
+        "notes": "enforced by tools/contract_lint.py for the store itself"
+      }
+    }
+  ],
+  "external_links": []
+}

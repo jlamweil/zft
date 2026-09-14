@@ -1,0 +1,20 @@
+{
+  "node_id": "01a08eeb-1a4a-72c8-83cb-f7e288659db7",
+  "alias": "AI-TOOL-CONFIDENCE",
+  "domain": "ai-conduct",
+  "title": "Gate self-verification",
+  "status": "PROPOSED",
+  "version": 1,
+  "content_hash": "71c9e4a8d57e4b9e1fcfd5cb4f6150b0843f21ae31bc241acca62ffe84fa3fb9",
+  "invariants": [
+    {
+      "id": "AI-TOOL-CONFIDENCE-INV-01",
+      "statement": "WHEN the gate attests, THE SYSTEM SHALL record the gate's own source hashes and a passing self-test",
+      "property": "forall a: gate_hash(a) and self_test(a)",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

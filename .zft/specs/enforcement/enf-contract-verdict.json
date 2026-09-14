@@ -1,0 +1,20 @@
+{
+  "node_id": "01a08b08-15d5-774a-8b93-ab433885e5f7",
+  "alias": "ENF-CONTRACT-VERDICT",
+  "domain": "enforcement",
+  "title": "Post-task contract verdict",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "b33066c0408681f318f0cd5d6d98248ae4ebd43c3b09a9dea5d883441c9b2a11",
+  "invariants": [
+    {
+      "id": "ENF-CONTRACT-VERDICT-INV-01",
+      "statement": "WHEN a writer task completes, THE SYSTEM SHALL report forward coverage of the referenced contract's due clauses as a verdict",
+      "property": "forall task t: writer(t) and contract(t) => verdict(t) == coverage(due(t), bindings(t))",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

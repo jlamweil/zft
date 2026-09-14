@@ -1,0 +1,20 @@
+{
+  "node_id": "01a06976-6500-76f7-bd4d-7f673599e50a",
+  "alias": "DSL-COMPILE-GENERATORS",
+  "domain": "dsl",
+  "title": "DSL predicates compile to generators",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "9162a0be91ac94e52394751a135bd36bd5ac4982c203176302992026e18b0a08",
+  "invariants": [
+    {
+      "id": "DSL-INV-01",
+      "statement": "WHEN a clause predicate is expressed in the DSL, THE SYSTEM SHALL compile it into executable property generators (Hypothesis).",
+      "property": "forall predicates p in DSL: compiles(p, generators) and executable(p)",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

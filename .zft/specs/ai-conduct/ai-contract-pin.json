@@ -1,0 +1,20 @@
+{
+  "node_id": "01a08eeb-0561-7b0d-ac05-ec4b02b11fc7",
+  "alias": "AI-CONTRACT-PIN",
+  "domain": "ai-conduct",
+  "title": "Contract and oracle pinning",
+  "status": "PROPOSED",
+  "version": 1,
+  "content_hash": "fa5b851a39fc05e33b623caa52b640bcc4fccae9d6a46ac28700bdf840de86c1",
+  "invariants": [
+    {
+      "id": "AI-CONTRACT-PIN-INV-01",
+      "statement": "WHEN the gate evaluates a contract, THE SYSTEM SHALL reject content whose contract or oracle hash differs from the agreed pin",
+      "property": "forall c: evaluated(c) => hash_matches_pin(c)",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

@@ -1,0 +1,67 @@
+name: Feature request
+description: Suggest a new behaviour, gate tier, or clause capability
+title: "[feat] <short summary>"
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Scope note: ZFT is a verification/traceability layer, not an agent
+        orchestrator. Preference is given to proposals that deepen deterministic
+        evidence, expand clause types, or improve gate attribution.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: The limitation or failure mode your proposal addresses.
+      placeholder: "Today, clause-level attribution of surviving mutants is lost
+        in the JSON output, so producers cannot tell which clause to repair."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Concrete, testable proposal (new clause field, new gate tier,
+        CLI flag, schema addition).
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What else you considered and why it falls short.
+    validations:
+      required: false
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      description: Where the change would land.
+      multiple: false
+      options:
+        - "Clause DSL / invariant form"
+        - "Verification gate (L0-L3)"
+        - "Trace manifest / evidence"
+        - "CLI command"
+        - "ALM import/export (ReqIF, A2A, etc.)"
+        - "Documentation / design"
+        - "Other"
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Intended impact / measurability
+      description: How this is observable as deterministic evidence (e.g. new
+        "mutant attribution" field in the gate log, new clause subject in the
+        DSSE attestation).
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Anything else, including prior art or related clauses.
+    validations:
+      required: false

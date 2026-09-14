@@ -1,0 +1,21 @@
+{
+  "node_id": "01a06976-64ff-7f8b-828a-098ec4bdedd0",
+  "alias": "GATE-MODEL-INDEPENDENCE",
+  "domain": "gates",
+  "title": "Gate-model independence",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "f5a82d3f1c819edab14ae8da3a8c7a1d8cba6d55fe17c8b3f2219ba54f7fb2bd",
+  "invariants": [
+    {
+      "id": "GATE-INV-01",
+      "statement": "WHERE possible, THE SYSTEM SHALL evaluate deliverables with a model different from the producer's; WHEN the same model must be reused, THE SYSTEM SHALL mark coverage claims model-dependent in the manifest.",
+      "property": "gate_model != producer_model or manifest.model_dependent == true",
+      "check": {
+        "kind": "test",
+        "notes": "evidence: ABC II co-failure result (requirements-contracting note)"
+      }
+    }
+  ],
+  "external_links": []
+}

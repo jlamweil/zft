@@ -1,0 +1,20 @@
+{
+  "node_id": "01a08eeb-1a61-7a1f-b117-2b3b1398b78b",
+  "alias": "AI-EXTERNAL-IDENTITY",
+  "domain": "ai-conduct",
+  "title": "External identity preservation",
+  "status": "PROPOSED",
+  "version": 1,
+  "content_hash": "354591e4d53d469f9e4bd47e49dd0ad74ac640f85c7ce34fb5097c27849edd86",
+  "invariants": [
+    {
+      "id": "AI-EXTERNAL-IDENTITY-INV-01",
+      "statement": "WHEN the system imports an external requirement, THE SYSTEM SHALL preserve its external identity across round-trip",
+      "property": "forall i: preserves(i, external_id(i))",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

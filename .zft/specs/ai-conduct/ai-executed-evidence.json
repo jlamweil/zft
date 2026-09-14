@@ -1,0 +1,20 @@
+{
+  "node_id": "01a08eeb-0539-7e2e-83e6-ca1e6bbdd637",
+  "alias": "AI-EXECUTED-EVIDENCE",
+  "domain": "ai-conduct",
+  "title": "Executed evidence required",
+  "status": "PROPOSED",
+  "version": 1,
+  "content_hash": "f9d96e562f13e144c85c3c9b9f86ff664a697d676e32290d8b901118d53241c5",
+  "invariants": [
+    {
+      "id": "AI-EXECUTED-EVIDENCE-INV-01",
+      "statement": "WHEN a clause is accepted, THE SYSTEM SHALL require evidence produced by executing the clause, not merely a bound element that exists",
+      "property": "forall c accepted: executed_evidence(c)",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

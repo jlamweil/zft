@@ -1,0 +1,20 @@
+{
+  "node_id": "01a06976-64ff-7f3c-993b-0950d9258114",
+  "alias": "GATE-JUDGE-QUARANTINE",
+  "domain": "gates",
+  "title": "Judge-gated clauses quarantined",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "c760a66d9325fa99f74329f3789456676625ac853a7a605e6eb921894f70ec3d",
+  "invariants": [
+    {
+      "id": "GATE-INV-01",
+      "statement": "WHEN a clause's check kind is judge, THE SYSTEM SHALL exclude it from deterministic coverage totals and label it judge-gated in every manifest and export.",
+      "property": "forall exports e, clauses c: kind(c)==judge => excluded(c, e.deterministic_coverage) and labeled(c, judge, e)",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

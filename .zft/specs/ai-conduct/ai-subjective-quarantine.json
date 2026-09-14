@@ -1,0 +1,20 @@
+{
+  "node_id": "01a08eeb-1a94-7910-8429-ee3d310fa7d3",
+  "alias": "AI-SUBJECTIVE-QUARANTINE",
+  "domain": "ai-conduct",
+  "title": "Subjective clause quarantine",
+  "status": "PROPOSED",
+  "version": 1,
+  "content_hash": "bb0ea39b60ebd291254419e021cbf1aeaf6af3ea8747aa3c37f4be1ff5cba3dc",
+  "invariants": [
+    {
+      "id": "AI-SUBJECTIVE-QUARANTINE-INV-01",
+      "statement": "WHEN a clause is subjective, THE SYSTEM SHALL quarantine judgment from deterministic coverage and require explicit sign-off",
+      "property": "forall c: subjective(c) => quarantined(c) and signed_off(c)",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

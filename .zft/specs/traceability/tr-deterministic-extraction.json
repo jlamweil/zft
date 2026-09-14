@@ -1,0 +1,21 @@
+{
+  "node_id": "01a06976-64ff-7459-8d4a-522285db3318",
+  "alias": "TR-DETERMINISTIC-EXTRACTION",
+  "domain": "traceability",
+  "title": "Deterministic extraction",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "eb1df30c83efaca6168f807023c5cefc00797b5bc0c45e6347930cb85556ce99",
+  "invariants": [
+    {
+      "id": "TR-INV-01",
+      "statement": "WHERE the store and deliverable are unchanged, THE SYSTEM SHALL produce byte-identical trace manifests across repeated extractions.",
+      "property": "forall runs r1, r2: inputs_equal(r1, r2) => manifest(r1) == manifest(r2)",
+      "check": {
+        "kind": "property",
+        "notes": "property test: two consecutive extractions compare equal"
+      }
+    }
+  ],
+  "external_links": []
+}

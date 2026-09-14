@@ -1,0 +1,20 @@
+{
+  "node_id": "01a06976-64ff-7c02-a678-584ccdcba7ce",
+  "alias": "GATE-EVIDENCE-KIND",
+  "domain": "gates",
+  "title": "Evidence-kind gating",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "aec6bdf9ee62595cf10ac0032d8ca7bf38f55eb224709b1ee25e25e3052863fb",
+  "invariants": [
+    {
+      "id": "GATE-INV-01",
+      "statement": "WHEN a clause declares check kind property, THE SYSTEM SHALL accept acceptance evidence only from an executed property suite bound to that clause.",
+      "property": "forall acceptances a, clauses c: kind(c)==property => evidence(a, c).type == property_run",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

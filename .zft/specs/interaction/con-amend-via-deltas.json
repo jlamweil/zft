@@ -1,0 +1,21 @@
+{
+  "node_id": "01a06976-64ff-7d7c-8c66-3a5856645375",
+  "alias": "CON-AMEND-VIA-DELTAS",
+  "domain": "interaction",
+  "title": "Amendments as versioned deltas after validation",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "c9fb9f329d44292b7e39628425ec16d78056bcb3af94c0407d15ec624d17d957",
+  "invariants": [
+    {
+      "id": "CON-INV-01",
+      "statement": "WHEN a clause changes after its contract is VALIDATED, THE SYSTEM SHALL record the change as a versioned delta (ADDED, MODIFIED, REMOVED) against clause IDs, never as a silent edit.",
+      "property": "forall changes ch: applied(ch) => kind(ch) in {ADDED, MODIFIED, REMOVED}",
+      "check": {
+        "kind": "test",
+        "notes": "delta format: OpenSpec-style against stable aliases"
+      }
+    }
+  ],
+  "external_links": []
+}

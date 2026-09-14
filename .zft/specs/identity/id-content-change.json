@@ -1,0 +1,21 @@
+{
+  "node_id": "01a06976-6500-7fbf-bb37-58187395ee89",
+  "alias": "ID-CONTENT-CHANGE",
+  "domain": "identity",
+  "title": "Content change semantics",
+  "status": "VALIDATED",
+  "version": 2,
+  "content_hash": "d6f924b4466b72cb27da550b4f56afadf43654129fe2a222027aa5d6196c191f",
+  "invariants": [
+    {
+      "id": "ID-INV-01",
+      "statement": "WHEN a clause's meaning-bearing content changes, THE SYSTEM SHALL update content_hash and increment version while node_id and alias remain unchanged.",
+      "property": "content_changed(n) => next_hash(n) != hash(n) and next_ver(n) == ver(n)+1 and next_id(n) == id(n)",
+      "check": {
+        "kind": "property",
+        "notes": "property test: edit title -> only hash and version move"
+      }
+    }
+  ],
+  "external_links": []
+}

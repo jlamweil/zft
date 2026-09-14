@@ -1,0 +1,101 @@
+name: Bug report
+description: Report something that is not working as expected
+title: "[bug] <short summary>"
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Before filing, please check existing issues and
+        confirm this is not a duplicate. For security vulnerabilities, use
+        the private **Report a vulnerability** form (Security tab) instead of
+        opening an issue.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: |
+        Minimal, deterministic steps: e.g. a `zft` command, a spec path, and
+        the input that triggers the fault. Include the smallest contract
+        fragment that reproduces the issue, if possible.
+      placeholder: "zft gate --module src/exporter.py --tests tests/test_exporter.py"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What the gate should have done (e.g. "L2 should attribute a
+        surviving mutant to a Contract Fault and report the clause ID").
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Observed output (CLI text, gate log, or JSON payload).
+    validations:
+      required: true
+  - type: dropdown
+    id: gate-tier
+    attributes:
+      label: Affected gate tier
+      description: Which verification tier failed / behaved unexpectedly.
+      multiple: false
+      options:
+        - "L0 - Static integrity"
+        - "L1 - Local verification"
+        - "L2 - Merge gate (mutation / coverage)"
+        - "L3 - Signed attestation"
+        - "Other / not gate-related"
+    validations:
+      required: true
+  - type: input
+    id: clause-id
+    attributes:
+      label: Clause ID (if applicable)
+      description: The UUIDv7 / alias of the contract clause implicated.
+      placeholder: "e.g. abc123-INV-01 or EXPORT-413"
+    validations:
+      required: false
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Supporting evidence
+      description: |
+        Output of `zft check`, a RunLedger excerpt, mutant survivor names, the
+        trace manifest fragment, or any other mechanically checkable evidence.
+        Attach files where helpful.
+      placeholder: "paste JSON / log excerpt"
+    validations:
+      required: false
+  - type: input
+    id: zft-version
+    attributes:
+      label: ZFT version
+      description: Output of `zft --version` or `pip show zft` (version).
+      placeholder: "0.2.0a0"
+    validations:
+      required: false
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      description: Output of `python --version`.
+      placeholder: "Python 3.12.x"
+    validations:
+      required: false
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "e.g. Ubuntu 24.04 / macOS 14 / Windows 11"
+    validations:
+      required: false

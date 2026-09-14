@@ -1,0 +1,20 @@
+{
+  "node_id": "01a08b08-15ad-71bf-b1af-f530d44b161f",
+  "alias": "ENF-WRITER-REQUIRES-CONTRACT",
+  "domain": "enforcement",
+  "title": "Writer lanes require a contract",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "a17b70db3e97db79c9aaf2be945fd6e382089b58d23d89e4319bf085f370fd9a",
+  "invariants": [
+    {
+      "id": "ENF-WRITER-REQUIRES-CONTRACT-INV-01",
+      "statement": "WHEN a writer-lane subagent is dispatched in a traceagent-governed project without a contract reference, THE SYSTEM SHALL block the dispatch",
+      "property": "forall dispatch d: writer(d) and not contract(d) and governed(d) => blocked(d)",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

@@ -1,0 +1,20 @@
+{
+  "node_id": "01a08eeb-1a1f-7daa-8415-a65db9ad57a7",
+  "alias": "AI-REVERSE-COVERAGE",
+  "domain": "ai-conduct",
+  "title": "Reverse coverage enforcement",
+  "status": "PROPOSED",
+  "version": 1,
+  "content_hash": "c39eebb76198da525945c72210b4fd1e781b48b4b7c263d68c0d837b9c780cb2",
+  "invariants": [
+    {
+      "id": "AI-REVERSE-COVERAGE-INV-01",
+      "statement": "WHEN a deliverable adds a public element, THE SYSTEM SHALL require a clause binding or fail the gate",
+      "property": "forall e: new_public(e) => bound(e)",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

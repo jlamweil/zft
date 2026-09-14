@@ -1,0 +1,20 @@
+{
+  "node_id": "01a06976-6500-7049-8381-93a490343be8",
+  "alias": "ID-UUIDV7-ALIAS",
+  "domain": "identity",
+  "title": "Identity at creation",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "fac0da345257cb608fddf3e6f2206cc4acd7fe2d1b4b5cfb01ce124191fefe5c",
+  "invariants": [
+    {
+      "id": "ID-INV-01",
+      "statement": "WHEN a clause node is created, THE SYSTEM SHALL assign an immutable UUIDv7 node_id and a unique alias.",
+      "property": "forall nodes n: valid_v7(n.id) and unique(n.alias)",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

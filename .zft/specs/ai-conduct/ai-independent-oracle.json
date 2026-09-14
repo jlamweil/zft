@@ -1,0 +1,20 @@
+{
+  "node_id": "01a08eeb-054c-7552-837c-47517b8e1557",
+  "alias": "AI-INDEPENDENT-ORACLE",
+  "domain": "ai-conduct",
+  "title": "Consumer-owned oracle",
+  "status": "PROPOSED",
+  "version": 1,
+  "content_hash": "4af86f5b7d823713df41df7cb061940edbf4f1a0b61723a63b1b36570198d94b",
+  "invariants": [
+    {
+      "id": "AI-INDEPENDENT-ORACLE-INV-01",
+      "statement": "WHEN a producer submits a property clause, THE SYSTEM SHALL verify it against a consumer-owned oracle pinned in the contract",
+      "property": "forall c: producer_submitted(c) => consumer_oracle(c)",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

@@ -1,0 +1,21 @@
+{
+  "node_id": "01a06976-64ff-764c-b5b1-f5d5142e7a74",
+  "alias": "ATT-EXPORTS-FROM-ATTESTATIONS",
+  "domain": "attestation",
+  "title": "Compliance exports derive from attestations only",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "218514c0458a73a256c46b01d2c1a6cc75ca3681fb3c26c07bd3cad73e772a3e",
+  "invariants": [
+    {
+      "id": "ATT-INV-01",
+      "statement": "WHEN compliance artifacts are exported (trace matrix, ReqIF), THE SYSTEM SHALL derive them exclusively from attested manifests.",
+      "property": "forall exports e: exists a: source(e) == a and signed(a)",
+      "check": {
+        "kind": "test",
+        "notes": "ReqIF export: adapted from strictdoc backend"
+      }
+    }
+  ],
+  "external_links": []
+}

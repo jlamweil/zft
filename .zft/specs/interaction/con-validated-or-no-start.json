@@ -1,0 +1,21 @@
+{
+  "node_id": "01a06976-64ff-7e8c-8c7c-34ddf39be2c3",
+  "alias": "CON-VALIDATED-OR-NO-START",
+  "domain": "interaction",
+  "title": "No implementation without a validated contract",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "8ae20455938d498932bddbd5ed716b32fe23e5a3887716a0ec8b2c85e6f8efb2",
+  "invariants": [
+    {
+      "id": "CON-INV-01",
+      "statement": "WHEN a work order is assigned to a producer agent, THE SYSTEM SHALL refuse to start implementation until a contract containing the work items has status VALIDATED.",
+      "property": "forall orders o: implemented(o) => exists c: contains(c, o) and status(c) == VALIDATED",
+      "check": {
+        "kind": "test",
+        "notes": "integration: task intake refuses UNVALIDATED contracts"
+      }
+    }
+  ],
+  "external_links": []
+}

@@ -1,0 +1,20 @@
+{
+  "node_id": "01a08b08-15eb-74ca-a5b8-c455ba136444",
+  "alias": "ENF-AUDIT-LOGGED",
+  "domain": "enforcement",
+  "title": "Every enforcement decision is audited",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "542087390287b709c988850caf0782b360da2d0ecf73dfe35a2f28a529fea969",
+  "invariants": [
+    {
+      "id": "ENF-AUDIT-LOGGED-INV-01",
+      "statement": "WHEN an enforcement decision is made, THE SYSTEM SHALL append one JSONL record to the project audit log, marking overrides as ungated",
+      "property": "forall decision d: one_audit_line(d) and (override(d) => ungated(d))",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

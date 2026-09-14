@@ -1,0 +1,21 @@
+{
+  "node_id": "01a06976-6500-7f60-ba5d-ea00ffdc271c",
+  "alias": "DSL-TRIGGER-PREDICATE-ENFORCEMENT",
+  "domain": "dsl",
+  "title": "DSL declares trigger, predicate, enforcement",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "c8fefbf84150c944c112fabdb5dffb0064a26a69588ad3388c3a7859c6b3cd1e",
+  "invariants": [
+    {
+      "id": "DSL-INV-01",
+      "statement": "THE SYSTEM SHALL provide a clause DSL in which every clause declares its trigger (when it binds), predicate (what must hold), and enforcement (what a violation causes).",
+      "property": "forall clauses c: expressed(c) => has(c, trigger, predicate, enforcement)",
+      "check": {
+        "kind": "test",
+        "notes": "shape per AgentSpec; surface syntax: EARS"
+      }
+    }
+  ],
+  "external_links": []
+}

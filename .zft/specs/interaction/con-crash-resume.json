@@ -1,0 +1,21 @@
+{
+  "node_id": "01a08293-1e5e-7535-a25c-21c0b81b24bf",
+  "alias": "CON-CRASH-RESUME",
+  "domain": "interaction",
+  "title": "Negotiation survives process death",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "233db69115d88fd4d090ecd1ff392a8b2d57b56033ac17c030d7adf746f2f232",
+  "invariants": [
+    {
+      "id": "CON-INV-01",
+      "statement": "WHEN a negotiation process dies mid-protocol (SIGKILL included), THE SYSTEM SHALL resume the negotiation from the durable event prefix and finish the same run without inventing state the log does not show.",
+      "property": "forall kills k: exists prefix p: durable(p, k) and replayed(state(p)) and same_run(finished, k) and no_invented_state(finished, p)",
+      "check": {
+        "kind": "test",
+        "notes": "tests/e2e/test_negotiate_resumption.py \u2014 real SIGKILL at a deterministic point; replay re-verifies every recorded from/to (typed IllegalTransition on a forged chain)"
+      }
+    }
+  ],
+  "external_links": []
+}

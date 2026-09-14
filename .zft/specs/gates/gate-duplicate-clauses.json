@@ -1,0 +1,20 @@
+{
+  "node_id": "01a06976-64ff-70ac-8bb7-d81cfe1c3bdd",
+  "alias": "GATE-DUPLICATE-CLAUSES",
+  "domain": "gates",
+  "title": "Duplicate clause detection",
+  "status": "VALIDATED",
+  "version": 2,
+  "content_hash": "420dd4900df6fc52d7f83a9171580d63cebed0eed3b4437b78880b3e62e88dbf",
+  "invariants": [
+    {
+      "id": "GATE-INV-01",
+      "statement": "WHEN two clause nodes share one content hash, THE SYSTEM SHALL fail L0 with a duplicate report.",
+      "property": "forall a, b: content_hash(a) == content_hash(b) => fails_L0(duplicates(a, b))",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

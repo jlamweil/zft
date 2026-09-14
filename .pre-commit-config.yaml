@@ -1,0 +1,29 @@
+# Local zft gates, run directly by git via pre-commit.
+# The hooks call the repo venv binary so they work whether or not the venv is
+# activated. Set up once with:
+#   pip install -e .[dev]
+#   pre-commit install --hook-type pre-commit --hook-type pre-push
+repos:
+  - repo: local
+    hooks:
+      - id: zft-lint
+        name: zft lint (L0, fast)
+        entry: .venv/bin/zft lint
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+      - id: ruff
+        name: ruff (src + tests)
+        entry: .venv/bin/ruff check src tests
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+      - id: zft-check
+        name: zft check (full gate)
+        entry: .venv/bin/zft check .
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

@@ -1,0 +1,20 @@
+{
+  "node_id": "01a06976-64ff-7cfc-9352-d3f97567095f",
+  "alias": "CON-COUNTER-RECORDED",
+  "domain": "interaction",
+  "title": "Counter-proposals recorded during negotiation",
+  "status": "VALIDATED",
+  "version": 2,
+  "content_hash": "1dbe934d96cdea6f03cb18949565c5dd3ab0d1dfac5bc3c75d9d684b2a3d2856",
+  "invariants": [
+    {
+      "id": "CON-INV-01",
+      "statement": "WHEN a producer counters a clause before validation, THE SYSTEM SHALL record the counter-proposal and the consumer's accept/reject decision in the contract history.",
+      "property": "forall counters c: recorded(c) and exists d: decision(d, c) and recorded(decision(d, c))",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

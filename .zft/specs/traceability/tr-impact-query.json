@@ -1,0 +1,21 @@
+{
+  "node_id": "01a06976-64ff-7b94-91dc-01b9db91b62f",
+  "alias": "TR-IMPACT-QUERY",
+  "domain": "traceability",
+  "title": "Impact query on element change",
+  "status": "VALIDATED",
+  "version": 2,
+  "content_hash": "4ea28668ec02c6a4764e73e02879a47775b21baeed0e7e94551dad31e13fe52f",
+  "invariants": [
+    {
+      "id": "TR-INV-01",
+      "statement": "WHEN a deliverable element changes, THE SYSTEM SHALL report which clauses' coverage is affected.",
+      "property": "forall changes ch: impact(ch) == {c | bound(c, element(ch))}",
+      "check": {
+        "kind": "test",
+        "notes": "v0.1 candidate \u2014 confirm scope during negotiation"
+      }
+    }
+  ],
+  "external_links": []
+}

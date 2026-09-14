@@ -1,0 +1,21 @@
+{
+  "node_id": "01a06976-64ff-78e3-abe5-33cda7c59b7e",
+  "alias": "CON-TYPED-REJECTIONS",
+  "domain": "interaction",
+  "title": "Typed rejections naming clause and fault",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "c8ceb6202f1e4492ed9863ff4dcc21da5d5c816e4eef09a6cc7d3c16bcea1e96",
+  "invariants": [
+    {
+      "id": "CON-INV-01",
+      "statement": "WHEN a gate rejects a deliverable, THE SYSTEM SHALL report the failed clause IDs and the attributed fault kind (contract-fault or implementation-fault).",
+      "property": "forall rejections r: names(r, clause_ids) and names(r, fault_kind)",
+      "check": {
+        "kind": "test",
+        "notes": "fault attribution per ARCHITECTURE D4"
+      }
+    }
+  ],
+  "external_links": []
+}

@@ -1,0 +1,658 @@
+{
+  "version": 1,
+  "shape": {
+    "states": [
+      "DRAFT",
+      "COUNTERED",
+      "REVISED",
+      "VALIDATED",
+      "IMPLEMENTED",
+      "REJECTED",
+      "REFUSED"
+    ],
+    "actions": {
+      "counter": "COUNTERED",
+      "accept_counter": "REVISED",
+      "validate": "VALIDATED",
+      "implement": "IMPLEMENTED",
+      "refuse": "REFUSED",
+      "reject_gate": "REJECTED",
+      "reopen": "REVISED"
+    },
+    "default_retry_budget": 3,
+    "rule": "every (state, action) pair appears exactly once across legal+illegal; legal pins the end state and the appended history entry; illegal pins the typed IllegalTransition message verbatim; a failed transition is inert \u2014 state and history untouched"
+  },
+  "paths": {
+    "DRAFT": [],
+    "COUNTERED": [
+      {
+        "action": "counter",
+        "args": {
+          "terms": "examples=50"
+        },
+        "to": "COUNTERED"
+      }
+    ],
+    "REVISED": [
+      {
+        "action": "counter",
+        "args": {
+          "terms": "examples=50"
+        },
+        "to": "COUNTERED"
+      },
+      {
+        "action": "accept_counter",
+        "to": "REVISED"
+      }
+    ],
+    "VALIDATED": [
+      {
+        "action": "validate",
+        "to": "VALIDATED"
+      }
+    ],
+    "IMPLEMENTED": [
+      {
+        "action": "validate",
+        "to": "VALIDATED"
+      },
+      {
+        "action": "implement",
+        "to": "IMPLEMENTED"
+      }
+    ],
+    "REJECTED": [
+      {
+        "action": "validate",
+        "to": "VALIDATED"
+      },
+      {
+        "action": "implement",
+        "to": "IMPLEMENTED"
+      },
+      {
+        "action": "reject_gate",
+        "args": {
+          "clause_ids": [
+            "GATE-INV-01"
+          ],
+          "fault": "contract"
+        },
+        "to": "REJECTED"
+      }
+    ],
+    "REFUSED": [
+      {
+        "action": "refuse",
+        "args": {
+          "reason": "missing capability: jsonschema"
+        },
+        "to": "REFUSED"
+      }
+    ]
+  },
+  "legal": [
+    {
+      "name": "draft-counter",
+      "state": "DRAFT",
+      "action": "counter",
+      "args": {
+        "terms": "examples=50"
+      },
+      "to": "COUNTERED",
+      "history_entry": {
+        "action": "counter",
+        "from": "DRAFT",
+        "to": "COUNTERED",
+        "terms": "examples=50"
+      }
+    },
+    {
+      "name": "draft-validate",
+      "state": "DRAFT",
+      "action": "validate",
+      "args": {},
+      "to": "VALIDATED",
+      "history_entry": {
+        "action": "validate",
+        "from": "DRAFT",
+        "to": "VALIDATED"
+      }
+    },
+    {
+      "name": "draft-refuse",
+      "state": "DRAFT",
+      "action": "refuse",
+      "args": {
+        "reason": "missing capability: jsonschema"
+      },
+      "to": "REFUSED",
+      "history_entry": {
+        "action": "refuse",
+        "from": "DRAFT",
+        "to": "REFUSED",
+        "reason": "missing capability: jsonschema"
+      }
+    },
+    {
+      "name": "countered-accept_counter",
+      "state": "COUNTERED",
+      "action": "accept_counter",
+      "args": {},
+      "to": "REVISED",
+      "history_entry": {
+        "action": "accept_counter",
+        "from": "COUNTERED",
+        "to": "REVISED"
+      }
+    },
+    {
+      "name": "countered-refuse",
+      "state": "COUNTERED",
+      "action": "refuse",
+      "args": {
+        "reason": "missing capability: jsonschema"
+      },
+      "to": "REFUSED",
+      "history_entry": {
+        "action": "refuse",
+        "from": "COUNTERED",
+        "to": "REFUSED",
+        "reason": "missing capability: jsonschema"
+      }
+    },
+    {
+      "name": "revised-validate",
+      "state": "REVISED",
+      "action": "validate",
+      "args": {},
+      "to": "VALIDATED",
+      "history_entry": {
+        "action": "validate",
+        "from": "REVISED",
+        "to": "VALIDATED"
+      }
+    },
+    {
+      "name": "revised-refuse",
+      "state": "REVISED",
+      "action": "refuse",
+      "args": {
+        "reason": "missing capability: jsonschema"
+      },
+      "to": "REFUSED",
+      "history_entry": {
+        "action": "refuse",
+        "from": "REVISED",
+        "to": "REFUSED",
+        "reason": "missing capability: jsonschema"
+      }
+    },
+    {
+      "name": "validated-implement",
+      "state": "VALIDATED",
+      "action": "implement",
+      "args": {},
+      "to": "IMPLEMENTED",
+      "history_entry": {
+        "action": "implement",
+        "from": "VALIDATED",
+        "to": "IMPLEMENTED"
+      }
+    },
+    {
+      "name": "implemented-reject_gate",
+      "state": "IMPLEMENTED",
+      "action": "reject_gate",
+      "args": {
+        "clause_ids": [
+          "GATE-INV-01"
+        ],
+        "fault": "contract"
+      },
+      "to": "REJECTED",
+      "history_entry": {
+        "action": "reject_gate",
+        "from": "IMPLEMENTED",
+        "to": "REJECTED",
+        "clause_ids": [
+          "GATE-INV-01"
+        ],
+        "fault": "contract"
+      }
+    },
+    {
+      "name": "rejected-reopen",
+      "state": "REJECTED",
+      "action": "reopen",
+      "args": {},
+      "to": "REVISED",
+      "history_entry": {
+        "action": "reopen",
+        "from": "REJECTED",
+        "to": "REVISED"
+      }
+    }
+  ],
+  "illegal": [
+    {
+      "name": "draft-accept_counter-illegal",
+      "state": "DRAFT",
+      "action": "accept_counter",
+      "args": {},
+      "error": "accept_counter not allowed from DRAFT"
+    },
+    {
+      "name": "draft-implement-illegal",
+      "state": "DRAFT",
+      "action": "implement",
+      "args": {},
+      "error": "implement not allowed from DRAFT"
+    },
+    {
+      "name": "draft-reject_gate-illegal",
+      "state": "DRAFT",
+      "action": "reject_gate",
+      "args": {
+        "clause_ids": [
+          "GATE-INV-01"
+        ],
+        "fault": "contract"
+      },
+      "error": "reject_gate not allowed from DRAFT"
+    },
+    {
+      "name": "draft-reopen-illegal",
+      "state": "DRAFT",
+      "action": "reopen",
+      "args": {},
+      "error": "reopen not allowed from DRAFT"
+    },
+    {
+      "name": "countered-counter-illegal",
+      "state": "COUNTERED",
+      "action": "counter",
+      "args": {
+        "terms": "examples=50"
+      },
+      "error": "self-loop counter in COUNTERED"
+    },
+    {
+      "name": "countered-validate-illegal",
+      "state": "COUNTERED",
+      "action": "validate",
+      "args": {},
+      "error": "validate not allowed from COUNTERED"
+    },
+    {
+      "name": "countered-implement-illegal",
+      "state": "COUNTERED",
+      "action": "implement",
+      "args": {},
+      "error": "implement not allowed from COUNTERED"
+    },
+    {
+      "name": "countered-reject_gate-illegal",
+      "state": "COUNTERED",
+      "action": "reject_gate",
+      "args": {
+        "clause_ids": [
+          "GATE-INV-01"
+        ],
+        "fault": "contract"
+      },
+      "error": "reject_gate not allowed from COUNTERED"
+    },
+    {
+      "name": "countered-reopen-illegal",
+      "state": "COUNTERED",
+      "action": "reopen",
+      "args": {},
+      "error": "reopen not allowed from COUNTERED"
+    },
+    {
+      "name": "revised-counter-illegal",
+      "state": "REVISED",
+      "action": "counter",
+      "args": {
+        "terms": "examples=50"
+      },
+      "error": "counter not allowed from REVISED"
+    },
+    {
+      "name": "revised-accept_counter-illegal",
+      "state": "REVISED",
+      "action": "accept_counter",
+      "args": {},
+      "error": "self-loop accept_counter in REVISED"
+    },
+    {
+      "name": "revised-implement-illegal",
+      "state": "REVISED",
+      "action": "implement",
+      "args": {},
+      "error": "implement not allowed from REVISED"
+    },
+    {
+      "name": "revised-reject_gate-illegal",
+      "state": "REVISED",
+      "action": "reject_gate",
+      "args": {
+        "clause_ids": [
+          "GATE-INV-01"
+        ],
+        "fault": "contract"
+      },
+      "error": "reject_gate not allowed from REVISED"
+    },
+    {
+      "name": "revised-reopen-illegal",
+      "state": "REVISED",
+      "action": "reopen",
+      "args": {},
+      "error": "self-loop reopen in REVISED"
+    },
+    {
+      "name": "validated-counter-illegal",
+      "state": "VALIDATED",
+      "action": "counter",
+      "args": {
+        "terms": "examples=50"
+      },
+      "error": "counter not allowed from VALIDATED"
+    },
+    {
+      "name": "validated-accept_counter-illegal",
+      "state": "VALIDATED",
+      "action": "accept_counter",
+      "args": {},
+      "error": "accept_counter not allowed from VALIDATED"
+    },
+    {
+      "name": "validated-validate-illegal",
+      "state": "VALIDATED",
+      "action": "validate",
+      "args": {},
+      "error": "self-loop validate in VALIDATED"
+    },
+    {
+      "name": "validated-refuse-illegal",
+      "state": "VALIDATED",
+      "action": "refuse",
+      "args": {
+        "reason": "missing capability: jsonschema"
+      },
+      "error": "refuse not allowed from VALIDATED"
+    },
+    {
+      "name": "validated-reject_gate-illegal",
+      "state": "VALIDATED",
+      "action": "reject_gate",
+      "args": {
+        "clause_ids": [
+          "GATE-INV-01"
+        ],
+        "fault": "contract"
+      },
+      "error": "reject_gate not allowed from VALIDATED"
+    },
+    {
+      "name": "validated-reopen-illegal",
+      "state": "VALIDATED",
+      "action": "reopen",
+      "args": {},
+      "error": "reopen not allowed from VALIDATED"
+    },
+    {
+      "name": "implemented-counter-illegal",
+      "state": "IMPLEMENTED",
+      "action": "counter",
+      "args": {
+        "terms": "examples=50"
+      },
+      "error": "counter not allowed from IMPLEMENTED"
+    },
+    {
+      "name": "implemented-accept_counter-illegal",
+      "state": "IMPLEMENTED",
+      "action": "accept_counter",
+      "args": {},
+      "error": "accept_counter not allowed from IMPLEMENTED"
+    },
+    {
+      "name": "implemented-validate-illegal",
+      "state": "IMPLEMENTED",
+      "action": "validate",
+      "args": {},
+      "error": "validate not allowed from IMPLEMENTED"
+    },
+    {
+      "name": "implemented-implement-illegal",
+      "state": "IMPLEMENTED",
+      "action": "implement",
+      "args": {},
+      "error": "self-loop implement in IMPLEMENTED"
+    },
+    {
+      "name": "implemented-refuse-illegal",
+      "state": "IMPLEMENTED",
+      "action": "refuse",
+      "args": {
+        "reason": "missing capability: jsonschema"
+      },
+      "error": "refuse not allowed from IMPLEMENTED"
+    },
+    {
+      "name": "implemented-reopen-illegal",
+      "state": "IMPLEMENTED",
+      "action": "reopen",
+      "args": {},
+      "error": "reopen not allowed from IMPLEMENTED"
+    },
+    {
+      "name": "rejected-counter-illegal",
+      "state": "REJECTED",
+      "action": "counter",
+      "args": {
+        "terms": "examples=50"
+      },
+      "error": "counter not allowed from REJECTED"
+    },
+    {
+      "name": "rejected-accept_counter-illegal",
+      "state": "REJECTED",
+      "action": "accept_counter",
+      "args": {},
+      "error": "accept_counter not allowed from REJECTED"
+    },
+    {
+      "name": "rejected-validate-illegal",
+      "state": "REJECTED",
+      "action": "validate",
+      "args": {},
+      "error": "validate not allowed from REJECTED"
+    },
+    {
+      "name": "rejected-implement-illegal",
+      "state": "REJECTED",
+      "action": "implement",
+      "args": {},
+      "error": "implement not allowed from REJECTED"
+    },
+    {
+      "name": "rejected-refuse-illegal",
+      "state": "REJECTED",
+      "action": "refuse",
+      "args": {
+        "reason": "missing capability: jsonschema"
+      },
+      "error": "refuse not allowed from REJECTED"
+    },
+    {
+      "name": "rejected-reject_gate-illegal",
+      "state": "REJECTED",
+      "action": "reject_gate",
+      "args": {
+        "clause_ids": [
+          "GATE-INV-01"
+        ],
+        "fault": "contract"
+      },
+      "error": "self-loop reject_gate in REJECTED"
+    },
+    {
+      "name": "refused-counter-illegal",
+      "state": "REFUSED",
+      "action": "counter",
+      "args": {
+        "terms": "examples=50"
+      },
+      "error": "counter not allowed from REFUSED"
+    },
+    {
+      "name": "refused-accept_counter-illegal",
+      "state": "REFUSED",
+      "action": "accept_counter",
+      "args": {},
+      "error": "accept_counter not allowed from REFUSED"
+    },
+    {
+      "name": "refused-validate-illegal",
+      "state": "REFUSED",
+      "action": "validate",
+      "args": {},
+      "error": "validate not allowed from REFUSED"
+    },
+    {
+      "name": "refused-implement-illegal",
+      "state": "REFUSED",
+      "action": "implement",
+      "args": {},
+      "error": "implement not allowed from REFUSED"
+    },
+    {
+      "name": "refused-refuse-illegal",
+      "state": "REFUSED",
+      "action": "refuse",
+      "args": {
+        "reason": "missing capability: jsonschema"
+      },
+      "error": "self-loop refuse in REFUSED"
+    },
+    {
+      "name": "refused-reject_gate-illegal",
+      "state": "REFUSED",
+      "action": "reject_gate",
+      "args": {
+        "clause_ids": [
+          "GATE-INV-01"
+        ],
+        "fault": "contract"
+      },
+      "error": "reject_gate not allowed from REFUSED"
+    },
+    {
+      "name": "refused-reopen-illegal",
+      "state": "REFUSED",
+      "action": "reopen",
+      "args": {},
+      "error": "reopen not allowed from REFUSED"
+    }
+  ],
+  "budget": [
+    {
+      "name": "reopen-at-rejected-budget-exhausted",
+      "note": "the bounded retry loop: 3 legal reopens spend the budget, the 4th is typed",
+      "path": [
+        {
+          "action": "validate",
+          "to": "VALIDATED"
+        },
+        {
+          "action": "implement",
+          "to": "IMPLEMENTED"
+        },
+        {
+          "repeat": 3,
+          "steps": [
+            {
+              "action": "reject_gate",
+              "args": {
+                "clause_ids": [
+                  "GATE-INV-01"
+                ],
+                "fault": "contract"
+              },
+              "to": "REJECTED"
+            },
+            {
+              "action": "reopen",
+              "to": "REVISED"
+            },
+            {
+              "action": "validate",
+              "to": "VALIDATED"
+            },
+            {
+              "action": "implement",
+              "to": "IMPLEMENTED"
+            }
+          ]
+        }
+      ],
+      "action": "reopen",
+      "args": {},
+      "state_after_path": "IMPLEMENTED",
+      "error": "retry budget exhausted (3/3)"
+    },
+    {
+      "name": "reopen-at-revised-budget-precedes-self-loop",
+      "note": "REVISED is reopen's own target, so with budget left it would self-loop \u2014 exhaustion must win the precedence race",
+      "path": [
+        {
+          "action": "counter",
+          "args": {
+            "terms": "examples=50"
+          },
+          "to": "COUNTERED"
+        },
+        {
+          "action": "accept_counter",
+          "to": "REVISED"
+        },
+        {
+          "repeat": 3,
+          "steps": [
+            {
+              "action": "validate",
+              "to": "VALIDATED"
+            },
+            {
+              "action": "implement",
+              "to": "IMPLEMENTED"
+            },
+            {
+              "action": "reject_gate",
+              "args": {
+                "clause_ids": [
+                  "GATE-INV-01"
+                ],
+                "fault": "contract"
+              },
+              "to": "REJECTED"
+            },
+            {
+              "action": "reopen",
+              "to": "REVISED"
+            }
+          ]
+        }
+      ],
+      "action": "reopen",
+      "args": {},
+      "state_after_path": "REVISED",
+      "error": "retry budget exhausted (3/3)"
+    }
+  ]
+}

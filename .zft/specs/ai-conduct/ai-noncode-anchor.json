@@ -1,0 +1,20 @@
+{
+  "node_id": "01a08eeb-1a33-7468-af3c-501b1c69a55d",
+  "alias": "AI-NONCODE-ANCHOR",
+  "domain": "ai-conduct",
+  "title": "Stable document anchors",
+  "status": "PROPOSED",
+  "version": 1,
+  "content_hash": "bcfddc30138e282c095481004207258f9540f94f81714b95012ebcd0cf3f5d86",
+  "invariants": [
+    {
+      "id": "AI-NONCODE-ANCHOR-INV-01",
+      "statement": "WHEN a clause addresses a document section, THE SYSTEM SHALL anchor it to a stable section identity",
+      "property": "forall c: document_section(c) => stable_anchor(c)",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

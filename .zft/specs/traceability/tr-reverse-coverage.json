@@ -1,0 +1,20 @@
+{
+  "node_id": "01a06976-64ff-7802-8127-244b8b72b273",
+  "alias": "TR-REVERSE-COVERAGE",
+  "domain": "traceability",
+  "title": "Reverse coverage: no unbound elements",
+  "status": "VALIDATED",
+  "version": 2,
+  "content_hash": "6d48dfe428608e4771df2f85ed6c0915e865d1eaa265ec58064385e065802285",
+  "invariants": [
+    {
+      "id": "TR-INV-01",
+      "statement": "WHEN a deliverable contains an element bound to no clause, THE SYSTEM SHALL list it under the manifest's out-of-contract section and count it in reverse coverage.",
+      "property": "forall elements e: bound(e) or member_of(e, manifest.out_of_contract)",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

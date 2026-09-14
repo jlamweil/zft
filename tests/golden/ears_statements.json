@@ -1,0 +1,286 @@
+{
+ "patterns": {
+  "triggers": [
+   "WHEN",
+   "IF",
+   "WHILE",
+   "WHERE"
+  ],
+  "modals": [
+   "SHALL",
+   "MUST"
+  ],
+  "ubiquitous_type": "UBIQUITOUS",
+  "note": "every EARS pattern = triggers x modals, plus trigger-less UBIQUITOUS; accept must cover the full cross product"
+ },
+ "accept": [
+  {
+   "name": "when-form",
+   "statement": "WHEN a work order is assigned, THE SYSTEM SHALL refuse implementation start",
+   "expected": {
+    "type": "WHEN",
+    "trigger": "a work order is assigned",
+    "modal": "SHALL",
+    "response": "refuse implementation start"
+   }
+  },
+  {
+   "name": "if-form",
+   "statement": "IF mutants are fewer than configured, THE SYSTEM SHALL attribute contract-fault",
+   "expected": {
+    "type": "IF",
+    "trigger": "mutants are fewer than configured",
+    "modal": "SHALL",
+    "response": "attribute contract-fault"
+   }
+  },
+  {
+   "name": "while-form",
+   "statement": "WHILE campaign is running, THE SYSTEM SHALL stream verdicts",
+   "expected": {
+    "type": "WHILE",
+    "trigger": "campaign is running",
+    "modal": "SHALL",
+    "response": "stream verdicts"
+   }
+  },
+  {
+   "name": "where-form",
+   "statement": "WHERE possible, THE SYSTEM SHALL evaluate with a different model",
+   "expected": {
+    "type": "WHERE",
+    "trigger": "possible",
+    "modal": "SHALL",
+    "response": "evaluate with a different model"
+   }
+  },
+  {
+   "name": "ubiquitous-shall",
+   "statement": "THE SYSTEM SHALL exchange contract as A2A artifacts",
+   "expected": {
+    "type": "UBIQUITOUS",
+    "trigger": null,
+    "modal": "SHALL",
+    "response": "exchange contract as A2A artifacts"
+   }
+  },
+  {
+   "name": "ubiquitous-must",
+   "statement": "THE SYSTEM MUST refuse unvalidated contracts",
+   "expected": {
+    "type": "UBIQUITOUS",
+    "trigger": null,
+    "modal": "MUST",
+    "response": "refuse unvalidated contracts"
+   }
+  },
+  {
+   "name": "conditional-must-trailing-period-stripped",
+   "statement": "WHEN expired, THE SYSTEM MUST reject.",
+   "expected": {
+    "type": "WHEN",
+    "trigger": "expired",
+    "modal": "MUST",
+    "response": "reject"
+   }
+  },
+  {
+   "name": "all-trailing-dots-stripped",
+   "statement": "THE SYSTEM SHALL retry. .",
+   "expected": {
+    "type": "UBIQUITOUS",
+    "trigger": null,
+    "modal": "SHALL",
+    "response": "retry"
+   }
+  },
+  {
+   "name": "interior-period-preserved",
+   "statement": "THE SYSTEM SHALL print status.DONE.",
+   "expected": {
+    "type": "UBIQUITOUS",
+    "trigger": null,
+    "modal": "SHALL",
+    "response": "print status.DONE"
+   }
+  },
+  {
+   "name": "surrounding-whitespace-tolerated",
+   "statement": "  WHEN whitespace padded ,   THE SYSTEM   SHALL trim response.  ",
+   "expected": {
+    "type": "WHEN",
+    "trigger": "whitespace padded ",
+    "modal": "SHALL",
+    "response": "trim response"
+   }
+  },
+  {
+   "name": "multiline-trigger",
+   "statement": "WHEN multi\nline trigger, THE SYSTEM SHALL accept newlines",
+   "expected": {
+    "type": "WHEN",
+    "trigger": "multi\nline trigger",
+    "modal": "SHALL",
+    "response": "accept newlines"
+   }
+  },
+  {
+   "name": "if-must",
+   "statement": "IF the clause store is missing, THE SYSTEM MUST fail closed",
+   "expected": {
+    "type": "IF",
+    "trigger": "the clause store is missing",
+    "modal": "MUST",
+    "response": "fail closed"
+   }
+  },
+  {
+   "name": "while-must",
+   "statement": "WHILE a mutant campaign runs, THE SYSTEM MUST sandbox bound suites",
+   "expected": {
+    "type": "WHILE",
+    "trigger": "a mutant campaign runs",
+    "modal": "MUST",
+    "response": "sandbox bound suites"
+   }
+  },
+  {
+   "name": "where-must",
+   "statement": "WHERE a clause is judge-gated, THE SYSTEM MUST exclude it from deterministic coverage",
+   "expected": {
+    "type": "WHERE",
+    "trigger": "a clause is judge-gated",
+    "modal": "MUST",
+    "response": "exclude it from deterministic coverage"
+   }
+  }
+ ],
+ "reject": [
+  {
+   "name": "empty-statement",
+   "statement": "   ",
+   "diagnostic": "statement is empty",
+   "expected_message": "not an EARS statement: statement is empty\n  statement: '   '\n  expected: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]\n  hint: write a response, e.g. THE SYSTEM SHALL refuse unvalidated contracts"
+  },
+  {
+   "name": "lowercase-the-system",
+   "statement": "The system probably handles it fine.",
+   "diagnostic": "'THE SYSTEM' is lowercase",
+   "expected_message": "not an EARS statement: keyword 'THE SYSTEM' is lowercase\n  statement: 'The system probably handles it fine.'\n  expected: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]\n  hint: EARS keywords are uppercase: THE SYSTEM SHALL ..."
+  },
+  {
+   "name": "missing-system-clause",
+   "statement": "It shall log everything.",
+   "diagnostic": "missing 'THE SYSTEM'",
+   "expected_message": "not an EARS statement: missing 'THE SYSTEM' clause\n  statement: 'It shall log everything.'\n  expected: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]\n  hint: every EARS statement names the system: THE SYSTEM SHALL ..."
+  },
+  {
+   "name": "lowercase-modal",
+   "statement": "THE SYSTEM shall log every exchange",
+   "diagnostic": "modal after 'THE SYSTEM' is 'shall'",
+   "expected_message": "not an EARS statement: modal after 'THE SYSTEM' is 'shall', expected SHALL or MUST\n  statement: 'THE SYSTEM shall log every exchange'\n  expected: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]\n  hint: the only valid modals are SHALL and MUST (uppercase)"
+  },
+  {
+   "name": "wrong-modal",
+   "statement": "THE SYSTEM probably refuses invalid contracts",
+   "diagnostic": "modal after 'THE SYSTEM' is 'probably'",
+   "expected_message": "not an EARS statement: modal after 'THE SYSTEM' is 'probably', expected SHALL or MUST\n  statement: 'THE SYSTEM probably refuses invalid contracts'\n  expected: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]\n  hint: the only valid modals are SHALL and MUST (uppercase)"
+  },
+  {
+   "name": "missing-response-after-modal",
+   "statement": "THE SYSTEM SHALL",
+   "diagnostic": "response is missing after SHALL",
+   "expected_message": "not an EARS statement: response is missing after SHALL\n  statement: 'THE SYSTEM SHALL'\n  expected: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]\n  hint: state what THE SYSTEM SHALL do, e.g. SHALL refuse unvalidated contracts"
+  },
+  {
+   "name": "lowercase-trigger-keyword",
+   "statement": "when a contract arrives, THE SYSTEM SHALL validate it",
+   "diagnostic": "trigger keyword is lowercase",
+   "expected_message": "not an EARS statement: trigger keyword is lowercase ('when')\n  statement: 'when a contract arrives, THE SYSTEM SHALL validate it'\n  expected: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]\n  hint: EARS keywords are uppercase: WHEN/IF/WHILE/WHERE"
+  },
+  {
+   "name": "unknown-trigger-keyword",
+   "statement": "GIVEN a signed contract, THE SYSTEM SHALL accept it",
+   "diagnostic": "not a trigger keyword",
+   "expected_message": "not an EARS statement: statement starts with 'GIVEN', not a trigger keyword\n  statement: 'GIVEN a signed contract, THE SYSTEM SHALL accept it'\n  expected: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]\n  hint: start with WHEN/IF/WHILE/WHERE for conditional statements, or go straight to 'THE SYSTEM' for a ubiquitous statement"
+  },
+  {
+   "name": "missing-comma-before-system",
+   "statement": "WHEN a contract arrives THE SYSTEM SHALL validate it",
+   "diagnostic": "comma",
+   "expected_message": "not an EARS statement: trigger is not followed by a comma before 'THE SYSTEM'\n  statement: 'WHEN a contract arrives THE SYSTEM SHALL validate it'\n  expected: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]\n  hint: separate trigger and response with a comma: WHEN <trigger>, THE SYSTEM SHALL ..."
+  },
+  {
+   "name": "punctuation-only-trigger",
+   "statement": "WHEN , THE SYSTEM SHALL accept valid contracts",
+   "diagnostic": "punctuation-only",
+   "expected_message": "not an EARS statement: trigger after WHEN is empty or punctuation-only\n  statement: 'WHEN , THE SYSTEM SHALL accept valid contracts'\n  expected: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]\n  hint: state a concrete condition, e.g. WHEN a work order is assigned,"
+  },
+  {
+   "name": "empty-response",
+   "statement": "THE SYSTEM SHALL .",
+   "diagnostic": "response is empty",
+   "expected_message": "not an EARS statement: response is empty\n  statement: 'THE SYSTEM SHALL .'\n  expected: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]\n  hint: state what THE SYSTEM SHALL do before the closing period"
+  },
+  {
+   "name": "long-statement-excerpt-truncated",
+   "statement": "THE THE SYSTEM SHALL x, and then even more trailing words purely to push this failing statement excerpt beyond the eighty character boundary",
+   "diagnostic": "syntax does not match the EARS grammar",
+   "expected_message": "not an EARS statement: syntax does not match the EARS grammar\n  statement: 'THE THE SYSTEM SHALL x, and then even more trailing words purely to push this...'\n  expected: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]\n  hint: shape: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]"
+  },
+  {
+   "name": "fallthrough-syntax",
+   "statement": "THE THE SYSTEM SHALL x",
+   "diagnostic": "syntax does not match the EARS grammar",
+   "expected_message": "not an EARS statement: syntax does not match the EARS grammar\n  statement: 'THE THE SYSTEM SHALL x'\n  expected: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]\n  hint: shape: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]"
+  },
+  {
+   "name": "statement-ends-at-system",
+   "statement": "THE SYSTEM",
+   "diagnostic": "statement ends at 'THE SYSTEM'",
+   "expected_message": "not an EARS statement: statement ends at 'THE SYSTEM'\n  statement: 'THE SYSTEM'\n  expected: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]\n  hint: add a modal (SHALL or MUST) and a response"
+  },
+  {
+   "name": "punctuation-only-trigger-regex-guard",
+   "statement": "WHEN !!!, THE SYSTEM SHALL x.",
+   "diagnostic": "trigger after WHEN is empty or punctuation-only",
+   "expected_message": "not an EARS statement: trigger after WHEN is empty or punctuation-only\n  statement: 'WHEN !!!, THE SYSTEM SHALL x.'\n  expected: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]\n  hint: state a concrete condition, e.g. WHEN a work order is assigned,"
+  },
+  {
+   "name": "non-string-input",
+   "statement": null,
+   "error": "TypeError",
+   "expected_message": "statement must be str, got NoneType: None"
+  },
+  {
+   "name": "excerpt-boundary-exactly-80",
+   "statement": "THE THE SYSTEM SHALL x, wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+   "diagnostic": "syntax does not match the EARS grammar",
+   "expected_message": "not an EARS statement: syntax does not match the EARS grammar\n  statement: 'THE THE SYSTEM SHALL x, wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww'\n  expected: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]\n  hint: shape: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]"
+  },
+  {
+   "name": "excerpt-boundary-exactly-81",
+   "statement": "THE THE SYSTEM SHALL x, wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+   "diagnostic": "syntax does not match the EARS grammar",
+   "expected_message": "not an EARS statement: syntax does not match the EARS grammar\n  statement: 'THE THE SYSTEM SHALL x, wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww...'\n  expected: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]\n  hint: shape: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]"
+  },
+  {
+   "name": "digit-leading-statement",
+   "statement": "123 THE SYSTEM SHALL x",
+   "diagnostic": "not a trigger keyword",
+   "expected_message": "not an EARS statement: statement starts with '', not a trigger keyword\n  statement: '123 THE SYSTEM SHALL x'\n  expected: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]\n  hint: start with WHEN/IF/WHILE/WHERE for conditional statements, or go straight to 'THE SYSTEM' for a ubiquitous statement"
+  },
+  {
+   "name": "two-the-system-first-span-lacks-comma",
+   "statement": "WHEN x THE SYSTEM SHALL y, THE SYSTEM z",
+   "diagnostic": "trigger is not followed by a comma",
+   "expected_message": "not an EARS statement: trigger is not followed by a comma before 'THE SYSTEM'\n  statement: 'WHEN x THE SYSTEM SHALL y, THE SYSTEM z'\n  expected: [<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]\n  hint: separate trigger and response with a comma: WHEN <trigger>, THE SYSTEM SHALL ..."
+  },
+  {
+   "name": "non-string-input-int",
+   "statement": 42,
+   "error": "TypeError",
+   "expected_message": "statement must be str, got int: 42"
+  }
+ ]
+}

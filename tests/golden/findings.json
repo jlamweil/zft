@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "shape": {
+    "keys": [
+      "alias",
+      "code",
+      "file",
+      "hint",
+      "msg",
+      "severity"
+    ],
+    "rule": "every finding carries all six keys (nulls explicit); evaluation accumulates findings, never first-exit; a gate is red iff at least one deny exists",
+    "severities": [
+      "deny",
+      "warn"
+    ]
+  },
+  "rules": [
+    {
+      "code": "STORE_MISSING",
+      "severity": "deny"
+    },
+    {
+      "code": "STORE_NODE_JSON",
+      "severity": "deny"
+    },
+    {
+      "code": "STORE_NODE_SCHEMA",
+      "severity": "deny"
+    },
+    {
+      "code": "STORE_HASH_MISMATCH",
+      "severity": "deny"
+    },
+    {
+      "code": "STORE_ALIAS_DUPLICATE",
+      "severity": "deny"
+    },
+    {
+      "code": "STORE_HASH_DUPLICATE",
+      "severity": "deny"
+    },
+    {
+      "code": "CONTRACT_MANIFEST_FIELD",
+      "severity": "deny"
+    },
+    {
+      "code": "CONTRACT_DANGLING_CLAUSE",
+      "severity": "deny"
+    },
+    {
+      "code": "CLAUSE_STATUS_DRAFT",
+      "severity": "warn"
+    },
+    {
+      "code": "CLAUSE_STATUS_DEPRECATED",
+      "severity": "warn"
+    },
+    {
+      "code": "LINT_CRASHED",
+      "severity": "deny"
+    }
+  ],
+  "cases": [
+    {
+      "name": "schema-deny-accumulates-status-warns",
+      "expected_findings": [
+        {
+          "alias": null,
+          "code": "STORE_NODE_SCHEMA",
+          "file": ".zft/specs/g/bad-clause.json",
+          "hint": "fix the node to satisfy the TraceAgentClauseNode schema",
+          "msg": "node: 'title' is a required property",
+          "severity": "deny"
+        },
+        {
+          "alias": "G-ONE",
+          "code": "CLAUSE_STATUS_DRAFT",
+          "file": ".zft/specs/g/good-clause.json",
+          "hint": "validate the clause before its evidence is relied on (consumer authorization)",
+          "msg": "clause is DRAFT — evidence is advisory until VALIDATED",
+          "severity": "warn"
+        },
+        {
+          "alias": "G-TWO",
+          "code": "CLAUSE_STATUS_DEPRECATED",
+          "file": ".zft/specs/g/z-clause.json",
+          "hint": "archive the node or drop it from due contracts",
+          "msg": "clause is DEPRECATED — kept for lineage only",
+          "severity": "warn"
+        }
+      ],
+      "expected_lint_store": [
+        ".zft/specs/g/bad-clause.json: node: 'title' is a required property\n  hint: fix the node to satisfy the TraceAgentClauseNode schema"
+      ]
+    }
+  ]
+}

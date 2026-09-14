@@ -1,0 +1,20 @@
+{
+  "node_id": "01a08b08-15c1-7827-8746-78668e222fb6",
+  "alias": "ENF-READONLY-EXEMPT",
+  "domain": "enforcement",
+  "title": "Read-only lanes are exempt",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "4faa618850c0d2d52153c0747b780a7dc2841c4e89648808c73196cc9b3be025",
+  "invariants": [
+    {
+      "id": "ENF-READONLY-EXEMPT-INV-01",
+      "statement": "WHEN a read-only-lane subagent is dispatched, THE SYSTEM SHALL allow it without requiring a contract",
+      "property": "forall dispatch d: readonly(d) => allowed(d)",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

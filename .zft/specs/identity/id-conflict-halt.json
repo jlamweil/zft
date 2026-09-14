@@ -1,0 +1,20 @@
+{
+  "node_id": "01a06976-6500-7bba-9d7d-b9762ca18ab2",
+  "alias": "ID-CONFLICT-HALT",
+  "domain": "identity",
+  "title": "Concurrent edit conflict halts merge",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "5db25cdf4866d3ad822f9a5a76c4a8ee7166d68ad1155b93d7cc3e5a29740ad4",
+  "invariants": [
+    {
+      "id": "ID-INV-01",
+      "statement": "WHEN two agents modify the same clause node concurrently, THE SYSTEM SHALL halt the merge and emit a structured conflict diff.",
+      "property": "forall merges m: concurrent_edits(m) => halted(m) and structured_diff(m)",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

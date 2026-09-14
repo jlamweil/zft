@@ -1,0 +1,21 @@
+{
+  "node_id": "01a06976-64ff-7be0-9e7b-f5d70cc34e4b",
+  "alias": "GATE-MUTATION-ATTRIBUTION",
+  "domain": "gates",
+  "title": "Mutation under-kill is contract-fault",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "81d0cfaa057411fd93d6361ecf07bc48244f954a88ad90fa38e9e94d4528d86c",
+  "invariants": [
+    {
+      "id": "GATE-INV-01",
+      "statement": "WHEN fewer than the configured fraction of mutants targeting a clause are killed, THE SYSTEM SHALL attribute contract-fault and route the failure to the consumer, not the producer.",
+      "property": "kill_rate(c) < threshold => fault(under_specified, c) and route(consumer)",
+      "check": {
+        "kind": "test",
+        "notes": "threshold open per ARCHITECTURE \u00a77.6"
+      }
+    }
+  ],
+  "external_links": []
+}

@@ -1,0 +1,20 @@
+{
+  "node_id": "01a08eeb-1a7e-7d81-9180-78b7533d0eaa",
+  "alias": "AI-HUMAN-APPROVAL",
+  "domain": "ai-conduct",
+  "title": "Signed human approval",
+  "status": "PROPOSED",
+  "version": 1,
+  "content_hash": "f645ffeaaee0c0b290f590e4c42c820db9701dfb13214f755cdb2c27ca1a9ca6",
+  "invariants": [
+    {
+      "id": "AI-HUMAN-APPROVAL-INV-01",
+      "statement": "WHEN a human validates a contract, THE SYSTEM SHALL record a signed human approval as the validation gate",
+      "property": "forall v: human(v) => signed_approval(v)",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

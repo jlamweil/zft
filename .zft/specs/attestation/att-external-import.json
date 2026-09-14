@@ -1,0 +1,21 @@
+{
+  "node_id": "01a06976-64ff-7611-8f16-2602c23a1462",
+  "alias": "ATT-EXTERNAL-IMPORT",
+  "domain": "attestation",
+  "title": "External requirement import",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "4d3ded1ddcac7f0f2d28397aa0e9f0e2fd259665e065edbfcfa32abe582a3d97",
+  "invariants": [
+    {
+      "id": "ATT-INV-01",
+      "statement": "WHERE an external requirement record exists in ReqIF or ALM form, THE SYSTEM SHALL import it as a clause preserving its external identity.",
+      "property": "forall imports i: preserves(i, external_id(i))",
+      "check": {
+        "kind": "test",
+        "notes": "stretch goal \u2014 confirm scope during negotiation"
+      }
+    }
+  ],
+  "external_links": []
+}

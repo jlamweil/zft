@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "zft"
 version = "0.2.0a1"
 description = "ZFT (Zero-Friction Traceability): contract-first verification and trace matrix gates for multi-agent work"
+readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.12"
 dependencies = [

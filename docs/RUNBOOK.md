@@ -17,8 +17,8 @@ Exit codes: `0` green, `1` typed rejection (JSON printed), `2` usage error.
 
 ## Wiring the gate into CI and pre-commit (adoption recipe)
 
-CI: run the daily loop's first two commands on every push — `traceagent lint`
-+ `traceagent check .` (5-minute budget per kill criterion K-CI-1; measured
+CI: run the daily loop's first two commands on every push — `zft lint`
++ `zft check .` (5-minute budget per kill criterion K-CI-1; measured
 ~3.4 s on the 26-clause seed corpus).
 A red clause fails the build with a typed JSON rejection naming the clause node
 (exit-code contract pinned in `tests/unit/test_check_cli.py`).
@@ -52,7 +52,7 @@ about to touch (`{folder}` is substituted by the driver):
   gherkin render, no bytecode; hypothesis's example DB goes to a self-removing
   temp dir. A byte-identical workspace after a green run is pinned in
   `tests/unit/test_driver_gate.py`. Verdict logging is the driver's job.
-- Same verdict without the driver: `traceagent driver-gate <folder>`
+- Same verdict without the driver: `zft driver-gate <folder>`
   (or `python -m traceagent.gates.driver_gate <folder>`).
 
 ### Pre-send seam for a batcher's send path
@@ -83,7 +83,7 @@ gates/send-gate.sh "$REPO_DIR" || exit 1
   without a human call at triage reading the rehearsal evidence first.
 ## What `check` does and does not verify
 
-A green `traceagent check .` proves **traceability, not conformance**:
+A green `zft check .` proves **traceability, not conformance**:
 
 - **Does prove:** L0 integrity (schema + content hashes, alias/duplicate detection), forward coverage (every **due** clause has ≥ 1 binding), gherkin render/collect, and bound‑suite execution for `kind: property` clauses.
 - **Does not prove:** that the implementation satisfies the clause's declared `property` — the property string is never compiled or executed, and `kind: test` clauses (the default) get no execution evidence at all. Correctness requires executing the clause's semantics (property/oracle). See [`docs/KNOWN-GAPS.md`](KNOWN-GAPS.md) (Gap 001).
@@ -93,11 +93,11 @@ A green `traceagent check .` proves **traceability, not conformance**:
 The `task-gate` commands enforce contract‑binding at the subagent‑dispatch boundary.
 
 - **Commands**
-  - `traceagent task-gate before --subagent <type> --description <text>` – runs before a subagent is spawned.
+  - `zft task-gate before --subagent <type> --description <text>` – runs before a subagent is spawned.
     - Exit 0: dispatch allowed (recorded).
     - Exit 1: policy rejection (blocked).
     - Exit 2 or other: internal/usage error – the plugin fails open (dispatch proceeds). Emits a JSON object on stdout.
-  - `traceagent task-gate after --subagent <type> --description <text>` – runs after the subagent finishes, prepending a coverage verdict to the tool output.
+  - `zft task-gate after --subagent <type> --description <text>` – runs after the subagent finishes, prepending a coverage verdict to the tool output.
 
 - **Audit log** – each decision appends a JSONL line to `<repo>/.zft/audit.log` (timestamp, subagent, lane, phase, verdict, etc.).
 
@@ -137,8 +137,8 @@ finds the unfinished run, replays it through the state machine (typed
 
 ```bash
 # deterministic kill -9 mid-negotiation (demo seam; the kill is a real SIGKILL):
-TRACEAGENT_NEGOTIATE_KILL_AFTER=counter traceagent negotiate .
-traceagent negotiate .        # → "resuming negotiation run <id> from COUNTERED"
+TRACEAGENT_NEGOTIATE_KILL_AFTER=counter zft negotiate .
+zft negotiate .        # → "resuming negotiation run <id> from COUNTERED"
 ```
 
 Terminal runs (`validated`/`refuse` in the ledger) are never resumed; a torn
@@ -160,6 +160,6 @@ TRACEAGENT_KEEP_SANDBOX=1 ...                 # retain gate sandbox for autopsy
 
 1. Create/extend a test in `tests/unit/` exercising the behavior.
 2. Bind it with a `# @trace("ALIAS")` comment directly above the test.
-3. `traceagent check .` — the clause stays covered or CI goes red.
+3. `zft check .` — the clause stays covered or CI goes red.
 
 Deferred clauses (`target_milestone` = v0.1: TR-IMPACT-QUERY, ATT-EXTERNAL-IMPORT) are listed in the attestation under `deferred` and do not block CI.

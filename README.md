@@ -126,14 +126,3 @@ specification live in [`designs/ARCHITECTURE.md`](designs/ARCHITECTURE.md).
 ## License
 
 Apache-2.0 — see [LICENSE](LICENSE).
-
----
-
-## Enterprise (proprietary) features
-
-ReqIF certification export/import and enterprise ALM connectors (store sync,
-DOORS / Polarion integrations) are commercial, **proprietary** add-ons — they
-are not part of the open-source `zft` package.
-
-For enterprise ALM connectors, compliance export pipelines, or bespoke
-integration engineering, contact **contact@keyrie.eu**.

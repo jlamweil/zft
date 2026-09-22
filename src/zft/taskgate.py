@@ -3,8 +3,7 @@
 Writer lanes may only be dispatched against a contract that exists on file
 (`[contract: NAME]` in the task description resolving to
 .zft/contracts/NAME.json); read-only lanes are exempt. An ungated override
-(`[ungated: reason]` or a truthy ZFT_ALLOW_UNGATED; legacy
-zft_ALLOW_UNGATED still honored as a fallback) allows a writer
+(`[ungated: reason]` or a truthy ZFT_ALLOW_UNGATED) allows a writer
 dispatch but is flagged `gated: False` in the audit log. Every decision —
 allowed, blocked, verdict, error — appends exactly one JSONL record to
 <zft-root>/.zft/audit.log.
@@ -60,14 +59,8 @@ def _now() -> str:
 
 
 def _env_override() -> str | None:
-    """ZFT_ALLOW_UNGATED with a truthy value authorizes an ungated dispatch.
-
-    The legacy zft_ALLOW_UNGATED remains a transitional fallback when the
-    new variable is unset.
-    """
+    """ZFT_ALLOW_UNGATED with a truthy value authorizes an ungated dispatch."""
     val = os.environ.get("ZFT_ALLOW_UNGATED", "").strip().lower()
-    if not val:
-        val = os.environ.get("zft_ALLOW_UNGATED", "").strip().lower()
     return val if val in {"1", "true", "yes", "on"} else None
 
 

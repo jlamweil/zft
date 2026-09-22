@@ -13,7 +13,7 @@ from zft.debug.ledger import RunLedger
 from zft.negotiate.sm import IllegalTransition, NegotiationSM
 from zft.spec.store import load_contract
 
-REPO = Path(os.environ.get("zft_REPO")
+REPO = Path(os.environ.get("ZFT_REPO")
             or Path(__file__).resolve().parents[2])
 
 
@@ -30,7 +30,10 @@ def test_negotiate_flow_runs_on_own_contract(tmp_path):
 
     root = tmp_path / "store"
     root.mkdir()
-    shutil.copytree(REPO / ".zft", root / ".zft")
+    shutil.copytree(
+        REPO / ".zft", root / ".zft",
+        ignore=shutil.ignore_patterns("runs", "sandbox*", "cache"),
+    )
     r = subprocess.run([sys.executable, "-m", "zft.cli.main", "negotiate",
                         str(root)], capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr

@@ -1,7 +1,7 @@
 """E2E: the kill-9 negotiation resumption proof.
 
 A negotiate process is SIGKILLed mid-protocol (deterministically, via the
-zft_NEGOTIATE_KILL_AFTER demo seam — the kill itself is a real
+ZFT_NEGOTIATE_KILL_AFTER demo seam — the kill itself is a real
 SIGKILL, exit -9, no unwinding). The next plain invocation must find the
 unfinished run, replay its durable prefix through the state machine, and
 finish the SAME run — the ledger ends up holding one gapless protocol.
@@ -16,7 +16,7 @@ from pathlib import Path
 
 from zft.debug.ledger import RunLedger
 
-REPO = Path(os.environ.get("zft_REPO")
+REPO = Path(os.environ.get("ZFT_REPO")
             or Path(__file__).resolve().parents[2])
 PY = sys.executable
 
@@ -26,12 +26,15 @@ FULL_PROTOCOL = ["cfp", "counter", "accept_counter", "validate", "validated"]
 def _store_copy(tmp_path: Path) -> Path:
     root = tmp_path / "store"
     root.mkdir()
-    shutil.copytree(REPO / ".zft", root / ".zft")
+    shutil.copytree(
+        REPO / ".zft", root / ".zft",
+        ignore=shutil.ignore_patterns("runs", "sandbox*", "cache"),
+    )
     return root
 
 
 def _negotiate(root: Path, kill_after: str | None = None):
-    env = os.environ | ({"zft_NEGOTIATE_KILL_AFTER": kill_after}
+    env = os.environ | ({"ZFT_NEGOTIATE_KILL_AFTER": kill_after}
                         if kill_after else {})
     return subprocess.run(
         [PY, "-m", "zft.cli.main", "negotiate", str(root)],

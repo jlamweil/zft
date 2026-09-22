@@ -66,8 +66,8 @@ def _tree_digest(root: Path) -> str:
 
     Bound suites import the implementation under test, so a cached verdict is
     only honest while the workspace is byte-identical — test-file digests alone
-    let an edited implementation hide behind a stale verdict (internal cache
-    incidents CACHE-1/2/3, unioned 2026-09-12). Hidden trees and `mutants/` are excluded with the
+    let an edited implementation hide behind a stale verdict (HOST-A CACHE-1/2/3,
+    unioned 2026-09-12). Hidden trees and `mutants/` are excluded with the
     extractor's skip policy; `.zft` in particular, or writing the cache
     would perturb the very key it is stored under.
     """

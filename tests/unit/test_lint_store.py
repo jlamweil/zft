@@ -10,7 +10,7 @@ from pathlib import Path
 
 from zft.spec.lint import lint_store
 
-REPO = Path(os.environ.get("zft_REPO")
+REPO = Path(os.environ.get("ZFT_REPO")
             or Path(__file__).resolve().parents[2])
 
 

@@ -69,7 +69,7 @@
           "alias": null,
           "code": "STORE_NODE_SCHEMA",
           "file": ".zft/specs/g/bad-clause.json",
-          "hint": "fix the node to satisfy the TraceAgentClauseNode schema",
+          "hint": "fix the node to satisfy the ZFTClauseNode schema",
           "msg": "node: 'title' is a required property",
           "severity": "deny"
         },
@@ -91,7 +91,7 @@
         }
       ],
       "expected_lint_store": [
-        ".zft/specs/g/bad-clause.json: node: 'title' is a required property\n  hint: fix the node to satisfy the TraceAgentClauseNode schema"
+        ".zft/specs/g/bad-clause.json: node: 'title' is a required property\n  hint: fix the node to satisfy the ZFTClauseNode schema"
       ]
     }
   ]

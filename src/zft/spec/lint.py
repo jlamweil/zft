@@ -58,7 +58,7 @@ def collect_findings(root: Path | str) -> list[Finding]:
             findings.append(Finding(
                 code="STORE_NODE_SCHEMA", severity=DENY, file=rel,
                 msg=str(e),
-                hint="fix the node to satisfy the TraceAgentClauseNode schema"))
+                hint="fix the node to satisfy the ZFTClauseNode schema"))
             continue
         expected = canonical_hash(node)
         if node["content_hash"] != expected:

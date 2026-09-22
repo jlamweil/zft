@@ -27,7 +27,7 @@ from a2a.types import AgentCard, Message, SendMessageRequest, TaskState  # noqa:
 
 from zft.debug.ledger import RunLedger  # noqa: E402
 
-REPO = Path(os.environ.get("zft_REPO")
+REPO = Path(os.environ.get("ZFT_REPO")
             or Path(__file__).resolve().parents[2])
 PY = sys.executable
 TASK = "neg-001"
@@ -37,7 +37,10 @@ PORT_LINE = re.compile(r"port=(\d+) task=\S+ resumed=(True|False)")
 def _store_copy(tmp_path: Path) -> Path:
     root = tmp_path / "store"
     root.mkdir()
-    shutil.copytree(REPO / ".zft", root / ".zft")
+    shutil.copytree(
+        REPO / ".zft", root / ".zft",
+        ignore=shutil.ignore_patterns("runs", "sandbox*", "cache"),
+    )
     return root
 
 

@@ -19,7 +19,7 @@ from securesystemslib.signer import CryptoSigner, Key
 from zft.attest.dsse import parse_envelope, verify_attestation
 from zft.attest.jcs import canonicalize
 
-REPO = Path(os.environ.get("zft_REPO") or os.environ.get("ZFT_REPO")
+REPO = Path(os.environ.get("ZFT_REPO") or os.environ.get("ZFT_REPO")
             or Path(__file__).resolve().parents[2])
 
 
@@ -149,7 +149,7 @@ def test_cli_attest_then_export_roundtrip_on_tmp_store(tmp_path):
                         "check": {"kind": "test"}}],
         "external_links": [],
     }))
-    # the gate fails closed: unsupplied model identity -> model_dependent true.
+    # HOST-A fails closed: unsupplied model identity -> model_dependent true.
     # Supply two distinct identities to prove the independence seam.
     r = _run("attest", str(tmp_path), "--producer-model", "p", "--gate-model", "g")
     assert r.returncode == 0, r.stdout + r.stderr
@@ -251,7 +251,10 @@ def _store_copy(tmp_path):
     """Live .zft tree copied to a throwaway root — never attest the repo."""
     root = tmp_path / "store"
     root.mkdir()
-    shutil.copytree(REPO / ".zft", root / ".zft")
+    shutil.copytree(
+        REPO / ".zft", root / ".zft",
+        ignore=shutil.ignore_patterns("runs", "sandbox*", "cache"),
+    )
     return root
 
 
@@ -290,7 +293,7 @@ def test_cli_attest_models_unsupplied_stay_null_not_dev_names(tmp_path):
     model-dependent (fail-closed) — never an invented dev name."""
     root = _store_copy(tmp_path)
     env = {k: v for k, v in os.environ.items()
-           if not k.startswith(("zft_PRODUCER", "zft_GATE"))}
+           if not k.startswith(("ZFT_PRODUCER", "ZFT_GATE"))}
     r = subprocess.run([PY, "-m", "zft.cli.main", "attest", str(root)],
                        capture_output=True, text=True, env=env)
     assert r.returncode == 0, r.stdout + r.stderr
@@ -301,8 +304,8 @@ def test_cli_attest_models_unsupplied_stay_null_not_dev_names(tmp_path):
 
 def test_cli_attest_models_env_config_fallback(tmp_path):
     root = _store_copy(tmp_path)
-    env = os.environ | {"zft_PRODUCER_MODEL": "env-prod",
-                        "zft_GATE_MODEL": "env-gate"}
+    env = os.environ | {"ZFT_PRODUCER_MODEL": "env-prod",
+                        "ZFT_GATE_MODEL": "env-gate"}
     r = subprocess.run([PY, "-m", "zft.cli.main", "attest", str(root)],
                        capture_output=True, text=True, env=env)
     assert r.returncode == 0, r.stdout + r.stderr

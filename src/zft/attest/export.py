@@ -104,7 +104,7 @@ def export_summary(root: Path | str) -> str:
     deferred = predicate.get("deferred") or []
     keyids = _signature_keyids(envelope)
     lines = [
-        "zft attestation summary",
+        "ZFT attestation summary",
         "==============================",
         f"statement type: {payload['_type']}",
         f"predicate type: {payload['predicateType']}",

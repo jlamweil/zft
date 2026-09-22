@@ -235,8 +235,8 @@ def _outcome(cached: object) -> str:
 
 def _run_pytest_env(sandbox, test_paths, timeout_s, repo_root):
     """Run pytest under the gate-isolation env (gates.sandbox.gate_env), with
-    zft_REPO pointing at the real repo (location-independent tests)."""
-    extra = {"zft_REPO": str(Path(repo_root))} if repo_root is not None else None
+    ZFT_REPO pointing at the real repo (location-independent tests)."""
+    extra = {"ZFT_REPO": str(Path(repo_root))} if repo_root is not None else None
     return run_pytest(sandbox, list(test_paths or []), timeout_s=timeout_s,
                       env=gate_env(extra))
 

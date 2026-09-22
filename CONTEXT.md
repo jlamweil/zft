@@ -42,7 +42,7 @@ From the intent and the prior design work in `designs/`, tentative principles (t
 
 ## 5. Prior design thinking in this repo (`designs/`)
 
-The original four design docs (PTE, ZFT, "PTE ZFT", DEC) have been **unified into one canonical document: [`designs/ARCHITECTURE.md`](designs/ARCHITECTURE.md)**, which converts their disagreements into explicit decision records with tradeoff analysis. Where the originals and ARCHITECTURE.md disagree, ARCHITECTURE.md wins.
+The original four design docs (PTE, ZFT, "PTE ZFT", DEC) have been **unified into one canonical document: [`designs/ARCHITECTURE.md`](designs/ARCHITECTURE.md)**, which converts their disagreements into explicit decision records with tradeoff analysis. The originals are preserved under [`designs/archive/`](designs/archive/); where they and ARCHITECTURE.md disagree, ARCHITECTURE.md wins.
 
 The decisions that resolve the old tensions, in brief:
 

@@ -14,7 +14,7 @@ from pathlib import Path
 
 from zft.attest.dsse import clause_subjects
 
-REPO = Path(os.environ.get("zft_REPO") or Path(__file__).resolve().parents[2])
+REPO = Path(os.environ.get("ZFT_REPO") or Path(__file__).resolve().parents[2])
 PY = sys.executable
 N_CLAUSES = len(clause_subjects(REPO))
 
@@ -27,7 +27,10 @@ def _run(*args):
 def _store_copy(tmp_path: Path) -> Path:
     root = tmp_path / "store"
     root.mkdir()
-    shutil.copytree(REPO / ".zft", root / ".zft")
+    shutil.copytree(
+        REPO / ".zft", root / ".zft",
+        ignore=shutil.ignore_patterns("runs", "sandbox*", "cache"),
+    )
     return root
 
 

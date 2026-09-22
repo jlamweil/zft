@@ -4,7 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO = Path(os.environ.get("zft_REPO") or os.environ.get("ZFT_REPO")
+REPO = Path(os.environ.get("ZFT_REPO") or os.environ.get("ZFT_REPO")
       or Path(__file__).resolve().parents[2])
 
 def _live_counts() -> tuple[int, int]:

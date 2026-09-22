@@ -48,8 +48,8 @@ BUDGET_CHARS = 1800  # driver sink caps at ~2000; stay under with headroom
 MAX_FAILURES = 6
 MAX_WARNINGS = 8
 FAILURE_MAX_CHARS = 200
-PRODUCER_MODEL_ENV = "zft_PRODUCER_MODEL"
-GATE_MODEL_ENV = "zft_GATE_MODEL"
+PRODUCER_MODEL_ENV = "ZFT_PRODUCER_MODEL"
+GATE_MODEL_ENV = "ZFT_GATE_MODEL"
 
 
 @dataclass
@@ -126,7 +126,7 @@ def run_driver_gate(root: Path | str, examples_timeout_s: int = 60,
 
     (producer, gate) identity is caller-supplied: explicit arguments (the
     CLI's --producer-model/--gate-model flags) first, then the
-    zft_*_MODEL config envs, else None — never a default name. An
+    ZFT_*_MODEL config envs, else None — never a default name. An
     unsupplied identity stays null in the verdict and model_dependent stays
     true (GATE-MODEL-INDEPENDENCE fails closed).
     """

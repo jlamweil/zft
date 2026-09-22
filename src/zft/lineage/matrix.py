@@ -11,7 +11,7 @@ import os
 import re
 from pathlib import Path
 
-from .extract import IGNORE_DIRS
+from .extract import IGNORE_DIRS, skipped_dir
 
 _ELEMENT_SUFFIXES = {".py", ".md"}
 
@@ -48,15 +48,18 @@ def list_all_elements(root) -> list[str]:
 
 
 def _iter_element_files(root: Path) -> list[Path]:
-    """Files under *root* with an element suffix, skipping ``IGNORE_DIRS``.
+    """Files under *root* with an element suffix, skipping ``skipped_dir``.
 
-    Mirrors ``lineage/extract.py::_iter_source_files``: ``os.walk`` with
-    in-place dir pruning plus an any-component check, sorted once for
+    Uses the extractor's skip policy (``lineage/extract.skipped_dir``) so the
+    two walkers can never diverge: scratch/ kill-shard working copies and
+    mutmut campaign trees are tool workspaces, never deliverable elements
+    (HOST-A-campaign lesson, 2026-09-07; matrix drifted from it and every
+    check re-parsed ~19k mirror files until 2026-09-16). Sorted once for
     deterministic order.
     """
     files: list[Path] = []
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in IGNORE_DIRS and not d.startswith(".")]
+        dirnames[:] = [d for d in dirnames if not skipped_dir(d)]
         for fname in filenames:
             path = Path(dirpath) / fname
             if path.suffix not in _ELEMENT_SUFFIXES:

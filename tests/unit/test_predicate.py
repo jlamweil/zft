@@ -414,3 +414,36 @@ def test_trailing_dot_rejected_with_identifier_diagnostic():
         "  at: 'a.'\n"
         "      ^"
     )
+
+
+# GATE-MUTATION-KILL: binder_group's multi-name loop binds the LAST name —
+# the lookahead kind-set's "name" member (binder_group 20/21) and the
+# appended-name value (binder_group 22, names.append(None)) survived the
+# fresh batch: space-separated multi-name binders were never pinned
+def test_multi_name_binder_binds_last_name_byte_exact():
+    assert compile_predicate("forall a b c: a == 1") == "(all_(['c'], lambda c: (a == 1)))"
+
+
+# GATE-MUTATION-KILL: the binder loop's lookahead reads toks[i + 1]
+# (binder_group 9, -> toks[i - 1]): with the follower outside the kind-set
+# the loop must stop at the last real name, so the missing-colon error
+# reports THAT name — the backward lookahead consumes it instead and
+# reports the operator further along
+def test_multi_name_binder_missing_colon_reports_last_name():
+    with pytest.raises(ParseError) as excinfo:
+        compile_predicate("forall x y == 1")
+    assert str(excinfo.value) == (
+        "expected ':' but found 'y' (name) at position 9\n"
+        "  at: 'forall x y == 1'\n"
+        "             ^"
+    )
+
+
+# GATE-MUTATION-KILL: the lookahead kind-set's "lp" member (binder_group
+# 16/17): a name directly before a tuple group must be consumed by the
+# multi-name loop so the lp branch is reached with the group in view;
+# breaking the member strands the loop on the name and mis-reports the
+# missing colon instead of binding the pair
+def test_name_before_tuple_group_binds_the_pair_byte_exact():
+    assert compile_predicate("forall x y (a, b): a == 1") == \
+        "(all_(['a', 'b'], lambda a, b: (a == 1)))"

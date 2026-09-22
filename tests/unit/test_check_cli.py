@@ -64,7 +64,7 @@ def test_val_refuses_flag_shaped_values():
     assert _val(["attest", "--key-expires"], "--key-expires") is None
 
 
-_IDENTITY_ENVS = ("zft_PRODUCER_MODEL", "zft_GATE_MODEL")
+_IDENTITY_ENVS = ("ZFT_PRODUCER_MODEL", "ZFT_GATE_MODEL")
 
 
 def test_check_identity_caller_supplied_flags(capsys, monkeypatch):
@@ -89,16 +89,16 @@ def test_check_identity_unsupplied_is_null_not_dev_name(capsys, monkeypatch):
 
 
 def test_check_identity_env_config_fallback(capsys, monkeypatch):
-    monkeypatch.setenv("zft_PRODUCER_MODEL", "env-prod")
-    monkeypatch.setenv("zft_GATE_MODEL", "env-gate")
+    monkeypatch.setenv("ZFT_PRODUCER_MODEL", "env-prod")
+    monkeypatch.setenv("ZFT_GATE_MODEL", "env-gate")
     assert main(["check", str(REPO)]) == 0
     out = json.loads(capsys.readouterr().out)
     assert out["gate_log"]["models"] == {"producer": "env-prod", "gate": "env-gate"}
 
 
 def test_check_identity_flag_beats_env(capsys, monkeypatch):
-    monkeypatch.setenv("zft_PRODUCER_MODEL", "env-prod")
-    monkeypatch.delenv("zft_GATE_MODEL", raising=False)
+    monkeypatch.setenv("ZFT_PRODUCER_MODEL", "env-prod")
+    monkeypatch.delenv("ZFT_GATE_MODEL", raising=False)
     assert main(["check", str(REPO), "--producer-model", "flag-prod",
                  "--gate-model", "env-prod"]) == 0
     out = json.loads(capsys.readouterr().out)

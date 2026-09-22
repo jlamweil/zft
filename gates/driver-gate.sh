@@ -31,7 +31,7 @@ unset PYTEST_ADDOPTS PYTEST_PLUGINS COVERAGE_FILE COVERAGE_PROCESS_START
 
 # locate an interpreter that can import zft (explicit override, the
 # checkout's venv, then PATH)
-PY=${zft_PYTHON:-}
+PY=${ZFT_PYTHON:-}
 if [ -z "$PY" ]; then
   HERE=$(cd "$(dirname "$0")" && pwd)
   for cand in "$HERE/../.venv/bin/python" "$HERE/../../.venv/bin/python" python3; do
@@ -43,7 +43,7 @@ if [ -z "$PY" ]; then
   done
 fi
 if [ -z "$PY" ]; then
-  echo "driver-gate: no interpreter with zft importable (set zft_PYTHON)"
+  echo "driver-gate: no interpreter with zft importable (set ZFT_PYTHON)"
   exit 1
 fi
 

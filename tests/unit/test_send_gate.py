@@ -63,16 +63,16 @@ def _fake_gate(tmp_path: Path, body: str) -> str:
 
 def _run(folder: Path, *, cmd: str | None, hook: str | None, log: Path,
          timeout: str | None = None, cwd: Path | None = None) -> subprocess.CompletedProcess:
-    env = {"PATH": "/usr/bin:/bin", "zft_SEND_GATE_LOG": str(log),
+    env = {"PATH": "/usr/bin:/bin", "ZFT_SEND_GATE_LOG": str(log),
            # the sandboxed PATH hides .venv probes; pin the interpreter that
            # has zft importable (this venv's, not the repo's)
-           "zft_PYTHON": sys.executable}
+           "ZFT_PYTHON": sys.executable}
     if cmd is not None:
-        env["zft_GATE_CMD"] = cmd
+        env["ZFT_GATE_CMD"] = cmd
     if hook is not None:
-        env["zft_GATE_HOOK"] = hook
+        env["ZFT_GATE_HOOK"] = hook
     if timeout is not None:
-        env["zft_SEND_GATE_TIMEOUT"] = timeout
+        env["ZFT_SEND_GATE_TIMEOUT"] = timeout
     return subprocess.run(
         ["bash", str(SCRIPT), str(folder)], capture_output=True, text=True,
         env=env, cwd=cwd or REPO, timeout=60)

@@ -53,7 +53,7 @@ def _split_root(argv: list[str]) -> tuple[list[str], Path]:
         rest.append(arg)
     positionals = [a for a in rest if a not in BOOLEAN_FLAGS]
     # resolve absolute here — sandboxed subprocesses receive it via
-    # zft_REPO and would otherwise resolve a relative root against the
+    # ZFT_REPO and would otherwise resolve a relative root against the
     # sandbox cwd (zft lineage wave2 risk #2)
     root = Path(positionals[0]).resolve() if positionals else Path.cwd()
     return rest, root
@@ -71,7 +71,7 @@ def _abs_root(cmd: str, root: Path) -> Path:
 
 def _model_identity(argv: list[str]) -> tuple[str | None, str | None]:
     """Caller-supplied (producer, gate) identity: --producer-model/--gate-model
-    first, then the zft_*_MODEL config envs driver-gate reads.
+    first, then the ZFT_*_MODEL config envs driver-gate reads.
 
     No default name: an unsupplied identity stays None (null in the gate log
     and attestation payload), which fails closed — model_dependent stays true
@@ -508,7 +508,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             advance_to_validated(sm, led,
                                  kill_after=os.environ.get(
-                                     "zft_NEGOTIATE_KILL_AFTER"),
+                                     "ZFT_NEGOTIATE_KILL_AFTER"),
                                  terms=terms)
         except IllegalTransition as e:
             led.close()  # run stays unfinished — still resumable with its sheet

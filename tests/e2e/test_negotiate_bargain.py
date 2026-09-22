@@ -20,7 +20,7 @@ from pathlib import Path
 from zft.debug.ledger import RunLedger
 from zft.negotiate.terms import terms_digest, terms_string
 
-REPO = Path(os.environ.get("zft_REPO")
+REPO = Path(os.environ.get("ZFT_REPO")
             or Path(__file__).resolve().parents[2])
 PY = sys.executable
 
@@ -34,13 +34,16 @@ REFUSE_SHEET = {"terms": "drop the mutation gate",
 def _store_copy(tmp_path: Path) -> Path:
     root = tmp_path / "store"
     root.mkdir()
-    shutil.copytree(REPO / ".zft", root / ".zft")
+    shutil.copytree(
+        REPO / ".zft", root / ".zft",
+        ignore=shutil.ignore_patterns("runs", "sandbox*", "cache"),
+    )
     return root
 
 
 def _negotiate(root: Path, *flags, stdin: str | None = None,
                kill_after: str | None = None):
-    env = os.environ | ({"zft_NEGOTIATE_KILL_AFTER": kill_after}
+    env = os.environ | ({"ZFT_NEGOTIATE_KILL_AFTER": kill_after}
                         if kill_after else {})
     return subprocess.run(
         [PY, "-m", "zft.cli.main", "negotiate", str(root), *flags],

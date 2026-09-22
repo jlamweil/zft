@@ -59,12 +59,11 @@ def test_gate_env_strips_parent_channels(monkeypatch):
     monkeypatch.setenv("PYTHONPATH", "/real/repo/src")
     monkeypatch.setenv("COVERAGE_FILE", "/real/repo/.coverage")
     monkeypatch.setenv("PYTHONOPTIMIZE", "2")
-    env = gate_env({"zft_REPO": "/repo", "ZFT_REPO": "/repo"})
+    env = gate_env({"ZFT_REPO": "/repo"})
     for key in ("PYTEST_ADDOPTS", "PYTEST_PLUGINS", "PYTHONPATH",
                 "COVERAGE_FILE", "PYTHONOPTIMIZE"):
         assert key not in env
     assert env["PYTHONHASHSEED"] == "0"
-    assert env["zft_REPO"] == "/repo"
     assert env["ZFT_REPO"] == "/repo"
     assert "PATH" in env, "launcher env must stay usable"
 

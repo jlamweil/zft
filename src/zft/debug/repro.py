@@ -1,6 +1,7 @@
 """repro (plan C-26): re-execute only failed units from a ledger record."""
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -36,6 +37,13 @@ def repro(root: Path | str, runs_root: Path | str, run_id: str) -> dict:
         results.re_executed.extend(f"l1:{a}" for a in failed_l1)
         led = RunLedger.start(Path(runs_root), manifest={"stage": "L1", "repro_of": run_id},
                               repo=root)
+        # C-26: the replay run's manifest is exactly its repro lineage
+        # (git state, stage, repro_of); the run id lives in the directory
+        # name and is not echoed into the manifest.
+        mpath = led.dir / "manifest.json"
+        manifest = json.loads(mpath.read_text())
+        manifest.pop("run_id", None)
+        mpath.write_text(json.dumps(manifest, indent=2))
         v = run_l1(root, ledger=led)
         led.close()
         if v.failures:

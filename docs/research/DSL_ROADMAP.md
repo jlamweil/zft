@@ -316,7 +316,8 @@ each gate's input set — purity is accidental, not contractual.
 bindings_hash, gate_fingerprint}` → cache key. All gates use it. `repro` gains
 *decision replay*: re-evaluate from recorded input digests and diff the verdict
 against the ledger — the OPA decision-log replay loop, which is also the
-regression test for the gates themselves (complements the mutmut campaigns).
+regression test for the gates themselves (complements the mutmut campaigns in
+`MUTMUT_SURVIVORS.md`).
 
 **Done when.** `check` on an unchanged store serves L0/L2 verdicts from cache;
 replaying a historical run reproduces its verdicts byte-identically or names

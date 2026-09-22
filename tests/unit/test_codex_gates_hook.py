@@ -17,14 +17,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
-pytestmark = pytest.mark.xfail(
-    reason="exercises the Codex gates-hook prototype under plugins/codex/, "
-    "which is not shipped in the public cut",
-    strict=False,
-)
-
 REPO = Path(__file__).resolve().parents[2]
 HOOK = REPO / "plugins" / "codex" / "hooks" / "gates_hook.py"
 SKILL = REPO / "plugins" / "codex" / "skills" / "zft-gates" / "SKILL.md"
@@ -63,10 +55,10 @@ def _apply_patch_event(root: Path, *edits: str,
 def _fire(event: dict, root: Path, *, mode: str | None = None,
           extra_env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
     env = dict(os.environ)
-    env.pop("zft_HOOK_MODE", None)
-    env.pop("zft_BIN", None)
+    env.pop("ZFT_HOOK_MODE", None)
+    env.pop("ZFT_BIN", None)
     if mode:
-        env["zft_HOOK_MODE"] = mode
+        env["ZFT_HOOK_MODE"] = mode
     env.update(extra_env or {})
     return subprocess.run([sys.executable, str(HOOK)],
                           input=json.dumps(event), capture_output=True,
@@ -155,7 +147,7 @@ def test_missing_gate_fails_closed_in_enforce(tmp_path):
     _seed_store(tmp_path)
     proc = _fire(_apply_patch_event(tmp_path, CLAUSE_PATH), tmp_path,
                  mode="enforce",
-                 extra_env={"zft_BIN": "/nonexistent/zft"})
+                 extra_env={"ZFT_BIN": "/nonexistent/zft"})
     assert proc.returncode == 2
     assert "GATE_UNAVAILABLE" in proc.stderr
     assert _last_log_record(tmp_path)["decision"] == "gate_unavailable"

@@ -6,7 +6,7 @@ the oracle artifact must be copied in or every campaign dies on import.
 
 import pytest
 
-from traceagent.gates.sandbox import _package_layout, gate_env, place_tests, prepare_sandbox
+from zft.gates.sandbox import _package_layout, gate_env, place_tests, prepare_sandbox
 
 
 def test_prepare_copies_module_oracle_and_tests(tmp_path):
@@ -59,12 +59,11 @@ def test_gate_env_strips_parent_channels(monkeypatch):
     monkeypatch.setenv("PYTHONPATH", "/real/repo/src")
     monkeypatch.setenv("COVERAGE_FILE", "/real/repo/.coverage")
     monkeypatch.setenv("PYTHONOPTIMIZE", "2")
-    env = gate_env({"TRACEAGENT_REPO": "/repo", "ZFT_REPO": "/repo"})
+    env = gate_env({"ZFT_REPO": "/repo"})
     for key in ("PYTEST_ADDOPTS", "PYTEST_PLUGINS", "PYTHONPATH",
                 "COVERAGE_FILE", "PYTHONOPTIMIZE"):
         assert key not in env
     assert env["PYTHONHASHSEED"] == "0"
-    assert env["TRACEAGENT_REPO"] == "/repo"
     assert env["ZFT_REPO"] == "/repo"
     assert "PATH" in env, "launcher env must stay usable"
 
@@ -77,14 +76,14 @@ def test_prepare_excludes_state_dirs(tmp_path):
     tests = tmp_path / "tests"
     tests.mkdir()
     (tests / "test_g.py").write_text("def test_g():\n    assert True\n")
-    for state_dir in ("__pycache__", ".hypothesis", ".pytest_cache", ".traceagent"):
+    for state_dir in ("__pycache__", ".hypothesis", ".pytest_cache", ".zft"):
         d = tests / state_dir
         d.mkdir()
         (d / "junk.bin").write_text("stale state")
     sandbox = prepare_sandbox(tmp_path / "sandbox", mutate_paths=[src / "m.py"],
                               also_copy=[tests])
     assert (sandbox / "tests" / "test_g.py").exists()
-    for state_dir in ("__pycache__", ".hypothesis", ".pytest_cache", ".traceagent"):
+    for state_dir in ("__pycache__", ".hypothesis", ".pytest_cache", ".zft"):
         assert not (sandbox / "tests" / state_dir).exists()
 
 
@@ -180,7 +179,7 @@ def test_sandbox_conftest_scrubs_dirty_launch_env(tmp_path):
     dirty = dict(__import__("os").environ)
     dirty["PYTEST_ADDOPTS"] = "-p no:randomly"
     dirty["COVERAGE_FILE"] = str(tmp_path / "leak.coverage")
-    from traceagent.gates.runners.pytest_runner import run_pytest
+    from zft.gates.runners.pytest_runner import run_pytest
 
     result = run_pytest(sandbox, ["tests/test_env.py"], timeout_s=120, env=dirty)
     assert result.ok, result.tail

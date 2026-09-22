@@ -5,7 +5,7 @@ __pycache__) are out of contract scope: they must not be extracted, and no
 returned file path may contain an ignored path component.
 """
 
-from traceagent.lineage.extract import extract_bindings
+from zft.lineage.extract import extract_bindings
 
 IGNORED = {".git", ".venv", "node_modules", ".zft", "__pycache__"}
 

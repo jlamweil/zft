@@ -3,12 +3,17 @@
 Evidence rule (GATE-EVIDENCE-KIND): a property-kind clause accepts evidence only
 from an executed suite bound to it via @trace.
 """
+import hashlib
 import json
+import shutil
+import tempfile
+from pathlib import Path
 
 import pytest
 
-from traceagent.debug.ledger import RunLedger
-from traceagent.gates.l1 import _cache_key, run_l1
+from zft.debug.ledger import RunLedger
+from zft.gates.l1 import _cache_key, run_l1
+from zft.gates.runners.pytest_runner import RunnerResult
 
 
 def _seed_repo(tmp_path):
@@ -77,7 +82,7 @@ def test_l1_missing_bound_test_degrades_to_red(tmp_path):
 
 def test_l1_corrupt_cache_entry_is_a_miss_not_a_crash(tmp_path):
     root = _seed_repo(tmp_path)
-    cache = root / ".traceagent" / "cache" / "l1" / "GATE-INV-01.json"
+    cache = root / ".zft" / "cache" / "l1" / "GATE-INV-01.json"
     cache.parent.mkdir(parents=True)
     cache.write_text("{corrupt")
     verdict = run_l1(root)
@@ -194,12 +199,12 @@ def test_cache_key_distinguishes_tree():
 # writing the verdict cache itself must not perturb the tree digest, or no
 # entry could ever be served twice
 def test_tree_digest_ignores_stateful_state(tmp_path):
-    from traceagent.gates.l1 import _tree_digest
+    from zft.gates.l1 import _tree_digest
 
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "impl.py").write_text("def f():\n    return True\n")
     d1 = _tree_digest(tmp_path)
-    cache = tmp_path / ".traceagent" / "cache" / "l1"
+    cache = tmp_path / ".zft" / "cache" / "l1"
     cache.mkdir(parents=True)
     (cache / "GATE-INV-01.json").write_text('{"key": "x", "ok": true}')
     (tmp_path / "src" / "__pycache__").mkdir()
@@ -215,7 +220,7 @@ def test_tree_digest_ignores_stateful_state(tmp_path):
 def test_l1_poisoned_cache_reheals_roundtrip(tmp_path):
     root = _seed_repo(tmp_path)
     assert run_l1(root).executed == 1
-    cache = root / ".traceagent" / "cache" / "l1" / "GATE-INV-01.json"
+    cache = root / ".zft" / "cache" / "l1" / "GATE-INV-01.json"
     entry = json.loads(cache.read_text())
     entry["ok"] = False
     cache.write_text(json.dumps(entry))
@@ -236,7 +241,7 @@ def test_l1_red_verdict_is_not_cached(tmp_path):
         "def test_bound():\n    assert False\n"
     )
     assert run_l1(root).ok is False
-    cache = root / ".traceagent" / "cache" / "l1" / "GATE-INV-01.json"
+    cache = root / ".zft" / "cache" / "l1" / "GATE-INV-01.json"
     assert not cache.exists(), "a red verdict must not poison later checks"
     assert run_l1(root).executed == 1, "an uncached red re-runs on every check"
 
@@ -352,7 +357,7 @@ def test_l1_cache_hit_does_not_stop_later_reexecution(tmp_path):
 # `_16/18/19` __pycache__ dir-part scan (literal, [:1], [:-2]) all survived:
 # bytecode artifacts and pycache dirs at ANY depth must stay out of the digest
 def test_tree_digest_excludes_pyc_and_pycache_dirs_at_any_depth(tmp_path):
-    from traceagent.gates.l1 import _tree_digest
+    from zft.gates.l1 import _tree_digest
 
     (tmp_path / "src" / "sub").mkdir(parents=True)
     (tmp_path / "src" / "impl.py").write_text("def f():\n    return True\n")
@@ -375,7 +380,7 @@ def test_tree_digest_excludes_pyc_and_pycache_dirs_at_any_depth(tmp_path):
 # case-sensitive filesystem those names are NOT CPython's artifacts — they are
 # reviewable content, and the digest must see them (byte-identical tree rule)
 def test_tree_digest_is_case_sensitive_by_design(tmp_path):
-    from traceagent.gates.l1 import _tree_digest
+    from zft.gates.l1 import _tree_digest
 
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "impl.py").write_text("def f():\n    return True\n")
@@ -394,7 +399,7 @@ def test_tree_digest_is_case_sensitive_by_design(tmp_path):
 # survived: a dot-file has a skipped NAME but no .pyc suffix — the name rule
 # alone must exclude it
 def test_tree_digest_excludes_dot_files_by_name(tmp_path):
-    from traceagent.gates.l1 import _tree_digest
+    from zft.gates.l1 import _tree_digest
 
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "impl.py").write_text("def f():\n    return True\n")
@@ -408,7 +413,7 @@ def test_tree_digest_excludes_dot_files_by_name(tmp_path):
 def test_tree_digest_unreadable_file_degrades_not_crashes(tmp_path):
     import os
 
-    from traceagent.gates.l1 import _tree_digest
+    from zft.gates.l1 import _tree_digest
 
     if os.geteuid() == 0:  # root reads anything; the scenario needs a real EACCES
         pytest.skip("unreadable-file scenario requires a non-root tester")
@@ -484,3 +489,279 @@ def test_l1_unreadable_evidence_degrades_red_and_scans_on(tmp_path, monkeypatch)
     assert ev["GATE-INV-01"]["reason"] == "evidence unreadable"
     assert ev["GATE-INV-02"]["ok"] is False
     assert ev["GATE-INV-02"]["reason"] == "no bound test"
+
+
+def _pin_oracle(root, alias="GATE-INV-01", *, digest="0" * 64, remove_oracle=False):
+    """Add an oracle_sha256 pin (no oracle_file key: the default name path)."""
+    node_path = root / ".zft" / "specs" / "g" / "gate-inv-01.json"
+    node = json.loads(node_path.read_text())
+    node["oracle_sha256"] = digest
+    node_path.write_text(json.dumps(node))
+    if remove_oracle:
+        (root / f"oracle_{alias}.py").unlink()
+def _add_bound_second_clause(root):
+    spec = root / ".zft" / "specs" / "g"
+    node = {
+        "node_id": "018f3a2b-9e41-7100-8000-000000000002",
+        "alias": "GATE-INV-02", "domain": "g", "title": "locked -> ok",
+        "status": "VALIDATED", "version": 1, "content_hash": "2" * 64,
+        "invariants": [{"id": "GATE-INV-02", "statement": "WHEN locked THE SYSTEM SHALL allow",
+                        "property": "forall t: locked(t) => validate(t) == ok",
+                        "check": {"kind": "property"}}],
+        "external_links": [],
+    }
+    (spec / "gate-inv-02.json").write_text(json.dumps(node))
+    (root / "tests" / "test_bound_02.py").write_text(
+        '# @trace("GATE-INV-02")\n'
+        "def test_bound_02():\n    assert True\n"
+    )
+    (root / "oracle_GATE-INV-02.py").write_text(
+        "def locked(t):\n    return t == 'locked'\n")
+def _clause_events(ledger_dir, run_id):
+    record = RunLedger.load(ledger_dir, run_id)
+    return [e for e in record.events if e["event"] == "l1_clause"]
+def test_l1_pinned_oracle_default_name_gates_green(tmp_path):
+    root = _seed_repo(tmp_path)
+    actual = hashlib.sha256((root / "oracle_GATE-INV-01.py").read_bytes()).hexdigest()
+    _pin_oracle(root, digest=actual)  # no oracle_file key: default name path
+    verdict = run_l1(root)
+    assert verdict.ok, verdict.rejection
+    assert verdict.executed == 1
+    assert verdict.stage == "L1"
+def test_l1_pinned_oracle_missing_degrades_exact(tmp_path):
+    root = _seed_repo(tmp_path)
+    _pin_oracle(root, remove_oracle=True)
+    led = RunLedger.start(tmp_path / "runs", manifest={"stage": "L1"}, repo=root)
+    verdict = run_l1(root, ledger=led)
+    led.close()
+    assert verdict.ok is False
+    assert "GATE-INV-01: pinned oracle missing or unreadable" in verdict.failures
+    assert _clause_events(tmp_path / "runs", led.run_id) == [
+        {"event": "l1_clause", "ok": False, "alias": "GATE-INV-01",
+         "reason": "oracle pin missing"}]
+    r = verdict.rejection
+    assert r["code"] == "L1_ORACLE_PIN_MISMATCH"
+    assert r["fault"] == "producer"
+    assert r["expected"] == "oracle file matches the contract pin (oracle_sha256)"
+    assert r["clause_ids"] == ["GATE-INV-01"]
+def test_l1_pinned_oracle_missing_does_not_stop_the_scan(tmp_path):
+    root = _seed_repo(tmp_path)
+    _add_bound_second_clause(root)
+    _pin_oracle(root, remove_oracle=True)
+    verdict = run_l1(root)
+    assert verdict.ok is False
+    assert "GATE-INV-01: pinned oracle missing or unreadable" in verdict.failures
+    assert verdict.executed == 1, "the later clause's suite must still execute"
+def test_l1_pinned_oracle_mismatch_degrades_exact(tmp_path):
+    root = _seed_repo(tmp_path)
+    _pin_oracle(root, digest="1" * 64)  # oracle exists, pin names other bytes
+    led = RunLedger.start(tmp_path / "runs", manifest={"stage": "L1"}, repo=root)
+    verdict = run_l1(root, ledger=led)
+    led.close()
+    assert verdict.ok is False
+    assert "GATE-INV-01: oracle pin mismatch" in verdict.failures
+    assert _clause_events(tmp_path / "runs", led.run_id) == [
+        {"event": "l1_clause", "ok": False, "alias": "GATE-INV-01",
+         "reason": "oracle pin mismatch"}]
+    r = verdict.rejection
+    assert r["code"] == "L1_ORACLE_PIN_MISMATCH"
+    assert r["expected"] == "oracle file matches the contract pin (oracle_sha256)"
+def test_l1_pinned_oracle_mismatch_does_not_stop_the_scan(tmp_path):
+    root = _seed_repo(tmp_path)
+    _add_bound_second_clause(root)
+    _pin_oracle(root, digest="1" * 64)
+    verdict = run_l1(root)
+    assert verdict.ok is False
+    assert verdict.executed == 1, "the later clause's suite must still execute"
+def test_l1_oracle_missing_degrades_exact_and_scans_on(tmp_path):
+    root = _seed_repo(tmp_path)
+    (root / "oracle_GATE-INV-01.py").unlink()  # no pin, no file
+    led = RunLedger.start(tmp_path / "runs", manifest={"stage": "L1"}, repo=root)
+    verdict = run_l1(root, ledger=led)
+    led.close()
+    assert verdict.ok is False
+    assert "GATE-INV-01: oracle missing" in verdict.failures
+    assert _clause_events(tmp_path / "runs", led.run_id) == [
+        {"event": "l1_clause", "ok": False, "alias": "GATE-INV-01",
+         "reason": "oracle missing"}]
+    r = verdict.rejection
+    assert r["code"] == "L1_ORACLE_REQUIRED"
+    assert r["fault"] == "producer"
+    assert r["expected"] == "oracle file must be present for property clause"
+    _add_bound_second_clause(root)
+    verdict2 = run_l1(root, seed=1)
+    assert verdict2.executed == 1, "the later clause's suite must still execute"
+def test_l1_oracle_unreadable_degrades_exact(tmp_path, monkeypatch):
+    # chmod alone cannot reach this branch: the binding scan reads the whole
+    # tree and an unreadable file reds evidence collection instead. The
+    # TOCTOU window the branch exists for is read #1 (tree digest, which
+    # degrades to its stable marker) and read #2 (the oracle digest step).
+    import pathlib
+
+    root = _seed_repo(tmp_path)
+    original = pathlib.Path.read_bytes
+
+    def selective_eaccs(self, *args, **kwargs):
+        if self.name == "oracle_GATE-INV-01.py":
+            raise PermissionError(13, "Permission denied")
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(pathlib.Path, "read_bytes", selective_eaccs)
+    led = RunLedger.start(tmp_path / "runs", manifest={"stage": "L1"}, repo=root)
+    verdict = run_l1(root, ledger=led)
+    led.close()
+    assert verdict.ok is False
+    assert any(f.startswith("GATE-INV-01: oracle unreadable (")
+               for f in verdict.failures)
+    assert _clause_events(tmp_path / "runs", led.run_id) == [
+        {"event": "l1_clause", "ok": False, "alias": "GATE-INV-01",
+         "reason": "oracle unreadable"}]
+def test_l1_oracle_exec_fail_degrades_exact_and_scans_on(tmp_path):
+    root = _seed_repo(tmp_path)
+    (root / "oracle_GATE-INV-01.py").write_text(
+        "def check():\n    assert False, 'oracle probe'\n")
+    _add_bound_second_clause(root)
+    led = RunLedger.start(tmp_path / "runs", manifest={"stage": "L1"}, repo=root)
+    verdict = run_l1(root, ledger=led)
+    led.close()
+    assert verdict.ok is False
+    assert "GATE-INV-01: oracle failed" in verdict.failures
+    evs = _clause_events(tmp_path / "runs", led.run_id)
+    assert evs[0] == {"event": "l1_clause", "ok": False, "alias": "GATE-INV-01",
+                      "reason": "oracle execution failed"}
+    assert [(e["alias"], e["ok"]) for e in evs[1:]] == [("GATE-INV-02", True)], \
+        "the later clause still executes and greens"
+    r = verdict.rejection
+    assert r["code"] == "L1_ORACLE_FAIL"
+    assert r["fault"] == "producer"
+    assert r["expected"] == "oracle check must pass"
+    assert "GATE-INV-01: oracle execution failed" in r["actual"]
+    assert verdict.executed == 1, "the later clause's suite must still execute"
+def test_l1_cache_hit_clause_event_is_exact(tmp_path):
+    root = _seed_repo(tmp_path)  # root IS tmp_path here — see _seed_repo
+    assert run_l1(root).executed == 1
+    # the ledger lives OUTSIDE the gated tree: a write inside it would
+    # (correctly) invalidate the tree-digest key and force a re-run
+    runs = Path(tempfile.mkdtemp(prefix="l1-runs-"))
+    try:
+        led = RunLedger.start(runs, manifest={"stage": "L1"}, repo=root)
+        verdict = run_l1(root, ledger=led)
+        led.close()
+        assert verdict.ok is True and verdict.executed == 0
+        events = RunLedger.load(runs, led.run_id).events
+        assert events == [
+            {"event": "l1_clause", "ok": True, "alias": "GATE-INV-01",
+             "cached": True},
+            {"event": "l1", "ok": True, "executed": 0, "failures": []},
+        ]
+    finally:
+        shutil.rmtree(runs, ignore_errors=True)
+def test_l1_executed_clause_ledger_events_are_exact(tmp_path):
+    root = _seed_repo(tmp_path)
+    led = RunLedger.start(tmp_path / "runs", manifest={"stage": "L1"}, repo=root)
+    verdict = run_l1(root, ledger=led)
+    led.close()
+    assert verdict.ok is True
+    assert verdict.stage == "L1"
+    events = RunLedger.load(tmp_path / "runs", led.run_id).events
+    assert len(events) == 2
+    clause, summary = events
+    assert clause["event"] == "l1_clause" and clause["ok"] is True
+    assert clause["alias"] == "GATE-INV-01"
+    assert isinstance(clause["duration_ms"], int), "the duration is real telemetry"
+    assert summary == {"event": "l1", "ok": True, "executed": 1, "failures": []}
+def test_l1_property_evidence_rejection_renders_exactly(tmp_path):
+    root = _seed_repo(tmp_path)
+    (root / "tests" / "test_bound.py").write_text(
+        '# @trace("GATE-INV-01")\n'
+        "def test_bound():\n    assert False\n"
+    )
+    verdict = run_l1(root)
+    r = verdict.rejection
+    assert r["code"] == "L1_PROPERTY_EVIDENCE"
+    assert r["fault"] == "implementation"
+    assert r["expected"] == "bound property suites pass"
+    assert r["actual"] == ["GATE-INV-01: bound suite failed"]
+    assert r["clause_ids"] == ["GATE-INV-01"]
+    # no contract manifest in the seeded store: the contract ref is
+    # best-effort and absent, but the executed evidence is all there
+    assert {"tests", "oracle"} <= {
+        ref["kind"] for ref in r["evidence_refs"]}
+def test_cache_key_defaults_are_the_documented_values():
+    assert _cache_key("A", "b", "o") == _cache_key("A", "b", "o", seed=0)
+    assert _cache_key("A", "b", "o") == _cache_key("A", "b", "o", tree_digest="")
+def test_l1_first_run_writes_the_extraction_cache(tmp_path):
+    root = _seed_repo(tmp_path)
+    assert run_l1(root).ok is True
+    assert (root / ".zft" / "cache" / "extract.json").exists(), \
+        "a write-cache run persists the extraction cache for the next run"
+def test_l1_tests_digest_is_the_newline_join_of_bound_files(tmp_path):
+    root = _seed_repo(tmp_path)
+    (root / "tests" / "test_bound_1b.py").write_text(
+        '# @trace("GATE-INV-01")\n'
+        "def test_bound_1b():\n    assert True\n"
+    )
+    verdict = run_l1(root)
+    assert verdict.ok is True
+    tests_ref = next(r for r in verdict.evidence_refs if r["kind"] == "tests")
+    contents = "\n".join(
+        (root / f).read_text()
+        for f in ["tests/test_bound.py", "tests/test_bound_1b.py"])
+    assert tests_ref["sha256"] == hashlib.sha256(contents.encode()).hexdigest()
+def test_l1_runner_receives_the_timeout_budget_and_tolerates_missing_junit(
+        tmp_path, monkeypatch):
+    root = _seed_repo(tmp_path)
+    _add_bound_second_clause(root)
+    calls = []
+
+    def stub_runner(sandbox, test_paths, **kwargs):
+        calls.append((list(test_paths), kwargs))
+        return RunnerResult(ok=True, duration_ms=17)
+
+    monkeypatch.setattr("zft.gates.l1.run_pytest", stub_runner)
+    verdict = run_l1(root)
+    assert verdict.ok is True, verdict.rejection
+    assert verdict.executed == 2
+    batch_files, batch_kwargs = calls[0]
+    assert batch_files[0].endswith("tmp_oracle_batch.py")
+    assert "junit_xml" in batch_kwargs, "the batch run must ask for a report"
+    assert [files for files, _ in calls[1:]] == [
+        ["tests/test_bound.py"], ["tests/test_bound_02.py"]]
+    for _, kwargs in calls:
+        assert kwargs.get("timeout_s") == 300, \
+            "the default budget must reach the runner on every path"
+def test_l1_batch_oracle_driver_executes_for_real(tmp_path):
+    root = _seed_repo(tmp_path)
+    _add_bound_second_clause(root)
+    verdict = run_l1(root)
+    assert verdict.ok is True, verdict.rejection
+    assert verdict.executed == 2
+def test_l1_cache_write_bootstraps_a_pristine_store(tmp_path):
+    root = _seed_repo(tmp_path)
+    assert not (root / ".zft" / "cache").exists(), \
+        "seeding must not pre-create the verdict cache tree"
+    bindings = [{"alias": "GATE-INV-01", "file": "tests/test_bound.py"}]
+    v1 = run_l1(root, bindings=bindings)
+    assert v1.ok is True and v1.executed == 1
+    assert (root / ".zft" / "cache" / "l1" / "GATE-INV-01.json").exists(), \
+        "the first green verdict must create the cache tree in a pristine store"
+    v2 = run_l1(root, bindings=bindings)
+    assert v2.executed == 0, "the written verdict must be servable"
+def test_l1_unreadable_oracle_does_not_stop_the_scan(tmp_path, monkeypatch):
+    import pathlib
+
+    root = _seed_repo(tmp_path)
+    _add_bound_second_clause(root)
+    original = pathlib.Path.read_bytes
+
+    def selective_eaccs(self, *args, **kwargs):
+        if self.name == "oracle_GATE-INV-01.py":
+            raise PermissionError(13, "Permission denied")
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(pathlib.Path, "read_bytes", selective_eaccs)
+    verdict = run_l1(root)
+    assert verdict.ok is False
+    assert any(f.startswith("GATE-INV-01: oracle unreadable (")
+               for f in verdict.failures)
+    assert verdict.executed == 1, "the later clause's suite must still execute"

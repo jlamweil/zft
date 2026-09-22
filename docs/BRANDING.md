@@ -10,6 +10,7 @@
 * **Canonical Directory & Schemas:** `.zft/specs/**`
 * **Tagline:** *Contract-grounded verification for multi-agent work.*
 * **Positioning Statement:** ZFT is the developer-first, contract-driven traceability and verification layer for multi-agent software engineering. It bridges non-deterministic AI agent outputs with deterministic, auditor-defensible software compliance.
+* **2026-09-17 decision:** the TraceAgent research codename is retired — ZFT is the name in the paper, the package, the CLI, and citations. Dual-brand language elsewhere in this document is superseded.
 
 ---
 

@@ -8,9 +8,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-from traceagent.spec.lint import lint_store
+from zft.spec.lint import lint_store
 
-REPO = Path(os.environ.get("TRACEAGENT_REPO")
+REPO = Path(os.environ.get("ZFT_REPO")
             or Path(__file__).resolve().parents[2])
 
 
@@ -49,7 +49,7 @@ def test_duplicate_clause_detection(tmp_path):
             "external_links": []}
     clone = dict(base, alias="X-TWO", node_id="018f3a2b-9e41-7100-8000-000000000002")
     # compute valid canonical hashes so only duplicate-detection fires
-    from traceagent.spec.canon import canonical_hash
+    from zft.spec.canon import canonical_hash
 
     for n in (base, clone):
         n["content_hash"] = canonical_hash(n)
@@ -60,7 +60,7 @@ def test_duplicate_clause_detection(tmp_path):
 
 def test_cli_entrypoint_lint_green():
     """Entrypoint seam: `zft lint` exits 0 on the real repo."""
-    r = subprocess.run([sys.executable, "-m", "traceagent.cli.main", "lint", str(REPO)],
+    r = subprocess.run([sys.executable, "-m", "zft.cli.main", "lint", str(REPO)],
                        capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
     assert "L0 PASSED" in r.stdout

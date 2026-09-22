@@ -6,8 +6,8 @@ flagged as killed-by-design when oracle is bound.
 """
 import pytest
 
-from traceagent.dsl.oracle import OracleError, generate_oracle, predicate_symbols
-from traceagent.dsl.strategies import CONVENTIONS, StrategyError, strategy_for
+from zft.dsl.oracle import OracleError, generate_oracle, predicate_symbols
+from zft.dsl.strategies import CONVENTIONS, StrategyError, strategy_for
 
 
 class TestStrategies:
@@ -179,7 +179,7 @@ class TestStrategySourcesAreExecutable:
 
 class TestJudgeEscapeHatch:
     def test_non_compilable_predicate_requires_judge(self):
-        from traceagent.dsl.predicate import ParseError, compile_predicate
+        from zft.dsl.predicate import ParseError, compile_predicate
 
         try:
             compile_predicate("responds(p, refuse) before commitment")

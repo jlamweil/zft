@@ -12,9 +12,9 @@ from pathlib import Path
 
 import pytest
 
-from traceagent.spec.canon import canonical_hash
-from traceagent.spec.findings import DENY, WARN, Finding, partition, render_finding
-from traceagent.spec.lint import collect_findings, lint_store
+from zft.spec.canon import canonical_hash
+from zft.spec.findings import DENY, WARN, Finding, partition, render_finding
+from zft.spec.lint import collect_findings, lint_store
 
 REPO = Path(__file__).resolve().parents[2]
 GOLDEN = json.loads((REPO / "tests" / "golden" / "findings.json").read_text())
@@ -133,8 +133,8 @@ def test_lint_store_warn_only_store_stays_green(tmp_path):
 # --- run_l0: denies block, warns publish ----------------------------------------
 
 def test_run_l0_warn_only_store_is_green_with_published_warnings(tmp_path):
-    from traceagent.debug.ledger import RunLedger
-    from traceagent.gates.l0 import run_l0
+    from zft.debug.ledger import RunLedger
+    from zft.gates.l0 import run_l0
 
     root = tmp_path / "store"
     spec_dir = root / ".zft" / "specs" / "g"
@@ -157,8 +157,8 @@ def test_run_l0_warn_only_store_is_green_with_published_warnings(tmp_path):
 
 
 def test_run_l0_deny_blocks_and_still_publishes_warns(tmp_path):
-    from traceagent.debug.ledger import RunLedger
-    from traceagent.gates.l0 import run_l0
+    from zft.debug.ledger import RunLedger
+    from zft.gates.l0 import run_l0
 
     root = _seed_composite_store(tmp_path)
     led = RunLedger.start(tmp_path / "runs", manifest={"stage": "L0"}, repo=tmp_path)
@@ -180,7 +180,7 @@ def test_run_l0_deny_blocks_and_still_publishes_warns(tmp_path):
 # --- gate log publication (L3 projection) ----------------------------------------
 
 def test_gate_log_publishes_l0_warnings_only_when_provided():
-    from traceagent.gates.l3 import build_gate_log
+    from zft.gates.l3 import build_gate_log
 
     events = [{"event": "l0", "ok": True}]
     legacy = build_gate_log(events, producer_model="p", gate_model="g",
@@ -197,7 +197,7 @@ def test_gate_log_publishes_l0_warnings_only_when_provided():
 # --- CLI seams -------------------------------------------------------------------
 
 def _cli(*args: str) -> subprocess.CompletedProcess:
-    return subprocess.run([sys.executable, "-m", "traceagent.cli.main", *args],
+    return subprocess.run([sys.executable, "-m", "zft.cli.main", *args],
                           capture_output=True, text=True)
 
 

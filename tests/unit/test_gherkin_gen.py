@@ -6,12 +6,12 @@ The V3 guarantee: no clause is ever un-checkable, only un-checked-yet.
 import re
 from types import SimpleNamespace
 
-from traceagent.codegen.gherkin_gen import (
+from zft.codegen.gherkin_gen import (
     gherkin_fallback_green,
     render_feature,
     render_steps,
 )
-from traceagent.gates.runners.pytest_runner import run_pytest
+from zft.gates.runners.pytest_runner import run_pytest
 
 CLAUSES = [
     {"alias": "CON-A", "title": "No implementation without contract",

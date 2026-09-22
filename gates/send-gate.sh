@@ -4,17 +4,17 @@
 # A batcher calls this immediately before every model send, binding the
 # folder the send is about to touch:
 #
-#   TRACEAGENT_GATE_CMD='./gates/driver-gate.sh {folder}' \
-#   TRACEAGENT_GATE_HOOK=shadow \
+#   ZFT_GATE_CMD='./gates/driver-gate.sh {folder}' \
+#   ZFT_GATE_HOOK=shadow \
 #   gates/send-gate.sh "$REPO_DIR" || exit 1
 #
 # Flag layer (the RUNBOOK batch-driver contract, env form so any shell or
 # subprocess dispatcher can set it):
-#   TRACEAGENT_GATE_CMD          {folder}-template of the gate command
-#   TRACEAGENT_GATE_HOOK         off (default) | shadow | enforce
-#   TRACEAGENT_SEND_GATE_LOG     JSONL verdict log
+#   ZFT_GATE_CMD          {folder}-template of the gate command
+#   ZFT_GATE_HOOK         off (default) | shadow | enforce
+#   ZFT_SEND_GATE_LOG     JSONL verdict log
 #                                (default <folder>/.traceagent/send-gate/log.jsonl)
-#   TRACEAGENT_SEND_GATE_TIMEOUT kill window in seconds (default 120, the
+#   ZFT_SEND_GATE_TIMEOUT kill window in seconds (default 120, the
 #                                documented driver kill)
 #
 # Modes:
@@ -45,19 +45,19 @@ if [ ! -d "$1" ]; then
 fi
 FOLDER=$(cd "$1" && pwd) || { echo "send-gate: cannot resolve folder: $1"; exit 1; }
 
-MODE=${TRACEAGENT_GATE_HOOK:-off}
-if [ "$MODE" = "off" ] || [ -z "${TRACEAGENT_GATE_CMD:-}" ]; then
+MODE=${ZFT_GATE_HOOK:-off}
+if [ "$MODE" = "off" ] || [ -z "${ZFT_GATE_CMD:-}" ]; then
   # rollback path: one flag off (or the gate cmd never configured) — a no-op
   exit 0
 fi
 if [ "$MODE" != "shadow" ] && [ "$MODE" != "enforce" ]; then
-  echo "send-gate: TRACEAGENT_GATE_HOOK must be off|shadow|enforce, got '$MODE'"
+  echo "send-gate: ZFT_GATE_HOOK must be off|shadow|enforce, got '$MODE'"
   exit 2
 fi
 
-LOG=${TRACEAGENT_SEND_GATE_LOG:-"$FOLDER/.traceagent/send-gate/log.jsonl"}
-KILL_S=${TRACEAGENT_SEND_GATE_TIMEOUT:-120}
-GATE_TEMPLATE=$TRACEAGENT_GATE_CMD
+LOG=${ZFT_SEND_GATE_LOG:-"$FOLDER/.traceagent/send-gate/log.jsonl"}
+KILL_S=${ZFT_SEND_GATE_TIMEOUT:-120}
+GATE_TEMPLATE=$ZFT_GATE_CMD
 
 # flatten control chars, escape for JSON, cap to the driver sink budget
 _flatten() {

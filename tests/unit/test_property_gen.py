@@ -10,13 +10,13 @@ from pathlib import Path
 
 import pytest
 
-from traceagent.codegen.property_gen import (
+from zft.codegen.property_gen import (
     PropertyTestSpec,
     binder_strategies,
     render_property_test,
 )
-from traceagent.dsl.strategies import StrategyError
-from traceagent.gates.runners.pytest_runner import run_pytest
+from zft.dsl.strategies import StrategyError
+from zft.gates.runners.pytest_runner import run_pytest
 
 GOLDEN = json.loads(
     (Path(__file__).resolve().parents[1]

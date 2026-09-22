@@ -25,7 +25,11 @@ LLM judgment is quarantined — it may only adjudicate clauses explicitly
 declared subjective at authoring time, and it is excluded from deterministic
 coverage claims.
 
-ZFT is the product and repository name (decision 2026-09-13, supersedes the 2026-09-12 note that kept `traceagent` canonical). The Python import package remains `traceagent`, and a deprecated `traceagent` console alias is installed for continuity; dated logs and the paper retain the research codename.
+ZFT (Zero-Friction Traceability) is the product, repository, Python package,
+and CLI name (decision 2026-09-17, supersedes the 2026-09-13 note that kept
+the `traceagent` import package and the 2026-09-12 note that kept
+`traceagent` canonical). Run state lives under `.zft/`; dated logs retain
+the old codename.
 
 ## The L0–L3 verification gate
 
@@ -49,10 +53,7 @@ ZFT is the product and repository name (decision 2026-09-13, supersedes the 2026
 pip install zft
 ```
 
-(A deprecated `traceagent` console alias is installed too, command-for-command
-identical to `zft`; it exists for continuity with the pre-rename history.)
-
-Requires Python 3.12+.
+Requires Python 3.12+ (the `zft` console script is the only entry point).
 
 ## Quickstart
 
@@ -101,21 +102,52 @@ zft task-gate before --subagent producer --description "implement export endpoin
 zft task-gate after  --subagent producer --description "implement export endpoint"
 ```
 
-## Repository layout
+## Editor integration
+
+ZFT ships thin editor plugins that enforce the two boundaries where contracts
+are decided — when work is **dispatched** to a subagent, and when the contract
+store itself is **edited**. They are silent in any project without a `.zft/`
+store.
+
+**opencode** (`.opencode/plugins/`): the dispatch gate wraps the built-in
+`task` tool and blocks writer dispatches that are not bound to a contract
+(`[contract: <name>]` in the description); the lint gate re-runs `zft lint`
+on every `.zft/**` edit. Every decision lands in `.zft/audit.log` and
+`.zft/gates-hook/log.jsonl`.
+
+```bash
+pip install zft                                              # Python 3.12+
+mkdir -p ~/.config/opencode/plugins                          # global scope
+cp .opencode/plugins/zft-gate.ts .opencode/plugins/zft-lint-gate.js \
+   ~/.config/opencode/plugins/
+mkdir -p ~/.config/opencode/skills/zft                       # the workflow skill
+cp .opencode/skills/zft/SKILL.md ~/.config/opencode/skills/zft/SKILL.md
+# restart opencode, then scaffold a clause + contract (see .opencode/plugins/README.md)
+```
+
+A **Codex** equivalent (PostToolUse hook + agent skill) binds the same CLI
+seams, so policy and audit trails stay identical across clients.
+
+> **This is the private development lab, one of five related locations.**
+> Before pushing, syncing, or copying anything, read
+> [`docs/REPO-MAP.md`](docs/REPO-MAP.md) — confusing the lab with the public
+> cut is how leaks happen. The short version: this repo's history must
+> **never** go public; the published artifact is a separate squashed cut.
 
 ```
 .zft/
   specs/          # Clause nodes, one JSON file per domain/<alias>.json.
                   # UUIDv7 node identity + SHA-256 content integrity hash.
   contracts/      # Contract versions binding clause sets to milestones.
-.traceagent/  # Generated runtime artifacts (run ledgers, sandboxes,
-                  # gherkin renders, attestation envelopes) — local only,
-                  # never committed.
+  runs/           # Run ledgers (selective force-add as evidence).
+  cache/          # Verdict + extraction caches.
+  gherkin/        # Rendered clause scenarios.
+  sandbox*/       # Ephemeral gate sandboxes (local only, never committed).
 designs/          # Architecture decision records and implementation plans.
 ```
 
 The seed contract (26 validated clause nodes) lives in
-[`.zft/specs/`](.zft/specs/) and is the working dogfood example for every
+[`.zft/specs/`](.zft/specs/) and is the working self-hosted example for every
 gate tier above.
 
 ## Design

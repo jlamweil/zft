@@ -6,7 +6,7 @@ def check():
     """
     import tempfile
     from pathlib import Path
-    from traceagent.lineage.extract import extract_bindings
+    from zft.lineage.extract import extract_bindings
 
     # Samples mirroring tests/unit/test_lineage_extract.py:SAMPLES
     samples = {

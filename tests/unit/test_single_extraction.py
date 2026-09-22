@@ -9,7 +9,7 @@ the L1 summary (`l1_ok` / `l1_executed`), so the pipeline must call
 import os
 from pathlib import Path
 
-import traceagent.lineage.extract as extract
+import zft.lineage.extract as extract
 
 REPO = Path(os.environ.get("ZFT_REPO")
        or Path(__file__).resolve().parents[2])
@@ -17,7 +17,7 @@ REPO = Path(os.environ.get("ZFT_REPO")
 
 def test_check_extracts_exactly_once(monkeypatch):
     """In-process CLI seam: main(["check", REPO]) → one extraction, rc 0."""
-    from traceagent.cli.main import main
+    from zft.cli.main import main
 
     real = extract.extract_bindings
     calls: list[Path] = []

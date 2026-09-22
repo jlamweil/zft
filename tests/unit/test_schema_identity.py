@@ -1,8 +1,8 @@
 """C-05: clause schema validation (§5.1 incl. amended check kinds) + UUIDv7 identity."""
 import pytest
 
-from traceagent.spec.identity import new_uuid7
-from traceagent.spec.schema import SchemaError, validate_node
+from zft.spec.identity import new_uuid7
+from zft.spec.schema import SchemaError, validate_node
 
 VALID = {
     "node_id": new_uuid7(),
@@ -56,7 +56,7 @@ def test_new_uuid7_exact_vector_from_mocked_clock_and_rng(monkeypatch):
     Proof-run residue (2026-09-13): the survivors are exactly the waived
     equivalents — identity masks (& -1), Python >= 3.11 implicit byteorder,
     unreachable mask bits, slice clamp."""
-    monkeypatch.setattr("traceagent.spec.identity.time.time",
+    monkeypatch.setattr("zft.spec.identity.time.time",
                         lambda: 1_700_000_000.123)
     calls = []
 
@@ -64,7 +64,7 @@ def test_new_uuid7_exact_vector_from_mocked_clock_and_rng(monkeypatch):
         calls.append(n)
         return b"\xff" * n
 
-    monkeypatch.setattr("traceagent.spec.identity.os.urandom", fake_urandom)
+    monkeypatch.setattr("zft.spec.identity.os.urandom", fake_urandom)
     assert new_uuid7() == "018bcfe5-687b-7fff-bfff-ffffffffffff"
     assert calls == [2, 8]  # 12 rand_a bits + 62 rand_b bits, in that order
 

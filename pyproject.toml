@@ -4,9 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zft"
-version = "0.2.0a1"
+version = "0.2.0a2"
 description = "ZFT (Zero-Friction Traceability): contract-first verification and trace matrix gates for multi-agent work"
-readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.12"
 dependencies = [
@@ -21,12 +20,10 @@ dependencies = [
 
 [project.optional-dependencies]
 a2a = ["a2a-sdk>=0.3"]
-dev = ["ruff>=0.6", "pre-commit>=3.7", "a2a-sdk>=0.3", "httpx"]
+dev = ["ruff>=0.6", "pre-commit>=3.7", "a2a-sdk>=0.3", "httpx", "mutmut==3.7"]
 
 [project.scripts]
-zft = "traceagent.cli.main:main"
-# Deprecated compatibility alias (the pre-2026-09-13 product name) — same entrypoint as `zft`.
-traceagent = "traceagent.cli.main:main"
+zft = "zft.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -38,12 +35,12 @@ addopts = "-q"
 [tool.ruff]
 line-length = 100
 src = ["src", "tests"]
-extend-exclude = [".zft", ".traceagent", "oracle_*.py"]  # generated artifacts: gherkin renders, sandbox copies, evidence probes
+extend-exclude = [".zft", "oracle_*.py"]  # generated artifacts: gherkin renders, sandbox copies, evidence probes
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
 
 [tool.mutmut]
-source_paths = ["src/traceagent/"]
+source_paths = ["src/zft/"]
 pytest_add_cli_args_test_selection = ["tests"]
 also_copy = [".zft", "pyproject.toml"]

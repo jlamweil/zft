@@ -12,7 +12,7 @@ workspace names). Scope semantics (plan RECONCILE-2026-09-12 §4 option 1):
 import json
 from pathlib import Path
 
-from traceagent.gates.l2 import _workspace_name, run_l2
+from zft.gates.l2 import _workspace_name, run_l2
 
 
 def _node(alias: str, domain: str, applies_to=None, kind="manual") -> dict:
@@ -30,7 +30,7 @@ def _node(alias: str, domain: str, applies_to=None, kind="manual") -> dict:
     return node
 
 
-def _seed(tmp_path: Path, nodes: list[dict], project_name="traceagent") -> Path:
+def _seed(tmp_path: Path, nodes: list[dict], project_name="zft") -> Path:
     spec = tmp_path / ".zft" / "specs" / "g"
     spec.mkdir(parents=True)
     for i, node in enumerate(nodes):
@@ -43,7 +43,7 @@ def _seed(tmp_path: Path, nodes: list[dict], project_name="traceagent") -> Path:
 
 def test_workspace_name_from_pyproject(tmp_path):
     root = _seed(tmp_path, [])
-    assert _workspace_name(root) == "traceagent"
+    assert _workspace_name(root) == "zft"
 
 
 def test_workspace_name_absent_is_none(tmp_path):
@@ -71,7 +71,7 @@ def test_out_of_scope_clause_is_skipped_not_uncovered(tmp_path):
 
 def test_in_scope_named_workspace_stays_due(tmp_path):
     root = _seed(tmp_path, [
-        _node("SCOPE-ZFT", "g", applies_to=["zft", "traceagent"]),
+        _node("SCOPE-ZFT", "g", applies_to=["zft", "zft"]),
     ])
     verdict = run_l2(root, tier="fast")
     assert not verdict.ok, "in-scope clause with no binding must stay due"

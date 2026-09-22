@@ -5,14 +5,14 @@ import subprocess
 import sys
 from pathlib import Path
 
-from traceagent.cli.main import main
+from zft.cli.main import main
 
 REPO = Path(__file__).resolve().parents[2]
 
 
 def _check(root):
     return subprocess.run(
-        [sys.executable, "-m", "traceagent.cli.main", "check", str(root)],
+        [sys.executable, "-m", "zft.cli.main", "check", str(root)],
         capture_output=True, text=True)
 
 
@@ -27,7 +27,7 @@ def test_check_exit_0_typed_json_green():
 
 def test_check_exit_1_red_clause_typed_rejection(tmp_path):
     seed = subprocess.run(
-        [sys.executable, "-m", "traceagent.cli.main", "create",
+        [sys.executable, "-m", "zft.cli.main", "create",
          "--alias", "X-RED", "--domain", "x", "--title", "Red clause",
          "--statement", "WHEN red, THE SYSTEM SHALL fail visibly",
          "--property", "forall x: ok(x)", "--kind", "test",
@@ -56,7 +56,7 @@ def test_check_exit_2_usage_paths(capsys):
 
 
 def test_val_refuses_flag_shaped_values():
-    from traceagent.cli.main import _val
+    from zft.cli.main import _val
 
     argv = ["attest", "--key-out", "--alias", "K"]
     assert _val(argv, "--key-out") is None, "--key-out must not swallow --alias"
@@ -64,7 +64,7 @@ def test_val_refuses_flag_shaped_values():
     assert _val(["attest", "--key-expires"], "--key-expires") is None
 
 
-_IDENTITY_ENVS = ("TRACEAGENT_PRODUCER_MODEL", "TRACEAGENT_GATE_MODEL")
+_IDENTITY_ENVS = ("ZFT_PRODUCER_MODEL", "ZFT_GATE_MODEL")
 
 
 def test_check_identity_caller_supplied_flags(capsys, monkeypatch):
@@ -89,16 +89,16 @@ def test_check_identity_unsupplied_is_null_not_dev_name(capsys, monkeypatch):
 
 
 def test_check_identity_env_config_fallback(capsys, monkeypatch):
-    monkeypatch.setenv("TRACEAGENT_PRODUCER_MODEL", "env-prod")
-    monkeypatch.setenv("TRACEAGENT_GATE_MODEL", "env-gate")
+    monkeypatch.setenv("ZFT_PRODUCER_MODEL", "env-prod")
+    monkeypatch.setenv("ZFT_GATE_MODEL", "env-gate")
     assert main(["check", str(REPO)]) == 0
     out = json.loads(capsys.readouterr().out)
     assert out["gate_log"]["models"] == {"producer": "env-prod", "gate": "env-gate"}
 
 
 def test_check_identity_flag_beats_env(capsys, monkeypatch):
-    monkeypatch.setenv("TRACEAGENT_PRODUCER_MODEL", "env-prod")
-    monkeypatch.delenv("TRACEAGENT_GATE_MODEL", raising=False)
+    monkeypatch.setenv("ZFT_PRODUCER_MODEL", "env-prod")
+    monkeypatch.delenv("ZFT_GATE_MODEL", raising=False)
     assert main(["check", str(REPO), "--producer-model", "flag-prod",
                  "--gate-model", "env-prod"]) == 0
     out = json.loads(capsys.readouterr().out)

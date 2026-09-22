@@ -1,7 +1,7 @@
 """C-21: L0 gate — lint failures as ledger events with typed rejection shape."""
 
-from traceagent.debug.ledger import RunLedger
-from traceagent.gates.l0 import run_l0
+from zft.debug.ledger import RunLedger
+from zft.gates.l0 import run_l0
 
 
 def test_l0_green_on_own_store(tmp_path):

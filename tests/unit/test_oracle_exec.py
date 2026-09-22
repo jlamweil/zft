@@ -11,7 +11,7 @@ Four scenarios are covered:
 import json
 from pathlib import Path
 
-from traceagent.gates.l1 import run_l1
+from zft.gates.l1 import run_l1
 
 ALIAS = "ORACLE-EXEC-01"
 

@@ -1,6 +1,6 @@
 # TraceAgent — Unified System Architecture
 
-> **Canonical design document.** Supersedes `designs/PTE.md`, `designs/ZFT.md`, `designs/PTE ZFT.md`, and `designs/DEC.md`. Project intent and vocabulary: [`CONTEXT.md`](../CONTEXT.md). Framework landscape evidence: [`docs/research/multiagent-frameworks.md`](../docs/research/multiagent-frameworks.md).
+> **Canonical design document.** Supersedes `designs/PTE.md`, `designs/ZFT.md`, `designs/PTE ZFT.md`, and `designs/DEC.md` (preserved under [`designs/archive/`](archive/)). Project intent and vocabulary: [`CONTEXT.md`](../CONTEXT.md). Framework landscape evidence: [`docs/research/multiagent-frameworks.md`](../docs/research/multiagent-frameworks.md).
 >
 > Rule of the road: when this doc and any archived doc disagree, this doc wins. Changing a decision here means writing a new decision record that supersedes the old one — not silently editing it.
 
@@ -53,7 +53,7 @@ Two roles, not two products: **producer** and **consumer** are roles any agent t
 > *Compliance Export* and *Bi-directional ALM Sync* outputs (ReqIF bundles,
 > Jira / DOORS / Polarion sync) are **proprietary enterprise** features,
 > implemented in `private/enterprise/` and not shipped in the open-source
-> `zft` package — see §6.
+> `zft` package — see §6 and `docs/PUBLIC_REPO.md`.
 
 ---
 

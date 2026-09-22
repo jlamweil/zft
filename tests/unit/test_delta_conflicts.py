@@ -1,9 +1,9 @@
 """C-07: delta replay (ADDED/MODIFIED/REMOVED) + concurrent-edit conflicts (V9)."""
 import pytest
 
-from traceagent.registry.conflicts import detect_conflicts
-from traceagent.spec.canon import canonical_hash
-from traceagent.spec.delta import DeltaError, apply_delta
+from zft.registry.conflicts import detect_conflicts
+from zft.spec.canon import canonical_hash
+from zft.spec.delta import DeltaError, apply_delta
 
 
 def _node(alias, title="t", version=1):

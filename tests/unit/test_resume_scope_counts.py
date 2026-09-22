@@ -2,9 +2,9 @@
 import json
 from types import SimpleNamespace
 
-from traceagent.gates.runners import mutmut_runner
-from traceagent.gates.runners.mutmut_runner import run_campaign
-from traceagent.gates.sandbox import prepare_sandbox
+from zft.gates.runners import mutmut_runner
+from zft.gates.runners.mutmut_runner import run_campaign
+from zft.gates.sandbox import prepare_sandbox
 
 MODULE = "def alpha():\n    return 1 == 2\n\n\ndef beta():\n    return 2 != 3\n"
 TESTS = (
@@ -40,7 +40,7 @@ def test_checkpoint_stores_scope_and_resume_preserves_counts(tmp_path, monkeypat
     assert r1.in_scope_total > 0
     assert r1.executed == r1.in_scope_total
 
-    checkpoint = sandbox / ".traceagent" / "cache" / "mutants.json"
+    checkpoint = sandbox / ".zft" / "cache" / "mutants.json"
     state = json.loads(checkpoint.read_text())
     assert state, "campaign must write a checkpoint"
     assert all(isinstance(v, dict) and "in_scope" in v for v in state.values()), state

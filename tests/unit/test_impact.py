@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from traceagent.lineage import impact, impact_from_root
+from zft.lineage import impact, impact_from_root
 
 BINDINGS = [
     {"alias": "A-ONE", "file": "src/a.py", "line": 1, "symbol": "foo"},

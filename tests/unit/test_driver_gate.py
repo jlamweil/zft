@@ -12,9 +12,9 @@ from pathlib import Path
 
 import pytest
 
-from traceagent.gates.driver_gate import BUDGET_CHARS, main, run_driver_gate
-from traceagent.gates.l1 import run_l1
-from traceagent.spec.canon import canonical_hash
+from zft.gates.driver_gate import BUDGET_CHARS, main, run_driver_gate
+from zft.gates.l1 import run_l1
+from zft.spec.canon import canonical_hash
 
 REPO = Path(__file__).resolve().parents[2]
 SCRIPT = REPO / "gates" / "driver-gate.sh"
@@ -86,7 +86,8 @@ def test_driver_gate_workspace_is_byte_identical(tmp_path):
     assert verdict.ok, verdict.failures
     assert _snapshot(root) == before, "the gate must not write into {folder}"
     after = _snapshot(root)
-    for stateful in (".traceagent", ".hypothesis", ".pytest_cache", "__pycache__"):
+    for stateful in (".zft/runs", ".zft/cache", ".zft/sandbox",
+                       ".hypothesis", ".pytest_cache", "__pycache__"):
         assert not any(name.startswith(stateful) for name in after), stateful
 
 
@@ -153,12 +154,12 @@ def test_driver_gate_module_main_exit_codes(tmp_path, capsys):
     assert json.loads(capsys.readouterr().out)["ok"] is False
 
 
-_DRIVER_IDENTITY_ENVS = ("TRACEAGENT_PRODUCER_MODEL", "TRACEAGENT_GATE_MODEL")
+_DRIVER_IDENTITY_ENVS = ("ZFT_PRODUCER_MODEL", "ZFT_GATE_MODEL")
 
 
 def test_driver_gate_identity_env_config_flows(tmp_path, monkeypatch):
-    monkeypatch.setenv("TRACEAGENT_PRODUCER_MODEL", "env-prod")
-    monkeypatch.setenv("TRACEAGENT_GATE_MODEL", "env-gate")
+    monkeypatch.setenv("ZFT_PRODUCER_MODEL", "env-prod")
+    monkeypatch.setenv("ZFT_GATE_MODEL", "env-gate")
     verdict = run_driver_gate(_seed_repo(tmp_path))
     assert verdict.ok, verdict.failures
     assert verdict.models == {"producer": "env-prod", "gate": "env-gate",
@@ -178,9 +179,9 @@ def test_driver_gate_identity_unsupplied_is_null_not_dev_name(tmp_path, monkeypa
 
 
 def test_driver_gate_cli_identity_flag_beats_env(tmp_path, capsys, monkeypatch):
-    monkeypatch.setenv("TRACEAGENT_PRODUCER_MODEL", "env-prod")
-    monkeypatch.setenv("TRACEAGENT_GATE_MODEL", "env-gate")
-    from traceagent.cli.main import main as cli_main
+    monkeypatch.setenv("ZFT_PRODUCER_MODEL", "env-prod")
+    monkeypatch.setenv("ZFT_GATE_MODEL", "env-gate")
+    from zft.cli.main import main as cli_main
 
     assert cli_main(["driver-gate", str(_seed_repo(tmp_path)),
                      "--producer-model", "flag-prod",
@@ -193,7 +194,9 @@ def test_driver_gate_cli_identity_flag_beats_env(tmp_path, capsys, monkeypatch):
 def test_l1_write_cache_false_leaves_no_trace(tmp_path):
     root = _seed_repo(tmp_path)
     assert run_l1(root, write_cache=False).ok is True
-    assert not (root / ".traceagent").exists(), "read-only runs never persist verdicts"
+    for statedir in ("runs", "cache", "sandbox"):
+        assert not (root / ".zft" / statedir).exists(), \
+            "read-only runs never persist verdicts"
     assert run_l1(root, write_cache=False).executed == 1, "no cache write => no cache hit"
     assert run_l1(root).executed == 1, "default run executes (nothing was persisted)"
     assert run_l1(root).executed == 0, "default behavior still caches its own greens"
@@ -201,7 +204,7 @@ def test_l1_write_cache_false_leaves_no_trace(tmp_path):
 
 def _run_script(*args: str, folder: Path | str | None = None,
                 env_extra: dict | None = None):
-    env = os.environ | {"TRACEAGENT_PYTHON": sys.executable}
+    env = os.environ | {"ZFT_PYTHON": sys.executable}
     if env_extra:
         env |= env_extra
     argv = ["bash", str(SCRIPT)]

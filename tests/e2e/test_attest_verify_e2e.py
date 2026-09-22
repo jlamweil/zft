@@ -12,29 +12,32 @@ import subprocess
 import sys
 from pathlib import Path
 
-from traceagent.attest.dsse import clause_subjects
+from zft.attest.dsse import clause_subjects
 
-REPO = Path(os.environ.get("TRACEAGENT_REPO") or Path(__file__).resolve().parents[2])
+REPO = Path(os.environ.get("ZFT_REPO") or Path(__file__).resolve().parents[2])
 PY = sys.executable
 N_CLAUSES = len(clause_subjects(REPO))
 
 
 def _run(*args):
-    return subprocess.run([PY, "-m", "traceagent.cli.main", *args],
+    return subprocess.run([PY, "-m", "zft.cli.main", *args],
                           capture_output=True, text=True)
 
 
 def _store_copy(tmp_path: Path) -> Path:
     root = tmp_path / "store"
     root.mkdir()
-    shutil.copytree(REPO / ".zft", root / ".zft")
+    shutil.copytree(
+        REPO / ".zft", root / ".zft",
+        ignore=shutil.ignore_patterns("runs", "sandbox*", "cache"),
+    )
     return root
 
 
 def _attest(root: Path, keyfile: Path) -> dict:
     r = _run("attest", str(root), "--key-out", str(keyfile))
     assert r.returncode == 0, r.stdout + r.stderr
-    return json.loads((root / ".traceagent" / "attest.json").read_text())
+    return json.loads((root / ".zft" / "attest.json").read_text())
 
 
 def test_sign_persist_verify_roundtrip(tmp_path):
@@ -73,7 +76,7 @@ def test_verify_rejects_tampered_payload(tmp_path):
     raw = bytearray(base64.b64decode(env["payload"]))
     raw[-1] ^= 0x01
     env["payload"] = base64.b64encode(bytes(raw)).decode()
-    (root / ".traceagent" / "attest.json").write_text(json.dumps(env))
+    (root / ".zft" / "attest.json").write_text(json.dumps(env))
     r = _run("verify", str(root), "--key-in", str(keyfile))
     assert r.returncode == 1
     assert "signature verification failed" in r.stdout
@@ -113,7 +116,7 @@ def test_verify_usage_and_missing_artifacts(tmp_path):
     r = _run("verify", str(root), "--key-in", str(tmp_path / "junk.json"))
     assert r.returncode == 2 and "unusable key file" in r.stdout
     _attest(root, keyfile)  # valid key in hand...
-    (root / ".traceagent" / "attest.json").unlink()  # ...but no attestation
+    (root / ".zft" / "attest.json").unlink()  # ...but no attestation
     r = _run("verify", str(root), "--key-in", str(keyfile))
     assert r.returncode == 1 and "no attestation" in r.stdout.lower()
 
@@ -121,7 +124,7 @@ def test_verify_reports_all_envelope_problems_at_once(tmp_path):
     root = _store_copy(tmp_path)
     keyfile = tmp_path / "pub.json"
     _attest(root, keyfile)
-    (root / ".traceagent" / "attest.json").write_text(json.dumps({"signatures": []}))
+    (root / ".zft" / "attest.json").write_text(json.dumps({"signatures": []}))
     r = _run("verify", str(root), "--key-in", str(keyfile))
     assert r.returncode == 1
     assert "'payload'" in r.stdout and "'payloadType'" in r.stdout

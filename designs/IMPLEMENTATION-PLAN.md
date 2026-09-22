@@ -50,7 +50,7 @@ Measured constants (V5/V2): boot ≈ 0.3 s per pytest invocation (amortized to ~
 2. **Typed rejections everywhere**: `{code, clause_ids, fault: contract|implementation|environment, expected, actual, evidence_refs, repro}` — human text generated from the object.
 3. **Reproduction**: `zft repro <run_id>` re-runs only failed checks with pinned seeds; **repro checks out the manifest's git commit first** (v1.1 missed that a repro against a dirty/moved tree is a lie).
 4. Pure cores + injected runners (unchanged).
-5. Debug flags: `TRACEAGENT_LOG=debug`, `TRACEAGENT_KEEP_SANDBOX=1`, `--fail-fast`, `--trace-stage`.
+5. Debug flags: `ZFT_LOG=debug`, `ZFT_KEEP_SANDBOX=1`, `--fail-fast`, `--trace-stage`.
 6. **Self-dogfood with milestone scoping**: CI runs `zft check .` but evaluates only clauses whose `target_milestone` is ≤ current milestone (§3 WP-0 correction) — otherwise deferred clauses would keep CI permanently red.
 7. **Cache placement (new)**: verdict cache lives in `.zft/cache/` and is *exported/imported by CI cache actions* keyed on lockfile + input-digest set; otherwise the L1 cache never pays off in CI (cold every run).
 

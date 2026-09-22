@@ -9,11 +9,11 @@ from pathlib import Path
 
 import pytest
 
-from traceagent.debug.ledger import RunLedger
-from traceagent.negotiate.sm import IllegalTransition, NegotiationSM
-from traceagent.spec.store import load_contract
+from zft.debug.ledger import RunLedger
+from zft.negotiate.sm import IllegalTransition, NegotiationSM
+from zft.spec.store import load_contract
 
-REPO = Path(os.environ.get("TRACEAGENT_REPO")
+REPO = Path(os.environ.get("ZFT_REPO")
             or Path(__file__).resolve().parents[2])
 
 
@@ -22,7 +22,7 @@ def test_negotiate_flow_runs_on_own_contract(tmp_path):
     """Full CFP→VALIDATED run against the real contract via the real CLI.
 
     Runs over a copy of the live .zft tree (same bytes, hermetic root) so the
-    suite never writes run artifacts into the repo's .traceagent/runs — that
+    suite never writes run artifacts into the repo's .zft/runs — that
     directory is shared evidence (nightly batch, other sessions), not the
     test's to create or clean.
     """
@@ -30,14 +30,17 @@ def test_negotiate_flow_runs_on_own_contract(tmp_path):
 
     root = tmp_path / "store"
     root.mkdir()
-    shutil.copytree(REPO / ".zft", root / ".zft")
-    r = subprocess.run([sys.executable, "-m", "traceagent.cli.main", "negotiate",
+    shutil.copytree(
+        REPO / ".zft", root / ".zft",
+        ignore=shutil.ignore_patterns("runs", "sandbox*", "cache"),
+    )
+    r = subprocess.run([sys.executable, "-m", "zft.cli.main", "negotiate",
                         str(root)], capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
     import re
 
     run_id = re.search(r"run ([0-9a-f]+)", r.stdout).group(1)
-    runs_root = root / ".traceagent" / "runs"
+    runs_root = root / ".zft" / "runs"
     record = RunLedger.load(runs_root, run_id)
     events = [e["event"] for e in record.events]
     assert events == ["cfp", "counter", "accept_counter", "validate", "validated"]
@@ -45,8 +48,8 @@ def test_negotiate_flow_runs_on_own_contract(tmp_path):
 
 def test_clauses_due_scopes_deferred():
     """Deferred clauses are excluded from due coverage (§3bis), included after."""
-    from traceagent.gates.l2 import _current_milestone
-    from traceagent.spec.store import Store
+    from zft.gates.l2 import _current_milestone
+    from zft.spec.store import Store
 
     store = Store.load(REPO)
     contract = load_contract(REPO)

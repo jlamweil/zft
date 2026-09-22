@@ -6,13 +6,13 @@ import sys
 import time
 from pathlib import Path
 
-REPO = Path(os.environ.get("TRACEAGENT_REPO")
+REPO = Path(os.environ.get("ZFT_REPO")
             or Path(__file__).resolve().parents[2])
 
 
 def test_extract_cli_wires_and_reports():
     """Entrypoint seam: zft extract <root> → JSON bindings to stdout."""
-    r = subprocess.run([sys.executable, "-m", "traceagent.cli.main", "extract", str(REPO)],
+    r = subprocess.run([sys.executable, "-m", "zft.cli.main", "extract", str(REPO)],
                        capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
     bindings = json.loads(r.stdout.strip().splitlines()[-1])
@@ -25,8 +25,8 @@ def test_bench_budgets_smoke():
     Budgets are assertions, tuned to measured lab constants (plan §0):
       parse+codegen of 26 clauses and extraction of a small tree are sub-second.
     """
-    from traceagent.dsl.ears import parse_statement
-    from traceagent.dsl.predicate import compile_predicate
+    from zft.dsl.ears import parse_statement
+    from zft.dsl.predicate import compile_predicate
 
     corpus = sorted((REPO / ".zft" / "specs").rglob("*.json"))
     t0 = time.perf_counter()

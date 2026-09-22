@@ -8,7 +8,7 @@ exactly the terms on the sheet.
 """
 import pytest
 
-from traceagent.negotiate.terms import (
+from zft.negotiate.terms import (
     CounterTermsError,
     digest_from_recorded,
     parse_counter_terms,
@@ -113,3 +113,35 @@ def test_digest_from_recorded_is_path_stable(value):
     """CLI and wire bind the SAME digest to the same sheet, whichever path
     validates — the recorded counter bytes are the shared truth."""
     assert digest_from_recorded(terms_string(value)) == terms_digest(value)
+
+
+# --- the typed messages are the contract surface: they render into the CLI's
+# --- usage-level rejection and the ledger's reason field, so their text is
+# --- pinned byte-exact, not by substring (2026-09-14 night kill shard).
+
+def test_non_object_document_message_is_exact():
+    with pytest.raises(CounterTermsError,
+                       match=r"^counter-terms document must be a JSON object, got list$"):
+        parse_counter_terms('[]')
+
+
+def test_missing_terms_message_is_exact():
+    with pytest.raises(CounterTermsError,
+                       match=r"^missing 'terms' — a bargain must state its terms$"):
+        parse_counter_terms('{"decision": "accept"}')
+
+
+def test_refuse_reason_must_be_a_nonempty_string():
+    """Both halves of the check bite: an empty string AND a non-string truthy
+    value (an int reason parses fine as JSON and must not slip through)."""
+    for reason in ('""', "42"):
+        doc = ('{"terms": "x", "decision": "refuse", "reason": ' + reason + '}')
+        with pytest.raises(CounterTermsError,
+                           match=r"^'refuse' requires a non-empty 'reason' string$"):
+            parse_counter_terms(doc)
+
+
+def test_reason_with_accept_message_is_exact():
+    with pytest.raises(CounterTermsError,
+                       match=r"^'reason' is only allowed with 'decision': 'refuse'$"):
+        parse_counter_terms('{"terms": "x", "decision": "accept", "reason": "why"}')

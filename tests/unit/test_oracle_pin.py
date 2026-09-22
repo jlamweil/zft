@@ -10,8 +10,8 @@ import hashlib
 import json
 from pathlib import Path
 
-from traceagent.gates.l1 import run_l1
-from traceagent.spec.schema import validate_node
+from zft.gates.l1 import run_l1
+from zft.spec.schema import validate_node
 
 ALIAS = "PIN-TEST-01"
 

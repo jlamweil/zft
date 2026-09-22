@@ -1,13 +1,13 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite TraceAgent as the research codename of record (see title)."
-title: "TraceAgent: Contract-Grounded Verification and Lineage for Multi-Agent Systems"
+message: "If you use this software, please cite ZFT (Zero-Friction Traceability) as the software of record (see title)."
+title: "ZFT: Contract-Grounded Verification and Lineage for Multi-Agent Systems"
 author:
   - family-names: Lam
     given-names: Joseph
 type: software
 license: Apache-2.0
 licenseurl: https://www.apache.org/licenses/LICENSE-2.0
-version: 0.2.0a1
+version: 0.2.0a2
 keywords:
   - traceability
   - multi-agent

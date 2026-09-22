@@ -72,7 +72,7 @@ def _truth(spec: Spec, impls: dict[str, str], py: str | None = None) -> bool:
     runtime; body-only specs are checked at every domain point (the rendered
     @given asserts each draw, so the ground truth is a universal reading).
     """
-    from traceagent.dsl.predicate import compile_predicate
+    from zft.dsl.predicate import compile_predicate
 
     ns = _oracle_ns(spec, impls)
     py = py or compile_predicate(spec.predicate)
@@ -91,7 +91,7 @@ def _truth(spec: Spec, impls: dict[str, str], py: str | None = None) -> bool:
 def _first_violation(spec: Spec, impls: dict[str, str], py: str) -> dict:
     """The first domain point where the predicate fails under `impls` — the
     kill input, so the rendered-suite mutant check is deterministic."""
-    from traceagent.dsl.predicate import compile_predicate
+    from zft.dsl.predicate import compile_predicate
 
     ns = _oracle_ns(spec, impls)
     names = list(spec.explicit_binders)
@@ -499,8 +499,8 @@ def generate_specs(seed: int = SEED) -> list[Spec]:
     somewhere. A template whose math cannot kill its mutant is a generator
     bug, not a campaign finding.
     """
-    from traceagent.dsl.oracle import predicate_symbols
-    from traceagent.dsl.predicate import compile_predicate
+    from zft.dsl.oracle import predicate_symbols
+    from zft.dsl.predicate import compile_predicate
 
     specs = _positive_specs() + _negative_specs(len(_positive_specs()))
     for spec in specs:

@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from traceagent.attest.jcs import canonical_text, canonicalize
+from zft.attest.jcs import canonical_text, canonicalize
 
 
 def test_rfc8785_section_3_2_2_number_and_string_vector():

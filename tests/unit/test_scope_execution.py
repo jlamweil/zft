@@ -8,9 +8,9 @@ must never touch the module: no write, no pytest run.
 Contract under test: executed == in_scope_total < total_mutants, verified by
 spying on _run_pytest_env and inspecting the module content at each run.
 """
-from traceagent.gates.runners import mutmut_runner
-from traceagent.gates.runners.mutmut_runner import run_campaign
-from traceagent.gates.sandbox import prepare_sandbox
+from zft.gates.runners import mutmut_runner
+from zft.gates.runners.mutmut_runner import run_campaign
+from zft.gates.sandbox import prepare_sandbox
 
 MODULE = """def alpha(x):
     return x + 1

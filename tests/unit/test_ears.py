@@ -45,7 +45,7 @@ from pathlib import Path
 
 import pytest
 
-from traceagent.dsl.ears import EarsError, parse_statement
+from zft.dsl.ears import EarsError, parse_statement
 
 REPO = Path(__file__).resolve().parents[2]
 GOLDEN = json.loads(
@@ -151,7 +151,7 @@ class TestEdgeCaseDiagnostics:
 
 def test_golden_full_corpus_parses():
     """All real contract statements parse (V1: 100% pass criterion)."""
-    from traceagent.spec.store import load_contract
+    from zft.spec.store import load_contract
 
     spec_dir = REPO / ".zft" / "specs"
     files = sorted(spec_dir.rglob("*.json"))
@@ -221,7 +221,7 @@ def test_golden_patterns_match_parser_keywords():
     product surface too; adding/removing a trigger or modal must update the
     golden declaration and earn its own accept/reject witnesses.
     """
-    from traceagent.dsl.ears import _MODAL_WORDS, _TRIGGER_WORDS
+    from zft.dsl.ears import _MODAL_WORDS, _TRIGGER_WORDS
 
     assert list(_TRIGGER_WORDS) == GOLDEN["patterns"]["triggers"]
     assert list(_MODAL_WORDS) == GOLDEN["patterns"]["modals"]
@@ -234,7 +234,7 @@ def test_golden_patterns_match_parser_keywords():
 # split(None)/index [1] mutants re-admit punctuation-only triggers as long as
 # ANY later segment carries an alnum (_diagnose 154/156)
 def test_diagnose_empty_trigger_rejects_punctuation_first_segment():
-    from traceagent.dsl.ears import _diagnose
+    from zft.dsl.ears import _diagnose
 
     assert "empty or punctuation-only" in _diagnose("WHEN ,a x, THE SYSTEM SHALL x")
 
@@ -242,7 +242,7 @@ def test_diagnose_empty_trigger_rejects_punctuation_first_segment():
 # GATE-MUTATION-KILL: `word != "THE" -> "the"` re-admits a lowercase leading
 # article in front of an uppercase body (_diagnose 170)
 def test_diagnose_lowercase_leading_word_is_not_the_keyword():
-    from traceagent.dsl.ears import _diagnose
+    from zft.dsl.ears import _diagnose
 
     assert "not a trigger keyword" in _diagnose("the THE SYSTEM SHALL respond")
 

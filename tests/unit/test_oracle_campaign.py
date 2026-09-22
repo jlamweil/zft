@@ -39,16 +39,16 @@ from pathlib import Path
 import pytest
 from oracle_spec_gen import _oracle_ns, _truth, generate_specs
 
-from traceagent.codegen.property_gen import (
+from zft.codegen.property_gen import (
     PropertyTestSpec,
     binder_strategies,
     elide_top_level_forall,
     render_property_test,
 )
-from traceagent.dsl.ears import parse_statement
-from traceagent.dsl.oracle import OracleError, generate_oracle, predicate_symbols
-from traceagent.dsl.predicate import ParseError, compile_predicate
-from traceagent.dsl.strategies import StrategyError, strategy_for
+from zft.dsl.ears import parse_statement
+from zft.dsl.oracle import OracleError, generate_oracle, predicate_symbols
+from zft.dsl.predicate import ParseError, compile_predicate
+from zft.dsl.strategies import StrategyError, strategy_for
 
 SPECS = generate_specs()
 POSITIVES = [s for s in SPECS if s.expect == "ok"]
@@ -277,7 +277,7 @@ def test_campaign_scope_contract():
 # prime clause rendered an oracle without next_t and NameError'd at runtime)
 
 def test_f1_fixed_prime_symbols_reach_generate_oracle():
-    from traceagent.dsl.oracle import OracleError as OE
+    from zft.dsl.oracle import OracleError as OE
 
     prop = "forall t: t'(t) == t + 1"
     assert "next_t" in predicate_symbols(prop)
@@ -293,7 +293,7 @@ def test_f1_fixed_prime_symbols_reach_generate_oracle():
 # --- F2b regression: no bare `from oracle import ` when nothing is owned -----
 
 def test_f2b_fixed_empty_symbol_render_compiles():
-    from traceagent.codegen.property_gen import PropertyTestSpec as PTS
+    from zft.codegen.property_gen import PropertyTestSpec as PTS
 
     rendered = render_property_test(PTS(
         alias="CAMP-PURE", predicate_py=compile_predicate("forall x: x + 0 == x"),

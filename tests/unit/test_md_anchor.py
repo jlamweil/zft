@@ -9,7 +9,7 @@ and headings inside fenced code blocks (``` / ~~~) are not extracted.
 """
 from pathlib import Path
 
-from traceagent.lineage.extract import extract_bindings
+from zft.lineage.extract import extract_bindings
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -22,17 +22,21 @@ DOC = """\
 Some prose.
 """
 
-# Baseline captured at WP-D3 (HEAD 90875a7): every binding the repo's
+# Baseline captured at WP-D3 (HEAD 90875a7), re-captured 2026-09-17 for the
+# src/traceagent -> src/zft rename plus +3-line shifts in three negotiate
+# test files (copytree ignore-pattern + ruff wrap), and 2026-09-19 for a
+# +1-line shift in test_mutmut_runner.py (the parse_results pin sitting
+# extended its import block): every binding the repo's
 # Python sources produce, as (file, line, alias, symbol). The Markdown
 # feature must not change any of them.
 BASELINE_PY_BINDINGS = {
-    ('src/traceagent/lineage/matrix.py', 122,
+    ('src/zft/lineage/matrix.py', 125,
      'TR-REVERSE-COVERAGE', 'new_unbound_elements'),
-    ('tests/e2e/test_negotiate_resumption.py', 48,
+    ('tests/e2e/test_negotiate_resumption.py', 51,
      'CON-CRASH-RESUME', 'test_kill9_mid_protocol_resumes_same_run'),
-    ('tests/e2e/test_negotiate_transport_resumption.py', 81,
+    ('tests/e2e/test_negotiate_transport_resumption.py', 84,
      'PRT-A2A-TRANSPORT', 'test_kill9_mid_wire_protocol_resumes_same_run'),
-    ('tests/unit/test_a2a_adapter.py', 11,
+    ('tests/unit/test_a2a_adapter.py', 14,
      'PRT-A2A-ENVELOPE', 'test_wire_roundtrip_with_history_and_artifacts'),
     ('tests/unit/test_attest.py', 45,
      'ATT-SIGNED-ACCEPTANCE', 'test_sign_and_verify_real_contract'),
@@ -76,7 +80,7 @@ BASELINE_PY_BINDINGS = {
      'TR-IMPACT-QUERY', 'test_base_flag_honest_rejection'),
     ('tests/unit/test_l0.py', 31,
      'CON-TYPED-REJECTIONS', 'test_l0_failure_is_typed'),
-    ('tests/unit/test_l1.py', 38,
+    ('tests/unit/test_l1.py', 43,
      'GATE-EVIDENCE-KIND', 'test_l1_green_passes_on_passing_suite'),
     ('tests/unit/test_l2.py', 42,
      'GATE-JUDGE-QUARANTINE', 'test_l2_fast_green_on_mini_repo'),
@@ -90,11 +94,11 @@ BASELINE_PY_BINDINGS = {
      'GATE-L0-HASH-VERIFY', 'test_torn_trailing_hash_line_detected'),
     ('tests/unit/test_lint_store.py', 39,
      'GATE-DUPLICATE-CLAUSES', 'test_duplicate_clause_detection'),
-    ('tests/unit/test_mutmut_runner.py', 119,
+    ('tests/unit/test_mutmut_runner.py', 120,
      'GATE-MUTATION-ATTRIBUTION', 'test_campaign_kills_and_classifies'),
     ('tests/unit/test_negotiate_flow.py', 20,
      'CON-COUNTER-RECORDED', 'test_negotiate_flow_runs_on_own_contract'),
-    ('tests/unit/test_negotiate_transport.py', 89,
+    ('tests/unit/test_negotiate_transport.py', 109,
      'PRT-A2A-TRANSPORT', 'test_full_protocol_over_wire_with_official_sdk_client'),
     ('tests/unit/test_negotiation.py', 47,
      'PRT-TYPED-REFUSAL', 'test_pre_commitment_refusal'),

@@ -10,7 +10,7 @@
 
 **Scope.** Implement the verified design set: P-006 (runtime/perf), P-005 (oracle-first conformance), P-007 (reverse coverage + non-code anchors), P-008 (gate self-verification), P-009 (ReqIF/ALM interchange), P-011 (human↔AI contract), and finally **promote the already-materialized `ai-conduct` clauses** (P-010) from deferred to enforced.
 
-**Inputs.** `docs/RUNBOOK.md` (existing checkpoint/debug), `designs/ARCHITECTURE.md` (D1–D6), `docs/AI-REQUIREMENTS.md`, and the code seams: `gates/l0-l3.py`, `lineage/extract.py`, `lineage/matrix.py`, `gates/runners/mutmut_runner.py`, `debug/ledger.py`, `debug/repro.py`, `cli/main.py`, `negotiate/sm.py`, `attest/dsse.py`, `spec/store.py`.
+**Inputs.** `designs/proposals/HYPOTHESES.md` (all measured), `docs/RUNBOOK.md` (existing checkpoint/debug), `designs/ARCHITECTURE.md` (D1–D6), `docs/AI-REQUIREMENTS.md`, and the code seams: `gates/l0-l3.py`, `lineage/extract.py`, `lineage/matrix.py`, `gates/runners/mutmut_runner.py`, `debug/ledger.py`, `debug/repro.py`, `cli/main.py`, `negotiate/sm.py`, `attest/dsse.py`, `spec/store.py`.
 
 **Current state (do not re-plan).** The features below **do not exist yet** — that is the premise of this plan, not a defect. Already done: `ai-conduct` clauses (10 `PROPOSED` nodes, registered, **deferred to `v1`**; `check` green 40 nodes / 29 due / 29-29), and dispatch enforcement (P-001). There is **no** "create clauses" work — only **promotion**.
 
@@ -96,7 +96,7 @@ Durations are **effort** estimates; *(run)* = measured command runtime unless **
 > `private/enterprise/zft/alm/`, tests under `private/enterprise/tests/`
 > (`test_reqif_import.py`, `test_reqif_export.py`, `test_reqif_ids.py`,
 > `test_alm_sync.py`). The `zft sync` CLI command and the `reqif` export
-> format were removed from the public `zft` package.
+> format were removed from the public `zft` package (see `docs/PUBLIC_REPO.md`).
 
 | WP | Goal | Files | Test | Commit | Effort | Run (EST) |
 |---|---|---|---|---|---|---|
@@ -148,7 +148,7 @@ Durations are **effort** estimates; *(run)* = measured command runtime unless **
 - **Distinct typed rejections** (each with `clause_ids`): `L1_ORACLE_PIN_MISMATCH`, `L1_ORACLE_FAIL`, `L0_CONTRACT_HASH_DRIFT`, `L2_REVERSE_COVERAGE`, `L2_SUBJECTIVE_UNQUARANTINED` — not just the generic `L1_PROPERTY_EVIDENCE`.
 - **Ledger events**: `extract_done`, `cache_hit`/`cache_miss`, `oracle_exec` (+ `oracle_executed: true` on the clause event), `mutant_verdict` (with `in_scope`), `gate_manifest_created`.
 - **`repro <run_id>`**: re-execute failed units; **C5** extends it to failed mutants.
-- **`TRACEAGENT_LOG=debug`** per-decision logging; **`TRACEAGENT_KEEP_SANDBOX=1`** retains the mutation sandbox for autopsy.
+- **`ZFT_LOG=debug`** per-decision logging; **`ZFT_KEEP_SANDBOX=1`** retains the mutation sandbox for autopsy.
 - **Determinism**: fixed seeds; **B5** binds the L1 cache key to gate + contract identity so a code/contract change invalidates stale verdicts.
 - **`--dry-run`** on `check`/`approve`.
 - **Gate self-test** (E1): runs the probe **fixture** (a property clause `answer()==42` with impl `41` + producer `assert True`); the gate is GREEN on it today, so the self-test **detects the regression**; after B it goes GREEN-as-passing.
@@ -236,7 +236,7 @@ Persistent extraction daemon; additional languages; full multi-contract merge se
 7. Most "CRITICAL: feature X does not exist" items are **restatements of the plan's own WPs**, not defects — the plan's premise is that these features are to be built.
 
 ---
-*Prepared 2026-09-11. Runtimes measured from the hypothesis experiments unless marked EST. No implementation performed.*
+*Prepared 2026-09-11. Runtimes measured from `designs/proposals/HYPOTHESES.md` unless marked EST. No implementation performed.*
 
 ---
 

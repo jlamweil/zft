@@ -1,6 +1,6 @@
 """E2E: the bargain is real — counter-terms arrive from outside the process.
 
-`traceagent negotiate --counter-terms <file|->` takes the counter-party's
+`zft negotiate --counter-terms <file|->` takes the counter-party's
 term sheet as JSON, from a file path or stdin. The sheet's terms become the
 recorded counter-proposal, the sheet's decision picks the terminal state
 (accept → VALIDATED with the outcome bound to the terms' digest; refuse →
@@ -17,10 +17,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-from traceagent.debug.ledger import RunLedger
-from traceagent.negotiate.terms import terms_digest, terms_string
+from zft.debug.ledger import RunLedger
+from zft.negotiate.terms import terms_digest, terms_string
 
-REPO = Path(os.environ.get("TRACEAGENT_REPO")
+REPO = Path(os.environ.get("ZFT_REPO")
             or Path(__file__).resolve().parents[2])
 PY = sys.executable
 
@@ -34,21 +34,24 @@ REFUSE_SHEET = {"terms": "drop the mutation gate",
 def _store_copy(tmp_path: Path) -> Path:
     root = tmp_path / "store"
     root.mkdir()
-    shutil.copytree(REPO / ".zft", root / ".zft")
+    shutil.copytree(
+        REPO / ".zft", root / ".zft",
+        ignore=shutil.ignore_patterns("runs", "sandbox*", "cache"),
+    )
     return root
 
 
 def _negotiate(root: Path, *flags, stdin: str | None = None,
                kill_after: str | None = None):
-    env = os.environ | ({"TRACEAGENT_NEGOTIATE_KILL_AFTER": kill_after}
+    env = os.environ | ({"ZFT_NEGOTIATE_KILL_AFTER": kill_after}
                         if kill_after else {})
     return subprocess.run(
-        [PY, "-m", "traceagent.cli.main", "negotiate", str(root), *flags],
+        [PY, "-m", "zft.cli.main", "negotiate", str(root), *flags],
         input=stdin, capture_output=True, text=True, env=env)
 
 
 def _sole_run(root: Path) -> list[dict]:
-    runs = sorted((root / ".traceagent" / "runs").iterdir())
+    runs = sorted((root / ".zft" / "runs").iterdir())
     assert len(runs) == 1, f"expected one run, found {[r.name for r in runs]}"
     return RunLedger.load(runs[0].parent, runs[0].name).events
 
@@ -170,9 +173,9 @@ def test_malformed_sheet_is_refused_before_any_run_exists(tmp_path):
     r = _negotiate(root, "--counter-terms", str(sheet))
     assert r.returncode == 2
     assert "counter-terms refused" in r.stdout
-    assert not (root / ".traceagent" / "runs").exists()
+    assert not (root / ".zft" / "runs").exists()
 
     absent = _negotiate(root, "--counter-terms", str(root / "no-such.json"))
     assert absent.returncode == 2
     assert "counter-terms refused" in absent.stdout
-    assert not (root / ".traceagent" / "runs").exists()
+    assert not (root / ".zft" / "runs").exists()

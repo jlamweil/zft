@@ -16,7 +16,7 @@ from securesystemslib.dsse import Envelope
 from securesystemslib.exceptions import UnverifiedSignatureError
 from securesystemslib.signer import CryptoSigner, Key, Signature, Signer
 
-from traceagent.attest.dsse import (
+from zft.attest.dsse import (
     AttestationError,
     EnvelopeFormatError,
     KeyValidationError,
@@ -26,15 +26,15 @@ from traceagent.attest.dsse import (
     parse_payload,
     verify_attestation,
 )
-from traceagent.attest.jcs import canonicalize
+from zft.attest.jcs import canonicalize
 
 REPO = Path(__file__).resolve().parents[2]
 
 
 def _live_due(root: Path) -> int:
     """Milestone-scoped due clause count, mirroring gates.l2 logic."""
-    from traceagent.gates.l2 import _current_milestone
-    from traceagent.spec.store import Store, load_contract
+    from zft.gates.l2 import _current_milestone
+    from zft.spec.store import Store, load_contract
 
     nodes = Store.load(root).nodes
     deferred = load_contract(root).get("meta", {}).get("target_milestone", {})
@@ -47,7 +47,7 @@ def test_sign_and_verify_real_contract():
     signer = CryptoSigner.generate_ed25519()
     att = attest_contract(REPO, producer_model="m", gate_model="g", signer=signer)
     payload = verify_attestation(att, public_key=signer.public_key)
-    assert payload["predicateType"] == "https://traceagent.dev/attestations/TraceManifest/v1"
+    assert payload["predicateType"] == "https://zft.dev/attestations/TraceManifest/v1"
     # bindings grow as we bind more tests; assert format + due bounds, not a fixed count
     covered, due = payload["predicate"]["coverage"]["clauses_covered"].split("/")
     live_due = _live_due(REPO)

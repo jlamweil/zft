@@ -1,11 +1,29 @@
-# Known Gaps — traceagent
+# Known Gaps — ZFT
 
 A living register of known, unsolved weaknesses in the implemented system. Each gap: status, severity, self‑contained reproduction, root causes, what the tool still guarantees, and proposed fixes with tradeoffs.
 
 ## Gap 001 — Acceptance gate verifies traceability, not conformance
 
-- **Status:** Open — documented 2026-09-10, unsolved
-- **Severity:** High
+- **Status:** Open but narrowed — documented 2026-09-10; partially mitigated
+  after `53f09937` ("feat: execute consumer oracle in L1", landed after this
+  gap was written)
+- **Severity:** High (was: gate passes on a bare `assert True`; now: gate
+  passes on a vacuous oracle *plus* a vacuous test)
+
+### Update 2026-09-17 (fault-tier probe, R2-3)
+
+L1 now executes a gate-owned consumer oracle (`oracle_<ALIAS>.py`,
+`check()`) *before* the bound suite for property-kind clauses: a missing
+oracle fails red (`L1_ORACLE_REQUIRED`), a failing oracle fails red
+(`L1_ORACLE_FAIL`). Verified live on a scratch probe corpus. The residual
+is narrower than documented below: oracle files are unpinned
+(`oracle_sha256` absent everywhere in `.zft/specs/`), so a vacuous oracle
+(`def check(): pass`) plus vacuous tests still yields `ok: true` on a
+provably wrong implementation. Fakery now costs a separate oracle file,
+not just an annotation — more visible, digest-keyed, manifest-listed, but
+still not conformance. The reproduction below remains valid for
+`kind: test` clauses and, with a vacuous oracle added, for
+`kind: property` ones.
 
 ### Summary
 
@@ -146,11 +164,11 @@ def test_prop():
 
 ### Root causes
 
-- `src/traceagent/gates/l2.py:49` — ``coverage_report(bindings, set(due))`` is binding‑existence coverage; no ``elements``, no implementation execution.
-- `src/traceagent/gates/l1.py:75` — ``if "property" not in kinds: continue`` (i.e., ``kind: test``, the ``create`` default, gets zero execution evidence).
-- `src/traceagent/gates/l1.py:110` — ``run_pytest(root, test_files, ...)`` runs the producer‑written test file; the clause's ``property`` is unused.
-- `src/traceagent/gates/runners/mutmut_runner.py:26‑34` — ``OPS`` only mutates ``== != > < +`` and ``return True/False``; no constant mutation.
-- `src/traceagent/lineage/matrix.py:17` — ``out_of_contract`` is empty when ``elements`` is ``None`` (reverse coverage inert).
+- `src/zft/gates/l2.py:49` — ``coverage_report(bindings, set(due))`` is binding‑existence coverage; no ``elements``, no implementation execution.
+- `src/zft/gates/l1.py:75` — ``if "property" not in kinds: continue`` (i.e., ``kind: test``, the ``create`` default, gets zero execution evidence).
+- `src/zft/gates/l1.py:110` — ``run_pytest(root, test_files, ...)`` runs the producer‑written test file; the clause's ``property`` is unused.
+- `src/zft/gates/runners/mutmut_runner.py:26‑34` — ``OPS`` only mutates ``== != > < +`` and ``return True/False``; no constant mutation.
+- `src/zft/lineage/matrix.py:17` — ``out_of_contract`` is empty when ``elements`` is ``None`` (reverse coverage inert).
 
 ### What `check` *does* guarantee
 
@@ -186,19 +204,19 @@ The above probe must make ``zft check`` **RED**.
 - **Severity:** Medium–High
 
 ### Summary
-The opencode plugin gates **only the `task` tool** — `tool.execute.before`/`after` early-return unless `input.tool === "task"`. When the primary/orchestrator agent edits files **directly** (`edit`/`write`/`apply_patch`, or shell writes), no `zft task-gate` runs: no contract binding, no typed verdict, and **no audit line**. So the framework's enforcement applies to *delegated* work but not to the orchestrator's own work — "presence is not evidence" must also apply to which activity the gate covers.
+The opencode plugin (`.opencode/plugin/zft-gate.ts`) gates **only the `task` tool** — `tool.execute.before`/`after` early-return unless `input.tool === "task"` (`:97`, `:126`). When the primary/orchestrator agent edits files **directly** (`edit`/`write`/`apply_patch`, or shell writes), no `zft task-gate` runs: no contract binding, no typed verdict, and **no audit line**. So the framework's enforcement applies to *delegated* work but not to the orchestrator's own work — "presence is not evidence" must also apply to which activity the gate covers.
 
 ### Why it matters
 - A delegate-everything workflow is gated; a direct-edit workflow silently bypasses the gate. This was exercised while finishing WP-A3 and implementing WP-C4 directly.
 - Partial mitigation: **pre-commit** runs `zft lint` and **pre-push** runs `zft check .`, so direct work *is* touched by zft at commit/push — but there is no edit-time contract binding or audit, and nothing ties a direct edit to a clause.
 
 ### Evidence
-- Plugin guard code — `if (input.tool !== "task" || !active()) return;`
+- `.opencode/plugin/zft-gate.ts:97,126` — `if (input.tool !== "task" || !active()) return;`
 - `.zft/audit.log` contains only `task`-dispatch records (subagent before/after), no direct-edit records.
 
 ### Proposed solutions (design not yet validated — do not build yet)
 - **(a) Audit direct writes (recommended first step).** Hook `edit`/`write`/`apply_patch` in governed projects → non-blocking `zft task-gate direct --tool <name> --file <path>` appends `{kind:"direct", tool, file}` to `.zft/audit.log`. Bypass becomes visible; zero friction.
-- **(b) Strict direct gate (opt-in).** Same hook blocks a direct write without an active contract/run (`TRACEAGENT_GATE_STRICT=1`). Strong, but disruptive.
+- **(b) Strict direct gate (opt-in).** Same hook blocks a direct write without an active contract/run (`ZFT_GATE_STRICT=1`). Strong, but disruptive.
 - **(c) Status quo.** Rely on commit/push hooks; keep the boundary documented.
 
 ### Decision (2026-09-11)

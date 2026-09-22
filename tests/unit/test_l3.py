@@ -6,8 +6,8 @@ label model dependence for the attestation (GATE-MODEL-INDEPENDENCE).
 """
 import json
 
-from traceagent.debug.ledger import RunLedger
-from traceagent.gates.l3 import build_gate_log
+from zft.debug.ledger import RunLedger
+from zft.gates.l3 import build_gate_log
 
 
 def _log(events, producer="producer-dev", gate="gate-dev",

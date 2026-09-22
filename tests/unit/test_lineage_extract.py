@@ -1,6 +1,6 @@
 """C-17: ast-grep binding extraction — 3 languages, V4 fixtures as goldens."""
 
-from traceagent.lineage.extract import extract_bindings
+from zft.lineage.extract import extract_bindings
 
 SAMPLES = {
     "sample.py": '''
@@ -57,7 +57,7 @@ def test_hidden_dirs_and_mutmut_workspace_are_not_evidence(tmp_path):
     pytest 'import file mismatch' in L1; worse, a stale mirror would launder
     old coverage into the attestation."""
     root = _write_samples(tmp_path)
-    for mirror in ("mutants/tests", ".venv/lib", ".traceagent/sandbox"):
+    for mirror in ("mutants/tests", ".venv/lib", ".zft/sandbox"):
         d = root / mirror
         d.mkdir(parents=True)
         (d / "sample.py").write_text(SAMPLES["sample.py"])

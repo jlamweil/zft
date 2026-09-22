@@ -9,12 +9,13 @@ import json
 import os
 from pathlib import Path
 
-from traceagent.debug.ledger import RunLedger
-from traceagent.gates.runners.mutmut_runner import (
+from zft.debug.ledger import RunLedger
+from zft.gates.runners.mutmut_runner import (
     generate_mutants,
+    parse_results,
     run_campaign,
 )
-from traceagent.gates.sandbox import prepare_sandbox
+from zft.gates.sandbox import prepare_sandbox
 
 MODULE = """def expired(t):
     return t > 100
@@ -67,7 +68,7 @@ def test_format_row(r):
     assert format_row(r) is not None
 """
 
-REPO = os.environ.get("TRACEAGENT_REPO") or str(Path(__file__).resolve().parents[2])
+REPO = os.environ.get("ZFT_REPO") or str(Path(__file__).resolve().parents[2])
 
 ORACLE = """def expired(t):
     return t > 100
@@ -197,14 +198,14 @@ def test_timed_out_mutant_is_its_own_class(tmp_path):
     assert "::line:4::" in hanger
     assert hanger not in result.survivor_names
     assert result.killed == 1
-    cache = json.loads((sandbox / ".traceagent" / "cache" / "mutants.json").read_text())
+    cache = json.loads((sandbox / ".zft" / "cache" / "mutants.json").read_text())
     assert cache[hanger]["outcome"] == "timeout"  # C4: entries are {outcome, in_scope}
 
 
 def test_resume_restores_timeout_class_without_rerun(tmp_path):
     sandbox = _prepare_hang(tmp_path)
     names = [n for n, _, _ in generate_mutants(HANG_MODULE, "module.py")]
-    cache_dir = sandbox / ".traceagent" / "cache"
+    cache_dir = sandbox / ".zft" / "cache"
     cache_dir.mkdir(parents=True)
     # legacy checkpoints store booleans: False meant killed
     (cache_dir / "mutants.json").write_text(json.dumps(
@@ -216,3 +217,43 @@ def test_resume_restores_timeout_class_without_rerun(tmp_path):
     assert result.timed_out == [names[1]]
     assert result.killed == 1
     assert result.survivor_names == []
+
+
+# --- parse_results pins (2026-09-19 sitting): the campaign-checkpoint
+# recovery surface had no direct tests — all 27 of its mutants classed
+# "no tests" in the 09-18 fresh generation (jobs/results-mut-gates);
+# A/B'd 27/27 killed via mutmut's own trampoline before landing.
+
+
+def test_parse_results_absent_checkpoint_is_all_zeros(tmp_path):
+    """No campaign checkpoint in the sandbox: exactly ([], 0, 0) — the
+    absent-ledger shape run_campaign's resume path keys on."""
+    survivors, total, killed = parse_results(tmp_path)
+    assert survivors == []
+    assert total == 0
+    assert killed == 0
+
+
+def test_parse_results_classifies_checkpoint_entries_by_outcome(tmp_path):
+    """Per-entry classification: dict entries by their 'outcome' field,
+    legacy boolean checkpoints (False = killed, True = survived); a
+    'timeout' entry counts in total only — a hang is attributable, not a
+    kill — and lands in neither survivors nor killed."""
+    checkpoint = tmp_path / ".zft" / "cache" / "mutants.json"
+    checkpoint.parent.mkdir(parents=True)
+    checkpoint.write_text(json.dumps({
+        "m_survived_a": {"outcome": "survived"},
+        "m_survived_b": {"outcome": "survived"},
+        "m_killed": {"outcome": "killed"},
+        "m_hang": {"outcome": "timeout"},
+        "m_legacy_killed": False,
+        "m_legacy_survived": True,
+    }))
+    survivors, total, killed = parse_results(tmp_path)
+    assert sorted(survivors) == [
+        "m_legacy_survived",
+        "m_survived_a",
+        "m_survived_b",
+    ]
+    assert total == 6
+    assert killed == 2

@@ -82,6 +82,8 @@
 
 Agent Protocol (OpenAPI-style `/task`/`/runs` spec) is dead: the SDK repos are **archived** (last pushes Nov–Dec 2023) ([agent-protocol-sdk-python](https://github.com/AI-Engineer-Foundation/agent-protocol-sdk-python)); agentprotocol.ai is now a third-party explainer. It never defined acceptance criteria. **Lesson:** an agent protocol without a work-product contract layer had no durable reason to exist once A2A landed — traceagent must supply the layer A2A *lacks*, not another run-API.
 
+> **Re-fetch 2026-09-15:** the project has since moved orgs and is maintained again at [agi-inc/agent-protocol](https://github.com/agi-inc/agent-protocol) (AGI, Inc.; MIT; ~1.5k stars). The negative result above stands unchanged — still no acceptance-criteria object — and the paper's related-work line was reworded accordingly ("spent years archived while A2A became the interoperability layer").
+
 ---
 
 ## 3. Output/schema contracts for LLM calls

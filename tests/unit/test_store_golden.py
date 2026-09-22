@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 
-from traceagent.spec.store import Store
+from zft.spec.store import Store
 
 REPO = Path(__file__).resolve().parents[2]
 GOLDEN = json.loads((Path(__file__).resolve().parents[1] / "golden" / "dsl_predicate_fixtures.json").read_text())  # noqa: E501
@@ -19,7 +19,7 @@ def test_store_is_versioned_and_hashed():
     # The store also holds PROPOSED requirement clauses (e.g. the `ai-conduct`
     # set). The drift guard is that every node carries a valid, known lifecycle
     # status — not that every node is already VALIDATED.
-    from traceagent.spec.schema import STATUSES
+    from zft.spec.schema import STATUSES
 
     for path in (REPO / ".zft/specs").rglob("*.json"):
         node = json.loads(path.read_text())

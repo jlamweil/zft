@@ -16,17 +16,17 @@ from pathlib import Path
 import pytest
 from securesystemslib.signer import CryptoSigner, Key
 
-from traceagent.attest.dsse import parse_envelope, verify_attestation
-from traceagent.attest.jcs import canonicalize
+from zft.attest.dsse import parse_envelope, verify_attestation
+from zft.attest.jcs import canonicalize
 
-REPO = Path(os.environ.get("TRACEAGENT_REPO") or os.environ.get("ZFT_REPO")
+REPO = Path(os.environ.get("ZFT_REPO") or os.environ.get("ZFT_REPO")
             or Path(__file__).resolve().parents[2])
 
 
 def _live_counts() -> tuple[int, int]:
     """(node count, milestone-scoped due count) derived from live store + contract."""
-    from traceagent.gates.l2 import _current_milestone
-    from traceagent.spec.store import Store, load_contract
+    from zft.gates.l2 import _current_milestone
+    from zft.spec.store import Store, load_contract
 
     nodes = Store.load(REPO).nodes
     deferred = load_contract(REPO).get("meta", {}).get("target_milestone", {})
@@ -37,7 +37,7 @@ PY = sys.executable
 
 
 def _run(*args):
-    return subprocess.run([PY, "-m", "traceagent.cli.main", *args],
+    return subprocess.run([PY, "-m", "zft.cli.main", *args],
                           capture_output=True, text=True)
 
 
@@ -45,7 +45,7 @@ def test_cli_attest_writes_envelope(tmp_path):
     keyfile = tmp_path / "dev.key"
     r = _run("attest", str(REPO), "--key-out", str(keyfile))
     assert r.returncode == 0, r.stdout + r.stderr
-    env_path = REPO / ".traceagent" / "attest.json"
+    env_path = REPO / ".zft" / "attest.json"
     assert env_path.exists()
     att = json.loads(env_path.read_text())
     assert att["payloadType"] == "application/vnd.in-toto+json"
@@ -55,7 +55,7 @@ def test_cli_attest_writes_envelope(tmp_path):
 
 
 def test_cli_export_format_flag():
-    env_path = REPO / ".traceagent" / "attest.json"
+    env_path = REPO / ".zft" / "attest.json"
     r = _run("attest", str(REPO))
     assert r.returncode == 0, r.stdout + r.stderr
     try:
@@ -82,7 +82,7 @@ def test_cli_export_refuses_without_attestation(tmp_path):
 # --- invalid attestation payloads (all against throwaway roots) --------------
 
 def _write_attestation(root: Path, envelope: dict) -> Path:
-    att_dir = root / ".traceagent"
+    att_dir = root / ".zft"
     att_dir.mkdir(parents=True, exist_ok=True)
     att_path = att_dir / "attest.json"
     att_path.write_text(json.dumps(envelope, indent=2))
@@ -99,7 +99,7 @@ def _signed_envelope(payload_bytes: bytes) -> dict:
 
 
 def test_cli_export_refuses_corrupt_attestation_json(tmp_path):
-    att_dir = tmp_path / ".traceagent"
+    att_dir = tmp_path / ".zft"
     att_dir.mkdir(parents=True)
     (att_dir / "attest.json").write_text("{definitely not json")
     r = _run("export", str(tmp_path))
@@ -118,7 +118,7 @@ def test_cli_export_refuses_structurally_broken_envelope(tmp_path):
 
 def test_cli_export_refuses_statement_missing_predicate_fields(tmp_path):
     statement = {"_type": "https://in-toto.io/Statement/v1",
-                 "predicateType": "https://traceagent.dev/attestations/TraceManifest/v1",
+                 "predicateType": "https://zft.dev/attestations/TraceManifest/v1",
                  "subject": [{"name": "clause:x.json", "digest": {"sha256": "0" * 64}}],
                  "predicate": {}}
     _write_attestation(tmp_path, _signed_envelope(canonicalize(statement)))
@@ -132,7 +132,7 @@ def test_cli_attest_refuses_store_without_clauses(tmp_path):
     r = _run("attest", str(tmp_path))
     assert r.returncode == 1, "empty store must not produce an empty attestation"
     assert "nothing to attest" in r.stderr
-    assert not (tmp_path / ".traceagent" / "attest.json").exists()
+    assert not (tmp_path / ".zft" / "attest.json").exists()
 
 
 # @trace("ATT-SIGNED-ACCEPTANCE")
@@ -149,7 +149,7 @@ def test_cli_attest_then_export_roundtrip_on_tmp_store(tmp_path):
                         "check": {"kind": "test"}}],
         "external_links": [],
     }))
-    # the gate fails closed: unsupplied model identity -> model_dependent true.
+    # tethys fails closed: unsupplied model identity -> model_dependent true.
     # Supply two distinct identities to prove the independence seam.
     r = _run("attest", str(tmp_path), "--producer-model", "p", "--gate-model", "g")
     assert r.returncode == 0, r.stdout + r.stderr
@@ -162,7 +162,7 @@ def test_cli_attest_then_export_roundtrip_on_tmp_store(tmp_path):
 
 @pytest.mark.parametrize("payload", [None, 42, "text", [1]], ids=["null", "int", "str", "list"])
 def test_cli_export_refuses_non_object_attestation_file(tmp_path, payload):
-    att_dir = tmp_path / ".traceagent"
+    att_dir = tmp_path / ".zft"
     att_dir.mkdir(parents=True)
     (att_dir / "attest.json").write_text(json.dumps(payload))
     r = _run("export", str(tmp_path))
@@ -184,7 +184,7 @@ def test_cli_attest_sign_persist_verify_roundtrip_on_live_store(tmp_path):
     keyfile = tmp_path / "attest.pub"
     r = _run("attest", str(REPO), "--key-out", str(keyfile))
     assert r.returncode == 0, r.stdout + r.stderr
-    att = json.loads((REPO / ".traceagent" / "attest.json").read_text())
+    att = json.loads((REPO / ".zft" / "attest.json").read_text())
 
     parse_envelope(att)  # structural parse of the persisted envelope
 
@@ -211,7 +211,7 @@ def test_cli_verify_roundtrip_and_refusals(tmp_path):
     import base64
 
     keyfile = tmp_path / "dev.pub.json"
-    env_path = REPO / ".traceagent" / "attest.json"
+    env_path = REPO / ".zft" / "attest.json"
     env_path.unlink(missing_ok=True)
     r = _run("attest", str(REPO), "--key-out", str(keyfile))
     assert r.returncode == 0, r.stdout + r.stderr
@@ -251,7 +251,10 @@ def _store_copy(tmp_path):
     """Live .zft tree copied to a throwaway root — never attest the repo."""
     root = tmp_path / "store"
     root.mkdir()
-    shutil.copytree(REPO / ".zft", root / ".zft")
+    shutil.copytree(
+        REPO / ".zft", root / ".zft",
+        ignore=shutil.ignore_patterns("runs", "sandbox*", "cache"),
+    )
     return root
 
 
@@ -261,9 +264,9 @@ def test_cli_attest_persists_key_by_default(tmp_path):
     root = _store_copy(tmp_path)
     r = _run("attest", str(root))
     assert r.returncode == 0, r.stdout + r.stderr
-    default_key = root / ".traceagent" / "attest-key.pub.json"
+    default_key = root / ".zft" / "attest-key.pub.json"
     assert default_key.exists()
-    att = json.loads((root / ".traceagent" / "attest.json").read_text())
+    att = json.loads((root / ".zft" / "attest.json").read_text())
     key = json.loads(default_key.read_text())
     assert key["keyid"] == att["signatures"][0]["keyid"]
     r = _run("verify", str(root), "--key-in", str(default_key))
@@ -271,7 +274,7 @@ def test_cli_attest_persists_key_by_default(tmp_path):
 
 
 def _payload(root):
-    att = json.loads((root / ".traceagent" / "attest.json").read_text())
+    att = json.loads((root / ".zft" / "attest.json").read_text())
     return json.loads(base64.b64decode(att["payload"]))["predicate"]
 
 
@@ -290,8 +293,8 @@ def test_cli_attest_models_unsupplied_stay_null_not_dev_names(tmp_path):
     model-dependent (fail-closed) — never an invented dev name."""
     root = _store_copy(tmp_path)
     env = {k: v for k, v in os.environ.items()
-           if not k.startswith(("TRACEAGENT_PRODUCER", "TRACEAGENT_GATE"))}
-    r = subprocess.run([PY, "-m", "traceagent.cli.main", "attest", str(root)],
+           if not k.startswith(("ZFT_PRODUCER", "ZFT_GATE"))}
+    r = subprocess.run([PY, "-m", "zft.cli.main", "attest", str(root)],
                        capture_output=True, text=True, env=env)
     assert r.returncode == 0, r.stdout + r.stderr
     pred = _payload(root)
@@ -301,9 +304,9 @@ def test_cli_attest_models_unsupplied_stay_null_not_dev_names(tmp_path):
 
 def test_cli_attest_models_env_config_fallback(tmp_path):
     root = _store_copy(tmp_path)
-    env = os.environ | {"TRACEAGENT_PRODUCER_MODEL": "env-prod",
-                        "TRACEAGENT_GATE_MODEL": "env-gate"}
-    r = subprocess.run([PY, "-m", "traceagent.cli.main", "attest", str(root)],
+    env = os.environ | {"ZFT_PRODUCER_MODEL": "env-prod",
+                        "ZFT_GATE_MODEL": "env-gate"}
+    r = subprocess.run([PY, "-m", "zft.cli.main", "attest", str(root)],
                        capture_output=True, text=True, env=env)
     assert r.returncode == 0, r.stdout + r.stderr
     assert _payload(root)["models"] == {"producer": "env-prod", "gate": "env-gate"}

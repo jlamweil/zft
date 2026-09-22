@@ -13,8 +13,8 @@ import json
 import re
 from pathlib import Path
 
-from traceagent.gates.l1 import run_l1
-from traceagent.spec.store import load_contract
+from zft.gates.l1 import run_l1
+from zft.spec.store import load_contract
 
 ALIAS = "EVID-REF-01"
 HEX64 = re.compile(r"^[0-9a-f]{64}$")

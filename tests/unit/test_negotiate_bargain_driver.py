@@ -8,14 +8,14 @@ continuation — no decision may be invented for a counter-party.
 """
 import pytest
 
-from traceagent.debug.ledger import RunLedger
-from traceagent.negotiate.resume import (
+from zft.debug.ledger import RunLedger
+from zft.negotiate.resume import (
     CANNED_COUNTER_TERMS,
     advance_to_validated,
 )
-from traceagent.negotiate.resume import resume as resume_run
-from traceagent.negotiate.sm import IllegalTransition, NegotiationSM
-from traceagent.negotiate.terms import CounterTerms, parse_counter_terms, terms_string
+from zft.negotiate.resume import resume as resume_run
+from zft.negotiate.sm import IllegalTransition, NegotiationSM
+from zft.negotiate.terms import CounterTerms, parse_counter_terms, terms_string
 
 
 def _ledger(tmp_path):

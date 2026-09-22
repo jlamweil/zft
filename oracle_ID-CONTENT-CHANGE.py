@@ -5,7 +5,7 @@ def check():
     (title, domain) change, and stays unchanged for irrelevant metadata.
     """
     import copy
-    from traceagent.spec.canon import canonical_hash
+    from zft.spec.canon import canonical_hash
 
     # Base clause (mirrors the one used in test_canon.py)
     base = {

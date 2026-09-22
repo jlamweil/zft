@@ -17,15 +17,15 @@ Exit codes: `0` green, `1` typed rejection (JSON printed), `2` usage error.
 
 ## Wiring the gate into CI and pre-commit (adoption recipe)
 
-CI: run the daily loop's first two commands on every push — `zft lint`
-+ `zft check .` (5-minute budget per kill criterion K-CI-1; measured
-~3.4 s on the 26-clause seed corpus).
+CI: run the daily loop's first two commands on every push — see
+`.github/workflows/ci.yml` (`zft lint` + `zft check .`, 5-minute
+budget per kill criterion K-CI-1; measured ~3.4 s on the 26-clause seed corpus).
 A red clause fails the build with a typed JSON rejection naming the clause node
 (exit-code contract pinned in `tests/unit/test_check_cli.py`).
 
-Pre-commit: consumers add this repo to `.pre-commit-config.yaml` —
-`traceagent-lint` at pre-commit weight (L0 only),
-`traceagent-check` at pre-push weight. **Seed policy:** both hooks trigger only
+Pre-commit: consumers add this repo to `.pre-commit-config.yaml` (see
+`.pre-commit-hooks.yaml`) — `zft-lint` at pre-commit weight (L0 only),
+`zft-check` at pre-push weight. **Seed policy:** both hooks trigger only
 on `.zft/` (the contract corpus). A repo that has not seeded a contract never
 pays gate latency, and an unseeded store fails closed — `STORE_MISSING` is a
 typed deny (exit 1), never green-vacuous.
@@ -53,7 +53,7 @@ about to touch (`{folder}` is substituted by the driver):
   temp dir. A byte-identical workspace after a green run is pinned in
   `tests/unit/test_driver_gate.py`. Verdict logging is the driver's job.
 - Same verdict without the driver: `zft driver-gate <folder>`
-  (or `python -m traceagent.gates.driver_gate <folder>`).
+  (or `python -m zft.gates.driver_gate <folder>`).
 
 ### Pre-send seam for a batcher's send path
 
@@ -62,25 +62,26 @@ every model send — the executable form of the flags above, as env vars so any
 shell or subprocess dispatcher can set them:
 
 ```bash
-TRACEAGENT_GATE_CMD='./gates/driver-gate.sh {folder}' \
-TRACEAGENT_GATE_HOOK=shadow \
+ZFT_GATE_CMD='./gates/driver-gate.sh {folder}' \
+ZFT_GATE_HOOK=shadow \
 gates/send-gate.sh "$REPO_DIR" || exit 1
 ```
 
 - `off` (default) is a full no-op — **rollback is that one flag**: no gate
-  run, no log write, exit 0, nothing else changes. Proven by a rollback
-  rehearsal on a scratch session.
+  run, no log write, exit 0, nothing else changes. Proven by toggling in
+  `docs/send-gate-rehearsal/rollback-transcript.md`.
 - `shadow` appends one JSONL verdict per send — `allow`, `would-block`, or
-  `gate-unavailable` — to `TRACEAGENT_SEND_GATE_LOG`
-  (default `<folder>/.traceagent/send-gate/log.jsonl`) and **always exits 0**:
+  `gate-unavailable` — to `ZFT_SEND_GATE_LOG`
+  (default `<folder>/.zft/send-gate/log.jsonl`) and **always exits 0**:
   shadow logs would-blocks, it never blocks a send.
 - `enforce` blocks only a gate red (exit 1). A gate that cannot answer —
   template without `{folder}`, missing binary, budget kill at
-  `TRACEAGENT_SEND_GATE_TIMEOUT` (default 120 s) — is a transport error and
+  `ZFT_SEND_GATE_TIMEOUT` (default 120 s) — is a transport error and
   fails OPEN like the documented driver contract, loudly logged for triage.
 - Rehearsed on a scratch session against pre-registered human expectations:
-  6/6 agreement, shadow blocked nothing. Do not flip live lanes to `enforce`
-  without a human call at triage reading the rehearsal evidence first.
+  6/6 agreement, shadow blocked nothing — `docs/send-gate-rehearsal/` carries
+  the plan, both shadow logs, and the agreement table. Do not flip live lanes
+  to `enforce` without a human call at triage reading that evidence first.
 ## What `check` does and does not verify
 
 A green `zft check .` proves **traceability, not conformance**:
@@ -104,8 +105,8 @@ The `task-gate` commands enforce contract‑binding at the subagent‑dispatch b
 - **Markers & overrides**
   - Writer lanes must include `[contract: <name>]` in the task description; the name resolves to `.zft/contracts/<name>.json`.
   - Read‑only lanes (`explorer`, `explore`, `code‑explorer`, `librarian`, `oracle`, `analyst`, `councillor`, `vision`, `vision‑consultant`, `researcher`) are exempt.
-  - Override with `[ungated: <reason>]` or `TRACEAGENT_ALLOW_UNGATED=1`; logged as `override: true`.
-  - Kill switches: `TRACEAGENT_GATE_DISABLED=1` (disable gate) and `OPENCODE_PURE=1` (disable all plugins).
+  - Override with `[ungated: <reason>]` or `ZFT_ALLOW_UNGATED=1`; logged as `override: true`.
+  - Kill switches: `ZFT_GATE_DISABLED=1` (disable gate) and `OPENCODE_PURE=1` (disable all plugins).
 
 - **Scope** – this is **traceability** enforcement only; it does **not** verify that the subagent’s output satisfies the contract (see [`docs/KNOWN-GAPS.md`](KNOWN-GAPS.md), Gap 001).
 
@@ -113,7 +114,7 @@ The `task-gate` commands enforce contract‑binding at the subagent‑dispatch b
 
 ```bash
 python -m zft.cli.main gate-campaign \
-    --module src/traceagent/spec/canon.py \
+    --module src/zft/spec/canon.py \
     --tests tests/unit/test_canon.py \
     --scope canonical_hash,canonical_payload
 ```
@@ -137,7 +138,7 @@ finds the unfinished run, replays it through the state machine (typed
 
 ```bash
 # deterministic kill -9 mid-negotiation (demo seam; the kill is a real SIGKILL):
-TRACEAGENT_NEGOTIATE_KILL_AFTER=counter zft negotiate .
+ZFT_NEGOTIATE_KILL_AFTER=counter traceagent negotiate .
 zft negotiate .        # → "resuming negotiation run <id> from COUNTERED"
 ```
 
@@ -145,12 +146,35 @@ Terminal runs (`validated`/`refuse` in the ledger) are never resumed; a torn
 tail line is truncated and the recovery ledgered as `resumed_torn_tail`.
 Pinned end-to-end in `tests/e2e/test_negotiate_resumption.py`.
 
+### The bargain (`--counter-terms`)
+
+Without a term sheet `negotiate` runs the canned demo (counter → accept →
+validate). With one, the bargain is real: the sheet arrives from outside the
+process (file path, or `-` for stdin), its `terms` become the recorded
+counter-proposal, and its `decision` picks the terminal state — `accept`
+validates with the outcome bound to the terms' digest, `refuse` ends REFUSED
+with its `reason`. The document schema is strict (`{"terms", "decision",
+"reason"}`; malformed sheets are a usage-level exit 2 before any run opens).
+
+```bash
+zft negotiate . --counter-terms sheet.json   # accept → VALIDATED, digest-bound
+echo '{"terms":"...", "decision":"refuse", "reason":"..."}' \
+  | zft negotiate . --counter-terms -        # refuse → REFUSED
+```
+
+A run that countered with a sheet can only be finished by that same sheet: a
+plain invocation refuses to invent the counter-party's decision (typed
+rejection, run stays resumable), and a different sheet is a different bargain,
+also rejected. The A2A transport (`PRT-A2A-*`) enforces the same rules on the
+wire — the accept turn must echo the recorded sheet. Pinned end-to-end in
+`tests/e2e/test_negotiate_bargain.py`.
+
 ## Debuggability
 
 ```bash
-TRACEAGENT_LOG=debug zft check .      # per-decision logging
+ZFT_LOG=debug zft check .      # per-decision logging
 zft repro <run_id>                     # re-execute only failed units
-TRACEAGENT_KEEP_SANDBOX=1 ...                 # retain gate sandbox for autopsy
+ZFT_KEEP_SANDBOX=1 ...                 # retain gate sandbox for autopsy
 ```
 
 - Run ledgers: `.zft/runs/<run_id>/` — `manifest.json` (git commit, dirty, seeds, tool versions) + `events.jsonl` (fsync every 50 events; torn tail lines ignored on load).

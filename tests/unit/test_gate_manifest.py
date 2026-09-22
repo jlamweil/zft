@@ -10,7 +10,7 @@ import pytest
 from securesystemslib.dsse import Envelope
 from securesystemslib.signer import CryptoSigner
 
-from traceagent.attest.dsse import (
+from zft.attest.dsse import (
     AttestationError,
     attest_contract,
     verify_attestation,
@@ -31,9 +31,9 @@ def test_gate_manifest_hashes_and_versions():
     manifest = payload["predicate"]["gate_manifest"]
     files = manifest["files"]
     expected = [
-        "src/traceagent/gates/l1.py",
-        "src/traceagent/gates/l2.py",
-        "src/traceagent/codegen/property_gen.py",
+        "src/zft/gates/l1.py",
+        "src/zft/gates/l2.py",
+        "src/zft/codegen/property_gen.py",
     ]
     for rel in expected:
         full = REPO / rel
@@ -50,7 +50,7 @@ def test_tampered_manifest_file_hash_rejected():
     # Tamper the manifest hash for l1.py, re-sign so the signature is valid.
     tampered = _payload(att)
     tampered["predicate"]["gate_manifest"]["files"][
-        "src/traceagent/gates/l1.py"
+        "src/zft/gates/l1.py"
     ] = "0" * 64
     att["payload"] = base64.urlsafe_b64encode(
         json.dumps(tampered).encode()

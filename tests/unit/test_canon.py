@@ -5,7 +5,7 @@ truth: ARCHITECTURE.md §5.2 normalization rules, hand-computed expected value.
 """
 import json
 
-from traceagent.spec.canon import canonical_hash, canonical_json, canonical_payload
+from zft.spec.canon import canonical_hash, canonical_json, canonical_payload
 
 CLAUSE = {
     "node_id": "018f3a2b-9e41-7100-8000-000000000001",

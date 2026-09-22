@@ -4,7 +4,7 @@ import json
 import subprocess
 from pathlib import Path
 
-from traceagent.taskgate import gate_after, gate_before
+from zft.taskgate import gate_after, gate_before
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -49,7 +49,7 @@ def test_readonly_lane_exempt(tmp_path):
 def test_after_verdict_covered_then_missing(tmp_path):
     # schema-valid clause node, produced by the real CLI in the tmp root
     r = subprocess.run(
-        [str(Path(__import__("sys").executable).parent / "traceagent"), "create",
+        [str(Path(__import__("sys").executable).parent / "zft"), "create",
          "--alias", "X-CLAUSE", "--domain", "e",
          "--title", "X clause", "--statement", "WHEN x holds, THE SYSTEM SHALL hold",
          "--property", "forall x: ok(x)", "--kind", "test",
@@ -103,7 +103,7 @@ def test_override_decision_audited_ungated(tmp_path):
 
 def test_lane_classification_is_case_insensitive():
     """Zcode capitalizes agent types (Explore, Vision) — same lane either way."""
-    from traceagent.taskgate import classify
+    from zft.taskgate import classify
 
     for name in ("Explore", "explore", "Vision", "RESEARCHER", "code-explorer"):
         assert classify(name) == "readonly", name

@@ -4,13 +4,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO = Path(os.environ.get("TRACEAGENT_REPO") or os.environ.get("ZFT_REPO")
+REPO = Path(os.environ.get("ZFT_REPO") or os.environ.get("ZFT_REPO")
       or Path(__file__).resolve().parents[2])
 
 def _live_counts() -> tuple[int, int]:
     """(node count, milestone-scoped due count) derived from the live store + contract."""
-    from traceagent.gates.l2 import _current_milestone
-    from traceagent.spec.store import Store, load_contract
+    from zft.gates.l2 import _current_milestone
+    from zft.spec.store import Store, load_contract
 
     nodes = Store.load(REPO).nodes
     deferred = load_contract(REPO).get("meta", {}).get("target_milestone", {})
@@ -20,7 +20,7 @@ def _live_counts() -> tuple[int, int]:
 
 
 def _check():
-    return subprocess.run([sys.executable, "-m", "traceagent.cli.main", "check", str(REPO)],
+    return subprocess.run([sys.executable, "-m", "zft.cli.main", "check", str(REPO)],
                           capture_output=True, text=True)
 
 

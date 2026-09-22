@@ -6,7 +6,7 @@ windows, revocation, keyid pinning via attest.keys.KeyDocument), TRUNC
 (truncated payloads, signatures, files), CANON (wrong canonicalization:
 non-canonical JSON, non-canonical and urlsafe-alphabet base64), REPLAY
 (grafted signatures, cross-envelope swaps, replay against a changed store),
-EXPORT (the export surface over .traceagent/attest.json). Row ids are stable
+EXPORT (the export surface over .zft/attest.json). Row ids are stable
 and mirrored in ATTACK_MATRIX.md. Fuzzed canonicalization properties live in
 test_attest_fuzz.py (FUZZ rows).
 
@@ -26,7 +26,7 @@ import pytest
 from securesystemslib.dsse import Envelope
 from securesystemslib.signer import CryptoSigner, Key
 
-from traceagent.attest.dsse import (
+from zft.attest.dsse import (
     EnvelopeFormatError,
     KeyValidationError,
     SignatureVerificationError,
@@ -35,14 +35,14 @@ from traceagent.attest.dsse import (
     clause_subjects,
     verify_attestation,
 )
-from traceagent.attest.export import (
+from zft.attest.export import (
     export_envelope,
     export_matrix,
     export_summary,
     load_envelope,
 )
-from traceagent.attest.jcs import canonicalize
-from traceagent.attest.keys import KeyDocument
+from zft.attest.jcs import canonicalize
+from zft.attest.keys import KeyDocument
 
 REPO = Path(__file__).resolve().parents[2]
 PAYLOAD_TYPE = "application/vnd.in-toto+json"
@@ -414,8 +414,8 @@ def test_trunc_attest_file_truncated_on_disk(tmp_path):
     """TRUNC-4: truncated attest.json is refused by the export path."""
     signer = CryptoSigner.generate_ed25519()
     root = _attested_root(tmp_path, signer, envelope=_repo_attestation(signer))
-    (root / ".traceagent" / "attest.json").write_text(
-        (root / ".traceagent" / "attest.json").read_text()[:-20]
+    (root / ".zft" / "attest.json").write_text(
+        (root / ".zft" / "attest.json").read_text()[:-20]
     )
     with pytest.raises(EnvelopeFormatError, match="not valid JSON"):
         export_matrix(root)
@@ -682,12 +682,12 @@ def test_replay_rotation_roundtrip():
 
 
 # --------------------------------------------------------------------------
-# EXPORT class: the export surface over .traceagent/attest.json
+# EXPORT class: the export surface over .zft/attest.json
 
 
 def _attested_root(tmp_path, signer, envelope=None):
-    (tmp_path / ".traceagent").mkdir()
-    (tmp_path / ".traceagent" / "attest.json").write_text(
+    (tmp_path / ".zft").mkdir()
+    (tmp_path / ".zft" / "attest.json").write_text(
         json.dumps(envelope if envelope is not None else _repo_attestation(signer))
     )
     return tmp_path
@@ -742,7 +742,7 @@ def test_export_summary_refuses_non_bool_model_dependent(tmp_path):
 def test_export_dsse_is_structural_only(tmp_path):
     """EXPORT-5 (accepted, documented): export dsse validates STRUCTURE only —
     no key exists at export time; signature checking is the explicit
-    `traceagent verify` step. A well-formed envelope with an invalid
+    `zft verify` step. A well-formed envelope with an invalid
     signature still exports."""
     signer, other = (CryptoSigner.generate_ed25519(), CryptoSigner.generate_ed25519())
     envelope = _repo_attestation(signer)

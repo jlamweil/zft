@@ -30,7 +30,7 @@ and this listing stands as recorded. Full decision record: RESEARCH_LOG
 """
 import textwrap
 
-from traceagent.gates.runners.pytest_runner import run_pytest
+from zft.gates.runners.pytest_runner import run_pytest
 
 
 def _write(path, content):

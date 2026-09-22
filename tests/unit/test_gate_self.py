@@ -2,7 +2,7 @@
 
 import json
 
-from traceagent.gates.l1 import run_l1
+from zft.gates.l1 import run_l1
 
 
 def _seed_repo(tmp_path, impl_return_42: bool, with_oracle: bool):

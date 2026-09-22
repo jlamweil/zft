@@ -6,7 +6,7 @@ stable (sorted).
 """
 from pathlib import Path
 
-import traceagent.lineage.extract as extract
+import zft.lineage.extract as extract
 
 
 def _setup_tree(tmp_path):

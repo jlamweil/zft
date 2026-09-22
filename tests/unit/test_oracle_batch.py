@@ -7,7 +7,7 @@ import json
 import time
 from pathlib import Path
 
-from traceagent.gates.l1 import run_l1
+from zft.gates.l1 import run_l1
 
 ALIAS_COUNT = 5
 ALIASES = [f"BATCH-ORACLE-{i}" for i in range(ALIAS_COUNT)]
@@ -102,7 +102,7 @@ def test_one_oracle_fails(tmp_path):
 def test_batch_oracle_one_pytest_call(monkeypatch, tmp_path):
     root = _seed_repo(tmp_path)
     calls = []
-    from traceagent.gates.runners.pytest_runner import run_pytest as real_run
+    from zft.gates.runners.pytest_runner import run_pytest as real_run
     durations = []
     def spy(sandbox, test_paths=None, timeout_s=300, fail_fast=True, env=None,
             junit_xml=None, confcutdir=None):
@@ -115,7 +115,7 @@ def test_batch_oracle_one_pytest_call(monkeypatch, tmp_path):
         if junit_xml is not None:
             durations.append(time.time() - t0)
         return result
-    monkeypatch.setattr('traceagent.gates.l1.run_pytest', spy)
+    monkeypatch.setattr('zft.gates.l1.run_pytest', spy)
     _ = run_l1(root)
     # One call with junit_xml set (oracle batch) and multiple calls for test suites (no junit_xml)
     junit_calls = [c for c in calls if c[1] is not None]

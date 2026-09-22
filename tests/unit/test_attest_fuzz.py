@@ -15,13 +15,13 @@ from hypothesis import strategies as st
 from securesystemslib.dsse import Envelope
 from securesystemslib.signer import CryptoSigner
 
-from traceagent.attest.dsse import (
+from zft.attest.dsse import (
     AttestationError,
     EnvelopeFormatError,
     _canonical_base64,
     verify_attestation,
 )
-from traceagent.attest.jcs import canonicalize
+from zft.attest.jcs import canonicalize
 
 _ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 PAYLOAD_TYPE = "application/vnd.in-toto+json"

@@ -1,9 +1,9 @@
 """WP-D2: baseline-diff reverse coverage — new unbound elements red the L2 gate."""
 import json
 
-from traceagent.gates.l2 import run_l2
-from traceagent.lineage.extract import extract_bindings
-from traceagent.lineage.matrix import list_all_elements, new_unbound_elements
+from zft.gates.l2 import run_l2
+from zft.lineage.extract import extract_bindings
+from zft.lineage.matrix import list_all_elements, new_unbound_elements
 
 ALIAS = "REV-D2"
 
@@ -51,7 +51,7 @@ def test_new_unbound_element_is_flagged(tmp_path):
     new_id = "src/new.py::new_unbound"
     _seed(tmp_path, "def new_unbound():\n    return 2\n")
     baseline = _baseline_excluding(tmp_path, new_id)
-    baseline_file = tmp_path / ".traceagent" / "baseline" / "elements.json"
+    baseline_file = tmp_path / ".zft" / "baseline" / "elements.json"
     baseline_file.parent.mkdir(parents=True)
     baseline_file.write_text(json.dumps({"elements": baseline}))
 
@@ -69,7 +69,7 @@ def test_new_bound_element_is_not_flagged(tmp_path):
     new_id = "src/new.py::new_bound"
     _seed(tmp_path, f'# @trace("{ALIAS}")\ndef new_bound():\n    return 2\n')
     baseline = _baseline_excluding(tmp_path, new_id)
-    baseline_file = tmp_path / ".traceagent" / "baseline" / "elements.json"
+    baseline_file = tmp_path / ".zft" / "baseline" / "elements.json"
     baseline_file.parent.mkdir(parents=True)
     baseline_file.write_text(json.dumps({"elements": baseline}))
 
@@ -83,7 +83,7 @@ def test_missing_baseline_warns_direction_inert(tmp_path):
     """Absent baseline: the new-element direction silently skips — it must
     warn (vacuous, not complete), never flag and never pose as live."""
     _seed(tmp_path, "def new_unbound():\n    return 2\n")
-    assert not (tmp_path / ".traceagent" / "baseline" / "elements.json").exists()
+    assert not (tmp_path / ".zft" / "baseline" / "elements.json").exists()
     verdict = run_l2(tmp_path)
     assert verdict.ok, "absent baseline skips the direction; it does not red the gate"
     assert any("TR-REVERSE-COVERAGE baseline absent" in w for w in verdict.warnings)
@@ -91,7 +91,7 @@ def test_missing_baseline_warns_direction_inert(tmp_path):
 
 def test_seeded_baseline_clears_the_warning(tmp_path):
     _seed(tmp_path, "def new_unbound():\n    return 2\n")
-    baseline_file = tmp_path / ".traceagent" / "baseline" / "elements.json"
+    baseline_file = tmp_path / ".zft" / "baseline" / "elements.json"
     baseline_file.parent.mkdir(parents=True)
     baseline_file.write_text(json.dumps({"elements": list_all_elements(tmp_path)}))
     verdict = run_l2(tmp_path)
@@ -100,15 +100,15 @@ def test_seeded_baseline_clears_the_warning(tmp_path):
 
 
 def test_baseline_command_writes_the_first_real_extraction(tmp_path, capsys):
-    """`traceagent baseline` is the seeding act: one real extraction, written
+    """`zft baseline` is the seeding act: one real extraction, written
     where run_l2's grandfathering direction reads it."""
-    from traceagent.cli.main import main as cli_main
-    from traceagent.gates.l2 import _load_baseline_elements
+    from zft.cli.main import main as cli_main
+    from zft.gates.l2 import _load_baseline_elements
 
     _seed(tmp_path, "def new_unbound():\n    return 2\n")
     assert cli_main(["baseline", str(tmp_path)]) == 0
     out = json.loads(capsys.readouterr().out)
-    baseline_file = tmp_path / ".traceagent" / "baseline" / "elements.json"
+    baseline_file = tmp_path / ".zft" / "baseline" / "elements.json"
     assert baseline_file.is_file()
     doc = json.loads(baseline_file.read_text())
     assert doc["elements"] == list_all_elements(tmp_path)
@@ -122,7 +122,7 @@ def test_baseline_command_writes_the_first_real_extraction(tmp_path, capsys):
 def test_baseline_command_on_elementless_tree_warns_inline(tmp_path, capsys):
     """Zero extracted elements is honest but must not read as success silently:
     the report carries the warning in-band (one JSON line, machine-readable)."""
-    from traceagent.cli.main import main as cli_main
+    from zft.cli.main import main as cli_main
 
     empty = tmp_path / "empty"
     empty.mkdir()

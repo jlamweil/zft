@@ -1,9 +1,9 @@
 """C-25/C-26/C-27: L2 orchestration, repro, L3 stub + model labeling."""
 import json
 
-from traceagent.debug.ledger import RunLedger
-from traceagent.gates.l2 import run_l2
-from traceagent.gates.l3 import build_gate_log
+from zft.debug.ledger import RunLedger
+from zft.gates.l2 import run_l2
+from zft.gates.l3 import build_gate_log
 
 
 def _seed(tmp_path):
@@ -97,7 +97,7 @@ def test_repro_reruns_failed_units(tmp_path):
     # restore, repro must re-execute and recover
     (root / "tests" / "test_bound.py").write_text(
         '# @trace("GATE-INV-01")\ndef test_bound():\n    assert True\n')
-    from traceagent.debug.repro import repro
+    from zft.debug.repro import repro
 
     result = repro(root, tmp_path / "runs", led.run_id)
     assert result.recovered is True

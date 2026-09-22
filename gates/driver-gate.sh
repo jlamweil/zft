@@ -29,21 +29,21 @@ FOLDER=$(cd "$1" && pwd) || { echo "driver-gate: cannot resolve folder: $1"; exi
 export PYTHONDONTWRITEBYTECODE=1
 unset PYTEST_ADDOPTS PYTEST_PLUGINS COVERAGE_FILE COVERAGE_PROCESS_START
 
-# locate an interpreter that can import traceagent (explicit override, the
+# locate an interpreter that can import zft (explicit override, the
 # checkout's venv, then PATH)
-PY=${TRACEAGENT_PYTHON:-}
+PY=${ZFT_PYTHON:-}
 if [ -z "$PY" ]; then
   HERE=$(cd "$(dirname "$0")" && pwd)
   for cand in "$HERE/../.venv/bin/python" "$HERE/../../.venv/bin/python" python3; do
     if command -v "$cand" >/dev/null 2>&1 \
-        && "$cand" -c "import traceagent" >/dev/null 2>&1; then
+        && "$cand" -c "import zft" >/dev/null 2>&1; then
       PY=$cand
       break
     fi
   done
 fi
 if [ -z "$PY" ]; then
-  echo "driver-gate: no interpreter with traceagent importable (set TRACEAGENT_PYTHON)"
+  echo "driver-gate: no interpreter with zft importable (set ZFT_PYTHON)"
   exit 1
 fi
 
@@ -51,9 +51,9 @@ fi
 # driver-side kill/transport path would fail OPEN
 BUDGET=${DRIVER_GATE_BUDGET_S:-100}
 if command -v timeout >/dev/null 2>&1; then
-  OUT=$(timeout -k 5 "$BUDGET" "$PY" -m traceagent.gates.driver_gate "$FOLDER" 2>&1)
+  OUT=$(timeout -k 5 "$BUDGET" "$PY" -m zft.gates.driver_gate "$FOLDER" 2>&1)
 else
-  OUT=$("$PY" -m traceagent.gates.driver_gate "$FOLDER" 2>&1)
+  OUT=$("$PY" -m zft.gates.driver_gate "$FOLDER" 2>&1)
 fi
 RC=$?
 if [ "$RC" -eq 124 ] || [ "$RC" -eq 137 ]; then

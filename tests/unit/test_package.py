@@ -2,8 +2,8 @@
 
 
 def test_package_imports():
-    import traceagent
+    import zft
 
-    assert traceagent.__version__
+    assert zft.__version__
 
 

@@ -1,6 +1,6 @@
 # AI-Level Requirements
 
-Requirements on how the **AI (agent) side** of a traceagent contract must operate. Each is a behavioural obligation derived from a **verified** finding and is proposed for adoption as a clause. Status: **PROPOSED** (not yet enforced).
+Requirements on how the **AI (agent) side** of a ZFT contract must operate. Each is a behavioural obligation derived from a **verified** finding (see `designs/proposals/HYPOTHESES.md`) and is proposed for adoption as a clause (see `P-010`). Status: **PROPOSED** (not yet enforced).
 
 Rationale in one line: **presence is not evidence** — an AI may not claim conformance from an artifact that merely exists; the gate must execute and pin the evidence.
 

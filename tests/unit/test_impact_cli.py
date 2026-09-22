@@ -18,7 +18,7 @@ def test_impact_cli_func():
 # @trace("TR-IMPACT-QUERY")
 def _run_impact(args):
     return subprocess.run(
-        [sys.executable, "-m", "traceagent.cli.main", "impact"] + args,
+        [sys.executable, "-m", "zft.cli.main", "impact"] + args,
         capture_output=True,
         text=True,
     )

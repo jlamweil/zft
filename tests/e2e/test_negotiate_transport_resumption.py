@@ -25,9 +25,9 @@ pytest.importorskip("a2a")
 from a2a.client.transports.jsonrpc import JsonRpcTransport  # noqa: E402
 from a2a.types import AgentCard, Message, SendMessageRequest, TaskState  # noqa: E402
 
-from traceagent.debug.ledger import RunLedger  # noqa: E402
+from zft.debug.ledger import RunLedger  # noqa: E402
 
-REPO = Path(os.environ.get("TRACEAGENT_REPO")
+REPO = Path(os.environ.get("ZFT_REPO")
             or Path(__file__).resolve().parents[2])
 PY = sys.executable
 TASK = "neg-001"
@@ -37,14 +37,17 @@ PORT_LINE = re.compile(r"port=(\d+) task=\S+ resumed=(True|False)")
 def _store_copy(tmp_path: Path) -> Path:
     root = tmp_path / "store"
     root.mkdir()
-    shutil.copytree(REPO / ".zft", root / ".zft")
+    shutil.copytree(
+        REPO / ".zft", root / ".zft",
+        ignore=shutil.ignore_patterns("runs", "sandbox*", "cache"),
+    )
     return root
 
 
 def _start(root: Path) -> tuple[subprocess.Popen, int, bool]:
     """Start a server subprocess; returns (proc, port, resumed)."""
     proc = subprocess.Popen(
-        [PY, "-m", "traceagent.negotiate.transport", "--root", str(root),
+        [PY, "-m", "zft.negotiate.transport", "--root", str(root),
          "--task-id", TASK],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     line: list[str] = []
@@ -73,7 +76,7 @@ def _send(port: int, **metadata):
 
 
 def _sole_run_events(root: Path) -> list[dict]:
-    runs = sorted((root / ".traceagent" / "runs").iterdir())
+    runs = sorted((root / ".zft" / "runs").iterdir())
     assert len(runs) == 1, f"expected one run, found {[r.name for r in runs]}"
     return RunLedger.load(runs[0].parent, runs[0].name).events
 
@@ -103,7 +106,7 @@ def test_kill9_mid_wire_protocol_resumes_same_run(tmp_path):
         task = _send(port2, action="accept_counter").task
         assert task.status.state == TaskState.TASK_STATE_WORKING
         task = _send(port2, action="validate").task
-        assert [a.name for a in task.artifacts] == ["traceagent-contract"]
+        assert [a.name for a in task.artifacts] == ["zft-contract"]
         events = _sole_run_events(root)
         assert [e["event"] for e in events] == \
             ["cfp", "counter", "resumed", "accept_counter", "validate", "validated"], \

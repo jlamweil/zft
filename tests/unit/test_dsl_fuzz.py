@@ -34,10 +34,10 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from traceagent.dsl.ears import EarsError, parse_statement
-from traceagent.dsl.oracle import OracleError, generate_oracle, predicate_symbols
-from traceagent.dsl.predicate import ParseError, compile_predicate
-from traceagent.dsl.strategies import StrategyError, strategy_for
+from zft.dsl.ears import EarsError, parse_statement
+from zft.dsl.oracle import OracleError, generate_oracle, predicate_symbols
+from zft.dsl.predicate import ParseError, compile_predicate
+from zft.dsl.strategies import StrategyError, strategy_for
 
 _HYP = settings(
     deadline=None,
@@ -439,7 +439,7 @@ def test_fuzz_binder_extraction_matches_bound_variables(pick):
     """DSL-FUZZ-10 (cross-surface): binder_strategies extracts exactly the
     quantifier's bound variables, resolves each through strategy_for, and the
     rendered property module compiles — parser × strategies × codegen agree."""
-    from traceagent.codegen.property_gen import (
+    from zft.codegen.property_gen import (
         PropertyTestSpec,
         binder_strategies,
         render_property_test,

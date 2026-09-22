@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from traceagent.negotiate.sm import (
+from zft.negotiate.sm import (
     _TRANSITIONS,
     DEFAULT_RETRY_BUDGET,
     IllegalTransition,

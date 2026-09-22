@@ -2,9 +2,9 @@
 
 from types import SimpleNamespace
 
-from traceagent.gates.runners import mutmut_runner
-from traceagent.gates.runners.mutmut_runner import run_campaign
-from traceagent.gates.sandbox import prepare_sandbox
+from zft.gates.runners import mutmut_runner
+from zft.gates.runners.mutmut_runner import run_campaign
+from zft.gates.sandbox import prepare_sandbox
 
 MODULE = """def alpha():
     return 1 == 2

@@ -17,24 +17,16 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
-pytestmark = pytest.mark.xfail(
-    reason="exercises the Codex gates-hook prototype under plugins/codex/, "
-    "which is not shipped in the public cut",
-    strict=False,
-)
-
 REPO = Path(__file__).resolve().parents[2]
 HOOK = REPO / "plugins" / "codex" / "hooks" / "gates_hook.py"
-SKILL = REPO / "plugins" / "codex" / "skills" / "traceagent-gates" / "SKILL.md"
+SKILL = REPO / "plugins" / "codex" / "skills" / "zft-gates" / "SKILL.md"
 NODE_ID = "018f3a2b-9e41-7100-8000-000000000001"
 CLAUSE_PATH = ".zft/specs/x/x-one.json"
 
 
 def _seed_store(tmp_path: Path) -> None:
     """One L0-green clause node (test_lint_store's fixture shape)."""
-    from traceagent.spec.canon import canonical_hash
+    from zft.spec.canon import canonical_hash
 
     spec_dir = tmp_path / ".zft" / "specs" / "x"
     spec_dir.mkdir(parents=True)
@@ -63,10 +55,10 @@ def _apply_patch_event(root: Path, *edits: str,
 def _fire(event: dict, root: Path, *, mode: str | None = None,
           extra_env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
     env = dict(os.environ)
-    env.pop("TRACEAGENT_HOOK_MODE", None)
-    env.pop("TRACEAGENT_BIN", None)
+    env.pop("ZFT_HOOK_MODE", None)
+    env.pop("ZFT_BIN", None)
     if mode:
-        env["TRACEAGENT_HOOK_MODE"] = mode
+        env["ZFT_HOOK_MODE"] = mode
     env.update(extra_env or {})
     return subprocess.run([sys.executable, str(HOOK)],
                           input=json.dumps(event), capture_output=True,
@@ -74,7 +66,7 @@ def _fire(event: dict, root: Path, *, mode: str | None = None,
 
 
 def _last_log_record(root: Path) -> dict:
-    log = root / ".traceagent" / "gates-hook" / "log.jsonl"
+    log = root / ".zft" / "gates-hook" / "log.jsonl"
     lines = log.read_text().strip().splitlines()
     assert lines, "hook wrote no log records"
     return json.loads(lines[-1])
@@ -155,7 +147,7 @@ def test_missing_gate_fails_closed_in_enforce(tmp_path):
     _seed_store(tmp_path)
     proc = _fire(_apply_patch_event(tmp_path, CLAUSE_PATH), tmp_path,
                  mode="enforce",
-                 extra_env={"TRACEAGENT_BIN": "/nonexistent/traceagent"})
+                 extra_env={"ZFT_BIN": "/nonexistent/zft"})
     assert proc.returncode == 2
     assert "GATE_UNAVAILABLE" in proc.stderr
     assert _last_log_record(tmp_path)["decision"] == "gate_unavailable"
@@ -167,7 +159,7 @@ def test_skill_folder_shape():
     text = SKILL.read_text()
     assert text.startswith("---\n")
     frontmatter = text.split("---\n", 2)[1]
-    assert "name: traceagent-gates" in frontmatter
+    assert "name: zft-gates" in frontmatter
     description = next(line for line in frontmatter.splitlines()
                        if line.startswith("description:"))
     assert len(description) > 80  # trigger-rich, per Codex skill guidance

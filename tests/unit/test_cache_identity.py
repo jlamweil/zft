@@ -5,11 +5,11 @@ Ensures that changes to the gate source or contract invalidate cached verdicts.
 import json
 from pathlib import Path
 
-from traceagent.gates.l1 import _cache_key, run_l1
+from zft.gates.l1 import _cache_key, run_l1
 
 
 def test_cache_key_changes_when_gate_fingerprint_changes(monkeypatch):
-    import traceagent.gates.l1 as l1_mod
+    import zft.gates.l1 as l1_mod
     key1 = _cache_key("TR-A", "b1", "oracle1")
     monkeypatch.setattr(l1_mod, "_GATE_FINGERPRINT", "different_fingerprint")
     key2 = _cache_key("TR-A", "b1", "oracle1")
@@ -61,7 +61,7 @@ def test_cache_invalidation_when_gate_fingerprint_changes(monkeypatch, tmp_path)
     assert v1.executed == 1
     assert sentinel.is_file()
     sentinel.unlink()
-    import traceagent.gates.l1 as l1_mod
+    import zft.gates.l1 as l1_mod
     monkeypatch.setattr(l1_mod, "_GATE_FINGERPRINT", "different_fingerprint_2")
     v2 = run_l1(root)
     assert v2.executed == 1

@@ -96,9 +96,9 @@ one.
 ### #1 · CI gate — pre-commit hook + CI pipeline
 
 **Shape.** `traceagent check .` (L0 + coverage + L1 fast tier) as a
-pre-commit hook and as the CI job; `gate-campaign`
+pre-commit hook (`.pre-commit-hooks.yaml`) and as the CI job; `gate-campaign`
 (L2 mutation) stays a scheduled/manual job, not per-push. Deliverables:
-pinned environment, an exit-code contract test
+pinned environment (uv.lock already exists), an exit-code contract test
 (0/1/2 with typed JSON on stdout), and a documented seed policy for L1
 (properties run under recorded seeds; CI failure reproduction = `repro <run>`).
 

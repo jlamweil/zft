@@ -8,8 +8,8 @@ REPO = Path(__file__).resolve().parents[2]
 
 
 def _run(resume: bool):
-    args = [sys.executable, "-m", "traceagent.cli.main", "gate-campaign",
-            "--module", "src/traceagent/spec/lint.py",
+    args = [sys.executable, "-m", "zft.cli.main", "gate-campaign",
+            "--module", "src/zft/spec/lint.py",
             "--tests", "tests/unit/test_lint_store.py",
             "--scope", "lint_store"]
     if resume:
@@ -31,6 +31,6 @@ def test_gate_campaign_resume_flag():
     assert out2["total"] == out1["total"]
     assert out2["resumed"] == out1["in_scope_total"]
 
-    ckpt = REPO / ".traceagent" / "sandbox" / ".traceagent" / "cache" / "mutants.json"
+    ckpt = REPO / ".zft" / "sandbox" / ".zft" / "cache" / "mutants.json"
     state = json.loads(ckpt.read_text())
     assert all(isinstance(v, dict) and "in_scope" in v for v in state.values())

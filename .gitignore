@@ -1,8 +1,8 @@
-.venv/
 .venv*/
 __pycache__/
+build/
+dist/
 *.pyc
-.hypothesis/
 .pytest_cache/
 .ruff_cache/
 *.egg-info/
@@ -11,19 +11,27 @@ private/
 # generated ZFT artifacts (specs/ and contracts/ remain tracked)
 .zft/gherkin/
 .zft/runs/
-.zft/sandbox/
+.zft/sandbox*/
 .zft/cache/
 .zft/baseline/
 .zft/attest.json
-.zft/attest.pub.json
+.zft/attest-key.pub.json
 .zft/audit.log
 .zft/tmp_oracle_batch.*
 .mutmut*
 # mutation-campaign workspaces, incl. renamed archives (mutants-prev-*) —
-# never evidence, see lineage.extract.skipped_dir
+# never evidence, see lineage.extract.skipped_dir and ATTACK_MATRIX.md EVID-1
 mutants*/
 
-# Phase-B batch artifacts
+# opencode plugin dev scaffolding — the TS plugin's @opencode-ai/plugin
+# import is type-only (stripped at transpile; opencode loads it raw), so these
+# exist only for local type-checking. They never ship: PUBLIC_REPO.md ships
+# .opencode/{plugins,skills} + README only.
+.opencode/node_modules/
+.opencode/package.json
+.opencode/package-lock.json
+
+# Phase-B batch artifacts (jobs/README.md)
 scratch/
 jobs/out-*.log
 jobs/err-*.log
@@ -33,13 +41,8 @@ jobs/junit-*.xml
 jobs/hyp-db/
 jobs/kick.log
 jobs/
-.traceagent/attest.json
-.traceagent/attest-key.pub.json
-.traceagent/cache/
-.traceagent/runs/
-.traceagent/gherkin/
-.traceagent/sandbox/
 texput.log
 .slim/deepwork/
-build/
-dist/
+
+# paper review pipeline transient state
+paper/review/state/

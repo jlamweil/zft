@@ -8,8 +8,8 @@ the whole cache (cold re-parse of every file).
 """
 import json
 
-import traceagent.lineage.extract as extract
-from traceagent.lineage.extract import extract_bindings
+import zft.lineage.extract as extract
+from zft.lineage.extract import extract_bindings
 
 PY_A = '# @trace("ALPHA-X")\ndef alpha():\n    return 1\n'
 PY_B = '# @trace("BETA-Y")\ndef beta():\n    return 2\n'
@@ -40,7 +40,7 @@ def test_warm_reuses_cache(tmp_path, monkeypatch):
     cold = extract_bindings(root)
     assert {b["alias"] for b in cold} == {"ALPHA-X", "BETA-Y"}
 
-    cache = root / ".traceagent" / "cache" / "extract.json"
+    cache = root / ".zft" / "cache" / "extract.json"
     assert cache.exists(), "cold run must write the cache"
     data = json.loads(cache.read_text())
     assert data["version"] == extract.CACHE_VERSION
@@ -69,7 +69,7 @@ def test_edit_invalidates(tmp_path, monkeypatch):
 def test_cache_version_invalidates(tmp_path, monkeypatch):
     root = _build_tree(tmp_path)
     cold = extract_bindings(root)
-    cache = root / ".traceagent" / "cache" / "extract.json"
+    cache = root / ".zft" / "cache" / "extract.json"
     data = json.loads(cache.read_text())
     data["version"] = extract.CACHE_VERSION - 1  # cache from an older format
     cache.write_text(json.dumps(data))

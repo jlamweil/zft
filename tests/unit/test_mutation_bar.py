@@ -7,8 +7,8 @@ import json
 
 import pytest
 
-from traceagent.cli.main import main
-from traceagent.gates.mutation_bar import (
+from zft.cli.main import main
+from zft.gates.mutation_bar import (
     COSMETIC,
     STATUS_BY_EXIT,
     FileVerdicts,
@@ -462,7 +462,7 @@ def test_source_manifest_mismatch_forces_source_drift_class(tmp_path):
 
 
 def test_load_shard_skips_sandbox_evidence_mirrors(tmp_path):
-    mirror = tmp_path / "results-mut-demo" / "mutants" / ".traceagent" / "sb"
+    mirror = tmp_path / "results-mut-demo" / "mutants" / ".zft" / "sb"
     mirror.mkdir(parents=True)
     (mirror / "m.py.meta").write_text(json.dumps(
         {"exit_code_by_key": {"sb.m.x_f__mutmut_1": None}}))

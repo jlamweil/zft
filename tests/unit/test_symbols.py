@@ -4,7 +4,7 @@ Line anchors go stale after inserts; symbol anchors must keep resolving.
 """
 import textwrap
 
-from traceagent.lineage.extract import extract_bindings
+from zft.lineage.extract import extract_bindings
 
 SAMPLE = '''
 # @trace("TR-FORWARD-COVERAGE")
@@ -39,7 +39,7 @@ def test_symbol_anchor_tracks_rename(tmp_path):
 # @trace("TR-UNRESOLVED-BINDINGS-FAIL")
 def test_unresolvable_alias_reported(tmp_path):
     """TR-UNRESOLVED-BINDINGS-FAIL: a binding whose alias is not in the store is flagged."""
-    from traceagent.lineage.matrix import coverage_report
+    from zft.lineage.matrix import coverage_report
 
     p = tmp_path / "m.py"
     p.write_text(textwrap.dedent(SAMPLE))
@@ -52,8 +52,8 @@ def test_unresolvable_alias_reported(tmp_path):
 # @trace("TR-REVERSE-COVERAGE")
 def test_reverse_coverage_flags_unbound_elements(tmp_path):
     """TR-REVERSE-COVERAGE: elements without bindings are flagged out-of-contract."""
-    from traceagent.lineage.extract import extract_bindings
-    from traceagent.lineage.matrix import coverage_report
+    from zft.lineage.extract import extract_bindings
+    from zft.lineage.matrix import coverage_report
 
     (tmp_path / "bound.py").write_text('# @trace("TR-FORWARD-COVERAGE")\ndef a():\n    return 1\n')
     (tmp_path / "unbound.py").write_text("def b():\n    return 2\n")
@@ -69,7 +69,7 @@ def test_reverse_coverage_flags_unbound_elements(tmp_path):
 def test_coverage_ratio_is_the_bound_fraction():
     # GATE-MUTATION-KILL: coverage_ratio key + covered/total value are the
     # report's contract (key renames and */divergence must not pass)
-    from traceagent.lineage.matrix import coverage_report
+    from zft.lineage.matrix import coverage_report
 
     bindings = [{"alias": "A-ONE", "file": "a.py"},
                 {"alias": "A-TWO", "file": "b.py"}]
@@ -80,7 +80,7 @@ def test_coverage_ratio_is_the_bound_fraction():
 
 def test_coverage_ratio_empty_store_is_one():
     # GATE-MUTATION-KILL: no clauses in the store means nothing unbound — 1.0
-    from traceagent.lineage.matrix import coverage_report
+    from zft.lineage.matrix import coverage_report
 
     report = coverage_report([], set())
     assert report["coverage_ratio"] == 1.0

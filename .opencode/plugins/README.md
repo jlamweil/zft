@@ -40,12 +40,23 @@ required for any change to take effect:
 - project-scoped: `<project>/.opencode/plugins/`
 - global: `~/.config/opencode/plugins/`
 
-Copy the two files from the repository's `.opencode/plugins/` directory into
-whichever scope you want (global = every zft project; project = one repo,
-travels with the clone):
+Install either way:
+
+**npm** (versioned, updatable — opencode installs it with Bun at startup):
 
 ```bash
-# global (recommended — you only do this once)
+bun add -D opencode-zft     # or: npm install -D opencode-zft
+```
+
+```json
+{ "plugin": ["opencode-zft"] }     // in opencode.json / opencode.jsonc
+```
+
+**or copy the files** into whichever scope you want (global = every zft
+project; project = one repo, travels with the clone):
+
+```bash
+# global (recommended for the copy path — you only do this once)
 mkdir -p ~/.config/opencode/plugins
 cp zft-gate.ts zft-lint-gate.js ~/.config/opencode/plugins/
 
@@ -53,6 +64,7 @@ cp zft-gate.ts zft-lint-gate.js ~/.config/opencode/plugins/
 mkdir -p .opencode/plugins
 cp zft-gate.ts zft-lint-gate.js .opencode/plugins/
 ```
+
 
 Add the skill so the agent knows the workflow (authoring clauses, binding
 deliverable elements, running the gate, reading typed rejections):

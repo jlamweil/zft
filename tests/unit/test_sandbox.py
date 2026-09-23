@@ -205,3 +205,184 @@ def test_package_layout_rejects_a_bare_package_path(tmp_path):
     (pkg / "__init__.py").write_text("")
     assert _package_layout(pkg / "__init__.py") is not None   # module in package
     assert _package_layout(pkg) is None                       # the package itself
+
+
+# ---------------------------------------------------------------------------
+# gates/sandbox kill-shard pins (2026-09-20 night sitting): exact-value and
+# byte-exact pins over the survivor families (gate_env 3, place_tests 8,
+# _validate_placement 3, prepare_sandbox 16); waiver candidate
+# prepare_sandbox _49 pre-registered in scratch/sandbox-shard/SITTING.md.
+# ---------------------------------------------------------------------------
+
+STRIPTUP = ("('PYTEST_ADDOPTS', 'PYTEST_PLUGINS', 'PYTHONPATH', "
+            "'PYTHONOPTIMIZE', 'PYTHONSTARTUP', 'COVERAGE_FILE', "
+            "'COVERAGE_PROCESS_START')")
+
+
+def test_gate_env_overwrites_dont_write_bytecode_exact(monkeypatch):
+    monkeypatch.setenv("PYTHONDONTWRITEBYTECODE", "0")
+    env = gate_env()
+    assert env["PYTHONDONTWRITEBYTECODE"] == "1"
+
+
+def test_validate_placement_refusal_messages_exact(tmp_path):
+    sb = tmp_path / "sb"
+    sb.mkdir()
+    src = sb / "m.py"
+    src.write_text("def f():\n    return 1\n")
+    with pytest.raises(ValueError) as ei:
+        prepare_sandbox(sb, mutate_paths=[src], also_copy=[])
+    assert str(ei.value) == (
+        f"sandbox {sb} contains source {src}: "
+        "preparation would delete real files")
+
+    pkg = tmp_path / "src" / "pkg"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text("")
+    (pkg / "mod.py").write_text("x = 1\n")
+    inside = pkg / "sb"
+    with pytest.raises(ValueError) as ei:
+        prepare_sandbox(inside, mutate_paths=[pkg / "mod.py"], also_copy=[])
+    assert str(ei.value) == (
+        f"sandbox {inside} sits inside mirrored package {pkg.resolve()}: "
+        "generated files would leak into the real package")
+
+
+def test_validate_placement_checks_every_mutate_path(tmp_path):
+    """The package-layout loop must keep walking past a flat module —
+    break-on-first would skip the package member's inside-package check."""
+    pkg = tmp_path / "src" / "pkg"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text("")
+    (pkg / "mod.py").write_text("x = 1\n")
+    flat = tmp_path / "flat.py"
+    flat.write_text("x = 1\n")
+    with pytest.raises(ValueError, match="leak into the real package"):
+        prepare_sandbox(pkg / "sb", mutate_paths=[flat, pkg / "mod.py"],
+                        also_copy=[])
+
+
+def test_place_tests_second_call_tolerates_existing_layout(tmp_path):
+    root = tmp_path / "repo"
+    (root / "tests" / "unit").mkdir(parents=True)
+    (root / "tests" / "golden").mkdir()
+    (root / "tests" / "golden" / "f.json").write_text("{}")
+    test_file = root / "tests" / "unit" / "test_x.py"
+    test_file.write_text("def test_x():\n    assert True\n")
+    sandbox = tmp_path / "sandbox"
+    sandbox.mkdir()
+
+    first = place_tests(sandbox, test_file, root)
+    second = place_tests(sandbox, test_file, root)  # must not raise
+    assert first == second == sandbox / "tests" / "unit" / "test_x.py"
+    assert (sandbox / "tests" / "golden" / "f.json").exists()
+
+
+def test_place_tests_golden_copy_excludes_state(tmp_path):
+    root = tmp_path / "repo"
+    (root / "tests" / "unit").mkdir(parents=True)
+    golden = root / "tests" / "golden"
+    golden.mkdir(parents=True)
+    (golden / "f.json").write_text("{}")
+    (golden / "__pycache__").mkdir()
+    (golden / "__pycache__" / "f.pyc").write_text("stale")
+    (golden / ".coverage").write_text("stale")
+    test_file = root / "tests" / "unit" / "test_x.py"
+    test_file.write_text("def test_x():\n    assert True\n")
+
+    sandbox = tmp_path / "sandbox"
+    sandbox.mkdir()
+    place_tests(sandbox, test_file, root)
+    assert (sandbox / "tests" / "golden" / "f.json").exists()
+    assert not (sandbox / "tests" / "golden" / "__pycache__").exists()
+    assert not (sandbox / "tests" / "golden" / ".coverage").exists()
+
+
+def test_prepare_makes_missing_nested_parents(tmp_path):
+    src = tmp_path / "m.py"
+    src.write_text("def f():\n    return 1\n")
+    sandbox = tmp_path / "deep" / "nesting" / "sandbox"
+    prepare_sandbox(sandbox, mutate_paths=[src], also_copy=[])
+    assert (sandbox / "m.py").exists()
+
+
+def test_prepare_package_mirror_excludes_state(tmp_path):
+    pkg = tmp_path / "src" / "pkg"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text("")
+    (pkg / "mod.py").write_text("x = 1\n")
+    (pkg / "__pycache__").mkdir()
+    (pkg / "__pycache__" / "mod.pyc").write_text("stale")
+    (pkg / ".coverage").write_text("stale")
+    sandbox = prepare_sandbox(tmp_path / "sandbox",
+                              mutate_paths=[pkg / "mod.py"], also_copy=[])
+    assert (sandbox / "pkg" / "mod.py").exists()
+    assert not (sandbox / "pkg" / "__pycache__").exists()
+    assert not (sandbox / "pkg" / ".coverage").exists()
+
+
+def test_prepare_mirrors_two_modules_of_same_package(tmp_path):
+    pkg = tmp_path / "src" / "pkg"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text("")
+    (pkg / "a.py").write_text("x = 1\n")
+    (pkg / "b.py").write_text("y = 2\n")
+    sandbox = prepare_sandbox(tmp_path / "sandbox",
+                              mutate_paths=[pkg / "a.py", pkg / "b.py"],
+                              also_copy=[])
+    assert (sandbox / "pkg" / "a.py").exists()
+    assert (sandbox / "pkg" / "b.py").exists()
+
+
+def test_prepare_tolerates_none_in_also_copy_and_keeps_copying(tmp_path):
+    src = tmp_path / "m.py"
+    src.write_text("def f():\n    return 1\n")
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "test_g.py").write_text("def test_g():\n    assert True\n")
+    sandbox = prepare_sandbox(tmp_path / "sandbox", mutate_paths=[src],
+                              also_copy=[None, tests])
+    assert (sandbox / "tests" / "test_g.py").exists()
+    assert "also_copy = ['tests']" in (sandbox / "pyproject.toml").read_text()
+
+
+def test_prepare_generated_conftest_is_byte_exact(tmp_path):
+    src = tmp_path / "m.py"
+    src.write_text("def f():\n    return 1\n")
+    sandbox = prepare_sandbox(tmp_path / "sandbox", mutate_paths=[src],
+                              also_copy=[])
+    sandbox_abs = str(sandbox.resolve())
+    expected = (
+        "import os\n"
+        "import sys\n"
+        f"for _k in {STRIPTUP}:\n"
+        "    os.environ.pop(_k, None)\n"
+        f"os.chdir('{sandbox_abs}')\n"
+        f"sys.path.insert(0, '{sandbox_abs}')\n"
+    )
+    assert (sandbox / "conftest.py").read_text() == expected
+
+
+def test_prepare_generated_pyproject_is_byte_exact(tmp_path):
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "m.py").write_text("def f():\n    return 1\n")
+    (src / "n.py").write_text("def g():\n    return 2\n")
+    oracle = tmp_path / "oracle_G.py"
+    oracle.write_text("def expired(t):\n    return t > 100\n")
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "test_g.py").write_text("def test_g():\n    assert True\n")
+    sandbox = prepare_sandbox(tmp_path / "sandbox",
+                              mutate_paths=[src / "m.py", src / "n.py"],
+                              also_copy=[oracle, tests])
+    expected = (
+        '[tool.mutmut]\n'
+        'paths_to_mutate = ["m.py", "n.py"]\n'
+        "also_copy = ['oracle_G.py', 'tests']\n"
+        "\n"
+        "[tool.pytest.ini_options]\n"
+        'norecursedirs = ["mutants"]\n'
+        'addopts = "-q"\n'
+    )
+    assert (sandbox / "pyproject.toml").read_text() == expected

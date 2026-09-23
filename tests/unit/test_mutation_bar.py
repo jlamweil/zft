@@ -240,6 +240,137 @@ def test_written_records_drive_the_bar_end_to_end(tmp_path):
     ]
 
 
+# --- residue cut pins (2026-09-21 night sitting: the fresh-generation
+#     survivor block; baseline scratch/killproof-mutation-bar-base) ---------
+
+def _residue_tree(tmp_path):
+    """A mutants/ tree exercising every walk edge the writer must survive:
+    a .zft sandbox mirror pair sorting first, a wrong-version spans index
+    with verdicts, an orphan .spans with no .meta, one rich module whose
+    index carries a scaffolding-only variant (identical to orig), a
+    same-length two-line change with trailing body lines, variants two lines
+    longer and two lines shorter than their original, and a variant with no
+    __mutmut_orig entry, then a second real module for the count."""
+    lines: list[str] = []
+    spans: dict[str, list[int]] = {}
+
+    def add(name, body):
+        start = len(lines) + 1
+        lines.extend(body)
+        spans[name] = [start, len(lines)]
+
+    add("x_f__mutmut_orig", [
+        "\n", "\n", "def x_f__mutmut_orig(x):\n", '    """Doc: value 1."""\n',
+        "    if x > 0:\n", "        return x + 1\n", "    return 0\n"])
+    add("x_f__mutmut_1", [  # docstring-only mutation
+        "\n", "\n", "def x_f__mutmut_1(x):\n", '    """Doc: value 2."""\n',
+        "    if x > 0:\n", "        return x + 1\n", "    return 0\n"])
+    add("x_f__mutmut_2", [  # scaffolding-only: identical except the def name
+        "\n", "\n", "def x_f__mutmut_2(x):\n", '    """Doc: value 1."""\n',
+        "    if x > 0:\n", "        return x + 1\n", "    return 0\n"])
+    add("x_f__mutmut_3", [  # same-length change: two adjacent lines, and the
+        # body continues after them so over-extended ranges are observable
+        "\n", "\n", "def x_f__mutmut_3(x):\n", '    """Doc: value 1."""\n',
+        "    if x >= 0:\n", "        return x + 2\n", "    return 0\n"])
+    add("x_f__mutmut_4", [  # two lines longer than its original
+        "\n", "\n", "def x_f__mutmut_4(x):\n", '    """Doc: value 1."""\n',
+        "    if x > 0:\n", "        y = x + 1\n", "        y += 2\n",
+        "        return y\n", "    return 0\n"])
+    add("x_f__mutmut_5", [  # two lines shorter than its original
+        "\n", "\n", "def x_f__mutmut_5(x):\n", '    """Doc: value 1."""\n',
+        "    return x - 1\n"])
+    add("x_g__mutmut_1", [  # no x_g__mutmut_orig entry exists at all
+        "\n", "\n", "def x_g__mutmut_1(x):\n", "    return x\n"])
+    add("x_h__mutmut_orig", [
+        "\n", "\n", "def x_h__mutmut_orig():\n", "    return 1\n"])
+    add("x_h__mutmut_1", [
+        "\n", "\n", "def x_h__mutmut_1():\n", "    return 2\n"])
+
+    root = tmp_path / "mutants"
+    mod = root / "src" / "pkg"
+    mod.mkdir(parents=True)
+    (mod / "mod.py").write_text("".join(lines))
+    (mod / "mod.py.spans").write_text(
+        json.dumps({"version": 1, "spans": spans}))
+    (mod / "mod.py.meta").write_text(json.dumps(
+        {"exit_code_by_key": {f"pkg.mod.{n}": 0 for n in spans}}))
+
+    # a second real module: the count pin needs more than one record
+    (mod / "other.py").write_text(
+        "\n\ndef x_o__mutmut_orig():\n    return 1\n"
+        "\n\ndef x_o__mutmut_1():\n    return 2\n")
+    (mod / "other.py.spans").write_text(json.dumps(
+        {"version": 1, "spans": {"x_o__mutmut_orig": [1, 4],
+                                 "x_o__mutmut_1": [5, 8]}}))
+    (mod / "other.py.meta").write_text(json.dumps(
+        {"exit_code_by_key": {"pkg.other.x_o__mutmut_1": 0}}))
+
+    # wrong-version index with verdicts, sorts before everything under src/
+    (root / "aaa.py.meta").write_text(json.dumps({"exit_code_by_key": {}}))
+    (root / "aaa.py.spans").write_text(
+        json.dumps({"version": 2, "spans": {}}))
+    # a .zft sandbox mirror pair, sorts before both
+    mirror = root / ".zft" / "sb"
+    mirror.mkdir(parents=True)
+    (mirror / "m.py").write_text("x = 1\n")
+    (mirror / "m.py.meta").write_text(json.dumps({"exit_code_by_key": {}}))
+    (mirror / "m.py.spans").write_text(
+        json.dumps({"version": 1, "spans": {}}))
+    # an orphan .spans (no verdicts) sorting before the real modules
+    (mod / "aaa.py.spans").write_text(
+        json.dumps({"version": 1, "spans": {}}))
+    return mod
+
+
+def test_writer_walk_skips_non_records_and_counts_only_real_files(tmp_path):
+    # skip-and-continue at every non-record: the walk must reach both real
+    # modules (the two break mutants would strand them) and count exactly
+    # two written records
+    mod = _residue_tree(tmp_path)
+    assert write_mutation_records(tmp_path) == 2
+    assert not (tmp_path / "mutants" / ".zft" / "sb" / "m.py.mutdiff.json"
+                ).exists()  # the mirror pair never gets a record
+    assert (mod / "mod.py.mutdiff.json").exists()
+    assert (mod / "other.py.mutdiff.json").exists()
+    data = json.loads((mod / "mod.py.mutdiff.json").read_text())
+    # the orig-less x_g variant is skipped, and the walk still diffs x_h
+    assert "pkg.mod.x_g__mutmut_1" not in data["diffs"]
+    assert "pkg.mod.x_h__mutmut_1" in data["diffs"]
+
+
+def test_writer_records_exact_multi_line_change_bounds(tmp_path):
+    # the changed-range texts are byte-exact: no join separator, no
+    # over-extended last line, and a scaffolding-only variant never blocks
+    # the variants recorded after it
+    mod = _residue_tree(tmp_path)
+    write_mutation_records(tmp_path)
+    data = json.loads((mod / "mod.py.mutdiff.json").read_text())
+    assert set(data["diffs"]) == {
+        f"pkg.mod.x_f__mutmut_{i}" for i in (1, 3, 4, 5)} | {
+        "pkg.mod.x_h__mutmut_1"}  # _2 is scaffolding-only: no diff
+    d3 = data["diffs"]["pkg.mod.x_f__mutmut_3"]
+    assert (d3["line"], d3["last_line"]) == (4, 5)
+    assert d3["orig"] == "    if x > 0:\n        return x + 1\n"
+    assert d3["mutant"] == "    if x >= 0:\n        return x + 2\n"
+    # length-mismatching variants still record (the comparison uses a None
+    # sentinel past the shorter list, never an index error)
+    assert (data["diffs"]["pkg.mod.x_f__mutmut_4"]["line"],
+            data["diffs"]["pkg.mod.x_f__mutmut_4"]["last_line"]) == (5, 8)
+    assert (data["diffs"]["pkg.mod.x_f__mutmut_5"]["line"],
+            data["diffs"]["pkg.mod.x_f__mutmut_5"]["last_line"]) == (4, 6)
+    assert data["diffs"]["pkg.mod.x_h__mutmut_1"]["mutant"] == "    return 2\n"
+
+
+def test_written_mutdiff_format_pins_version_key(tmp_path):
+    # the .mutdiff.json envelope is part of the shard format the bar joins
+    # on: version key spelled and valued exactly
+    mod = _residue_tree(tmp_path)
+    write_mutation_records(tmp_path)
+    data = json.loads((mod / "mod.py.mutdiff.json").read_text())
+    assert list(data) == ["version", "functions", "diffs"]
+    assert data["version"] == 1
+
+
 # --- evaluate ---------------------------------------------------------------
 
 def _shard(verdicts, diffs=None, functions=None, digest_ok=None):
@@ -376,6 +507,17 @@ def test_waived_suspects_leave_the_report_counted():
     assert rep["ok"] is True
     assert rep["waived_count"] == 2
     assert rep["suspects"] == []
+
+
+def test_empty_bar_report_pins_degenerate_totals():
+    # no shards at all: ok with a None kill_rate, never a division by zero
+    rep = evaluate([])
+    assert rep["ok"] is True
+    assert rep["totals"] == {"killed": 0, "survived": 0, "no_tests": 0,
+                             "skipped": 0, "suspicious": 0, "timeout": 0,
+                             "not_checked": 0, "mutants": 0, "kill_rate": None}
+    assert rep["suspects"] == []
+    assert rep["stale_waivers"] == []
 
 
 def test_suspect_mutation_field_defaults_on_record_missing_texts():
@@ -544,3 +686,23 @@ def test_cli_mutation_bar_exit_0_when_waived(capsys, shard_dir, tmp_path):
 
 def test_cli_mutation_bar_exit_2_without_shards():
     assert main(["mutation-bar"]) == 2
+
+def test_source_manifest_split_keeps_names_with_double_spaces(tmp_path):
+    # kills load_shard _22: a manifest line splits on the FIRST double-space
+    # run; a filename containing one must survive intact (rpartition would
+    # eat it and the digest check would silently degrade to None)
+    import hashlib
+
+    shard_dir = tmp_path / "results-mut-demo"
+    meta = shard_dir / "mutants" / "src" / "a  b.py.meta"
+    meta.parent.mkdir(parents=True)
+    meta.write_text(json.dumps(
+        {"exit_code_by_key": {"src.a  b.x_f__mutmut_1": 0}}))
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "a  b.py").write_text("def f(x):\n    return x\n")
+    digest = hashlib.sha256(b"def f(x):\n    return x\n").hexdigest()
+    (shard_dir / "source-manifest.txt").write_text(
+        f"{digest}  ./src/a  b.py\n")
+
+    shard = load_shard(shard_dir, tmp_path)
+    assert shard.files[0].source_digest_ok is True

@@ -82,12 +82,36 @@ def _manifest_payload(files: dict) -> dict:
 
 
 def test_gate_manifest_missing_file_is_named(tmp_path, monkeypatch):
+    # label must name a file absent from BOTH layouts (src checkout and
+    # installed package): src/zft/gates/l1.py physically exists in a wheel,
+    # so a missing-file pin needs a path nothing ships.
     monkeypatch.setattr(dsse, "_gate_source_root", lambda: tmp_path)
     with pytest.raises(dsse.AttestationError, match=
-                       r"gate manifest file 'src/zft/gates/l1.py' "
+                       r"gate manifest file 'src/zft/gates/no_such_file.py' "
                        r"missing or unreadable"):
         _check_gate_manifest(
-            _manifest_payload({"src/zft/gates/l1.py": "0" * 64}))
+            _manifest_payload({"src/zft/gates/no_such_file.py": "0" * 64}))
+
+
+def test_gate_sources_resolve_from_installed_layout(tmp_path, monkeypatch):
+    """zft attest crashed on any non-editable install (found on PyPI 0.2.0a2):
+    the gate manifest looked for <venv>/src/zft/..., which exists only in a
+    src checkout. The installed layout must attest with identical canonical
+    src/ labels."""
+    body = {"gates/l1.py": b"l1-body", "gates/l2.py": b"l2-body",
+            "codegen/property_gen.py": b"pg-body"}
+    pkg = tmp_path / "site-packages" / "zft"
+    (pkg / "attest").mkdir(parents=True)
+    for rel, data in body.items():
+        dest = pkg / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(data)
+    monkeypatch.setattr(dsse, "__file__", str(pkg / "attest" / "dsse.py"))
+    files = dsse._gate_source_files()
+    assert set(files) == {"src/zft/gates/l1.py", "src/zft/gates/l2.py",
+                          "src/zft/codegen/property_gen.py"}
+    for rel, data in body.items():
+        assert files[f"src/zft/{rel}"] == hashlib.sha256(data).hexdigest()
 
 
 def test_gate_manifest_hash_mismatch_names_recorded_hash(tmp_path, monkeypatch):

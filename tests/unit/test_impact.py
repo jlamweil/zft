@@ -42,3 +42,57 @@ def test_impact_from_root(tmp_path: Path):
     assert result["aliases"] == ["Z-CLAUSE"]
     assert result["affected"]["Z-CLAUSE"][0]["file"] == "x.py"
     assert result["affected"]["Z-CLAUSE"][0]["symbol"] == "foo"
+
+
+# --- hygiene sitting 2026-09-22 (loop continuation): impact pin battery ---
+
+def test_change_symbols_may_themselves_contain_separators():
+    bindings = [{"alias": "S", "file": "src/a.py", "line": 1, "symbol": "na::me"}]
+    result = impact(bindings, ["src/a.py::na::me"])
+    assert result["aliases"] == ["S"]
+    assert result["affected"]["S"] == [
+        {"file": "src/a.py", "line": 1, "symbol": "na::me"}]
+
+
+def test_binding_without_file_matches_the_empty_path():
+    result = impact([{"alias": "N", "line": 3}], [""])
+    assert result["aliases"] == ["N"]
+    assert result["affected"]["N"] == [{"file": ".", "line": 3, "symbol": None}]
+
+
+def test_symbol_mismatch_skips_without_stopping_the_scan():
+    bindings = [{"alias": "S", "file": "a.py", "line": 1, "symbol": "foo"}]
+    result = impact(bindings, ["a.py::bar", "a.py"])
+    assert result["aliases"] == ["S"]
+    assert result["affected"]["S"] == [
+        {"file": "a.py", "line": 1, "symbol": "foo"}]
+
+
+def test_binding_without_line_defaults_to_zero():
+    result = impact([{"alias": "L", "file": "a.py", "symbol": "s"}], ["a.py"])
+    assert result["affected"]["L"] == [
+        {"file": "a.py", "line": 0, "symbol": "s"}]
+
+
+def test_affected_refs_sort_by_file_line_then_symbol_with_none_last():
+    bindings = [
+        {"alias": "K", "file": "b.py", "line": 2, "symbol": None},
+        {"alias": "K", "file": "b.py", "line": 2, "symbol": "X"},
+        {"alias": "K", "file": "a.py", "line": 9, "symbol": "y"},
+        {"alias": "K", "file": "b.py", "line": 1, "symbol": "w"},
+    ]
+    result = impact(bindings, ["a.py", "b.py"])
+    assert result["affected"]["K"] == [
+        {"file": "a.py", "line": 9, "symbol": "y"},
+        {"file": "b.py", "line": 1, "symbol": "w"},
+        {"file": "b.py", "line": 2, "symbol": None},
+        {"file": "b.py", "line": 2, "symbol": "X"},
+    ]
+
+
+def test_norm_path_strips_the_leading_dot_slash_only():
+    from zft.lineage.impact import _norm_path
+
+    assert _norm_path("./ab.py") == "ab.py"
+    assert _norm_path("./.zft/x.py") == ".zft/x.py"
+    assert _norm_path("/abs/x.py") == "/abs/x.py"

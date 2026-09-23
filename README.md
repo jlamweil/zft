@@ -80,10 +80,13 @@ zft gate --module src/exports/exporter.py --tests tests/test_exporter.py \
 
 # L3: produce a DSSE attestation over the clause subjects
 zft attest [root]
-# Verify the attestation against the live store (re-derives clause digests)
-zft verify [root]
+# Verify the attestation against the live store (re-derives clause digests).
+# --key-in is required: zft attest writes the matching public key to
+# .zft/attest-key.pub.json (override with --key-out at attest time).
+zft verify --key-in .zft/attest-key.pub.json [root]
 
-# Export the attestation / trace matrix (e.g. --format matrix)
+# Export the attestation / trace matrix (e.g. --format matrix).
+# Refuses with a typed error until `zft attest` has produced an attestation.
 zft export --format matrix [root]
 
 # Replay a recorded run from .zft/runs by run id
@@ -127,12 +130,6 @@ cp .opencode/skills/zft/SKILL.md ~/.config/opencode/skills/zft/SKILL.md
 
 A **Codex** equivalent (PostToolUse hook + agent skill) binds the same CLI
 seams, so policy and audit trails stay identical across clients.
-
-> **This is the private development lab, one of five related locations.**
-> Before pushing, syncing, or copying anything, read
-> [`docs/REPO-MAP.md`](docs/REPO-MAP.md) — confusing the lab with the public
-> cut is how leaks happen. The short version: this repo's history must
-> **never** go public; the published artifact is a separate squashed cut.
 
 ```
 .zft/

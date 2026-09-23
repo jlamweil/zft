@@ -76,3 +76,16 @@ def test_retry_budget_blocks_forever_loop():
     sm.reject_gate(["GATE-INV-01"], fault="implementation")
     with pytest.raises(IllegalTransition, match="retry budget"):
         sm.reopen()
+
+
+def test_negotiate_without_contract_refuses_typed(tmp_path, capsys):
+    """First-run finding (PyPI 0.2.0a2 consumer store): negotiate on a root
+    with no contract manifest surfaced a raw FileNotFoundError traceback;
+    it must refuse typed, matching the export/verify CLI idiom."""
+    from zft.cli.main import main
+
+    rc = main(["negotiate", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "negotiate refused" in out
+    assert "no contract manifest" in out

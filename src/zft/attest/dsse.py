@@ -55,18 +55,34 @@ def _gate_source_root() -> Path:
     return Path(__file__).resolve().parent.parent.parent.parent
 
 
+def _package_root() -> Path:
+    return Path(__file__).resolve().parent.parent  # .../zft
+
+
+def _gate_source_physical(rel: str) -> Path:
+    """Physical path for a canonical src/ manifest label.
+
+    A src checkout resolves <repo>/src/zft/...; a wheel install (PyPI
+    consumers) has no src/ segment, so fall back to the package layout.
+    When neither exists, report the canonical src/ path so the typed
+    "missing or unreadable" error names the manifest label.
+    """
+    src_layout = _gate_source_root() / rel
+    if src_layout.is_file():
+        return src_layout
+    package_layout = _package_root() / rel.removeprefix("src/zft/")
+    if package_layout.is_file():
+        return package_layout
+    return src_layout
+
+
 def _gate_source_files() -> dict[str, str]:
     """Relative-path -> sha256 hex for the gate source files embedded in the manifest."""
-    source_root = _gate_source_root()
-    gate_files = [
-        source_root / "src" / "zft" / "gates" / "l1.py",
-        source_root / "src" / "zft" / "gates" / "l2.py",
-        source_root / "src" / "zft" / "codegen" / "property_gen.py",
-    ]
     gate_hashes: dict[str, str] = {}
-    for f in gate_files:
-        rel = f.relative_to(source_root)
-        gate_hashes[str(rel)] = hashlib.sha256(f.read_bytes()).hexdigest()
+    for rel in ("src/zft/gates/l1.py", "src/zft/gates/l2.py",
+                "src/zft/codegen/property_gen.py"):
+        gate_hashes[rel] = hashlib.sha256(
+            _gate_source_physical(rel).read_bytes()).hexdigest()
     return gate_hashes
 
 
@@ -83,7 +99,7 @@ def _check_gate_manifest(payload: dict) -> None:
     if not isinstance(files, dict):
         return
     for rel, recorded in files.items():
-        actual_path = _gate_source_root() / rel
+        actual_path = _gate_source_physical(rel)
         try:
             actual = hashlib.sha256(actual_path.read_bytes()).hexdigest()
         except OSError:

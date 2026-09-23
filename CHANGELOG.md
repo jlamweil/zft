@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.0a4 — 2026-09-23
+
+Documentation and packaging completeness release. The 0.2.0a3 wheel was
+functional but its PyPI page rendered empty — the `readme` key was fixed in
+the cut repo only and was lost when the a3 export re-derived `pyproject.toml`
+from the lab. The fix now lives in the lab, so it travels with every export:
+
+- **PyPI page renders** — `readme = "README.md"` plus `[project.urls]`
+  (homepage, repository, issues, changelog) and topic classifiers, so the
+  project page carries the README and the sidebar links.
+- **No shipped doc points at a non-shipped doc** — two `designs/` pages
+  referenced `docs/PUBLIC_REPO.md` (internal publish machinery); the Codex
+  plugin README's `HB-3` reference now names what it means. The export gate
+  catches broken markdown *links*; these were unlinked prose mentions, found
+  by a full-text scan of the shipped set.
+- **npm package `opencode-zft`** published (`0.2.0-alpha.4`), kept version-
+  aligned with the CLI.
+
 ## 0.2.0a3 — 2026-09-23
 
 Six first-try defects found by installing the 0.2.0a2 wheel into a fresh

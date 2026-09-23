@@ -89,9 +89,9 @@ records were fired by piping the same event JSON the harness sends to the
 hook's stdin — the documented host contract the repo test replays. They prove
 the artifact; they are **not** harness fires, and the log keeps them
 distinguishable by their synthetic `session_id`
-(`zcode-midwave-20260908-con-crash-resume`). The live proof that closes HB-3
-is a new record with a real session `session_id`, fired by the harness on the
-first `.zft/` edit of the first session after the review approval.
+(`zcode-midwave-20260908-con-crash-resume`). The live proof is a new record
+with a real session `session_id`, fired by the harness on the first `.zft/`
+edit of the first session after that review approval.
 
 ## Choices & deviations from the dsh plugin
 

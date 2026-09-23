@@ -53,7 +53,7 @@ Two roles, not two products: **producer** and **consumer** are roles any agent t
 > *Compliance Export* and *Bi-directional ALM Sync* outputs (ReqIF bundles,
 > Jira / DOORS / Polarion sync) are **proprietary enterprise** features,
 > implemented in `private/enterprise/` and not shipped in the open-source
-> `zft` package — see §6 and `docs/PUBLIC_REPO.md`.
+> `zft` package — see §6.
 
 ---
 

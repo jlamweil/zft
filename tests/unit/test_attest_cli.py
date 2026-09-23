@@ -149,7 +149,7 @@ def test_cli_attest_then_export_roundtrip_on_tmp_store(tmp_path):
                         "check": {"kind": "test"}}],
         "external_links": [],
     }))
-    # tethys fails closed: unsupplied model identity -> model_dependent true.
+    # the gate fails closed: unsupplied model identity -> model_dependent true.
     # Supply two distinct identities to prove the independence seam.
     r = _run("attest", str(tmp_path), "--producer-model", "p", "--gate-model", "g")
     assert r.returncode == 0, r.stdout + r.stderr

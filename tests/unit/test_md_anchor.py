@@ -22,13 +22,11 @@ DOC = """\
 Some prose.
 """
 
-# Baseline captured at WP-D3 (HEAD 90875a7), re-captured 2026-09-17 for the
-# src/traceagent -> src/zft rename plus +3-line shifts in three negotiate
-# test files (copytree ignore-pattern + ruff wrap), and 2026-09-19 for a
-# +1-line shift in test_mutmut_runner.py (the parse_results pin sitting
-# extended its import block): every binding the repo's
+# Baseline captured at WP-D3 (HEAD 90875a7): every binding the repo's
 # Python sources produce, as (file, line, alias, symbol). The Markdown
 # feature must not change any of them.
+# Re-derived 2026-09-21 at the fleet fold (zft adoption merge): the three
+# negotiate anchors shifted 48->51 / 81->84 / ->109 on the merged tree.
 BASELINE_PY_BINDINGS = {
     ('src/zft/lineage/matrix.py', 125,
      'TR-REVERSE-COVERAGE', 'new_unbound_elements'),
@@ -54,7 +52,7 @@ BASELINE_PY_BINDINGS = {
      'CON-AMEND-VIA-DELTAS', 'test_modified_requires_matching_old_hash'),
     ('tests/unit/test_delta_conflicts.py', 55,
      'ID-CONFLICT-HALT', 'test_concurrent_edit_conflict_detected'),
-    ('tests/unit/test_driver_gate.py', 64,
+    ('tests/unit/test_driver_gate.py', 72,
      'DRIVER-GATE-GREEN', 'test_driver_gate_green_on_seeded_workspace'),
     ('tests/unit/test_gherkin_gen.py', 39,
      'TR-FORWARD-COVERAGE', 'test_all_clauses_collect_and_pass'),
@@ -62,14 +60,12 @@ BASELINE_PY_BINDINGS = {
      'TR-IMPACT-QUERY', 'test_file_level_match'),
     ('tests/unit/test_impact.py', 23,
      'TR-IMPACT-QUERY', 'test_symbol_narrowing'),
-    ('tests/unit/test_impact.py', 32,
-     'TR-IMPACT-QUERY', 'test_suffix_match'),
+    ('tests/unit/test_impact.py', 32, 'TR-IMPACT-QUERY', 'test_suffix_match'),
     ('tests/unit/test_impact.py', 38,
      'TR-IMPACT-QUERY', 'test_impact_from_root'),
     ('tests/unit/test_impact_cli.py', 13,
      'TR-IMPACT-QUERY', 'test_impact_cli_func'),
-    ('tests/unit/test_impact_cli.py', 18,
-     'TR-IMPACT-QUERY', '_run_impact'),
+    ('tests/unit/test_impact_cli.py', 18, 'TR-IMPACT-QUERY', '_run_impact'),
     ('tests/unit/test_impact_cli.py', 27,
      'TR-IMPACT-QUERY', 'test_file_path_impact'),
     ('tests/unit/test_impact_cli.py', 36,
@@ -82,9 +78,9 @@ BASELINE_PY_BINDINGS = {
      'CON-TYPED-REJECTIONS', 'test_l0_failure_is_typed'),
     ('tests/unit/test_l1.py', 43,
      'GATE-EVIDENCE-KIND', 'test_l1_green_passes_on_passing_suite'),
-    ('tests/unit/test_l2.py', 42,
+    ('tests/unit/test_l2.py', 50,
      'GATE-JUDGE-QUARANTINE', 'test_l2_fast_green_on_mini_repo'),
-    ('tests/unit/test_l2.py', 106,
+    ('tests/unit/test_l2.py', 114,
      'GATE-MODEL-INDEPENDENCE', 'test_gate_log_labels_model_dependence'),
     ('tests/unit/test_l3.py', 84,
      'GATE-MODEL-INDEPENDENCE', 'test_model_dependence_labeled_from_producer_and_gate_models'),
@@ -94,7 +90,7 @@ BASELINE_PY_BINDINGS = {
      'GATE-L0-HASH-VERIFY', 'test_torn_trailing_hash_line_detected'),
     ('tests/unit/test_lint_store.py', 39,
      'GATE-DUPLICATE-CLAUSES', 'test_duplicate_clause_detection'),
-    ('tests/unit/test_mutmut_runner.py', 120,
+    ('tests/unit/test_mutmut_runner.py', 123,
      'GATE-MUTATION-ATTRIBUTION', 'test_campaign_kills_and_classifies'),
     ('tests/unit/test_negotiate_flow.py', 20,
      'CON-COUNTER-RECORDED', 'test_negotiate_flow_runs_on_own_contract'),

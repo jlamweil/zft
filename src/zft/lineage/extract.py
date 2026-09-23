@@ -52,7 +52,7 @@ def _iter_source_files(root: Path) -> list[Path]:
         # Remove any ignored directories from traversal. Beyond IGNORE_DIRS,
         # hidden trees hold sandboxes, never specs, and tree snapshots appear
         # under shifting names (mutmut campaign trees like mutants-prev-l0l3/,
-        # the gitignored scratch/ root) — tethys-campaign lesson, 2026-09-07.
+        # the gitignored scratch/ root) — campaign-host lesson, 2026-09-07.
         dirnames[:] = [d for d in dirnames if d not in IGNORE_DIRS
                        and not d.startswith(".")
                        and d != "scratch"

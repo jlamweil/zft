@@ -292,7 +292,7 @@ def test_unreadable_element_file_is_skipped_not_fatal(tmp_path):
 
 
 def test_element_walk_skips_scratch_and_mutants_mirrors(tmp_path):
-    """Walker parity with extract._iter_source_files (tethys-campaign lesson,
+    """Walker parity with extract._iter_source_files (campaign-host lesson,
     2026-09-07; drifted apart by 2026-09-15): kill-shard working copies live
     under scratch/<shard>/copy{,/mutants} and campaign trees shift names
     (mutants-prev-*), and none of it is ever a deliverable element — the

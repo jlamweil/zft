@@ -1,0 +1,30 @@
+# Consumer-facing pre-commit hooks (ECOSYSTEM_RANKING #1 — the CI trust anchor:
+# the same gate as CI, earlier in the loop).
+#
+# Usage in a consuming repo's .pre-commit-config.yaml:
+#
+#   repos:
+#     - repo: https://github.com/<org>/zft
+#       rev: <ref>
+#       hooks:
+#         - zft-lint    # pre-commit weight: L0 only
+#         - zft-check   # pre-push weight: L0 + L2-fast + gherkin
+#
+# Seed policy: hooks act only on the contract corpus (`.zft/`). A repo that
+# has not seeded a contract never pays gate latency, and an unseeded store
+# fails closed — `STORE_MISSING` is a typed deny (exit 1), never green-vacuous.
+- id: zft-lint
+  name: zft lint (L0)
+  description: L0 structural integrity lint of the .zft contract store.
+  entry: zft lint
+  language: python
+  pass_filenames: false
+  files: ^\.zft/
+- id: zft-check
+  name: zft check (fast tier)
+  description: L0 + L2-fast + gherkin fallback gate over the whole contract.
+  entry: zft check
+  language: python
+  pass_filenames: false
+  files: ^\.zft/
+  stages: [pre-push]

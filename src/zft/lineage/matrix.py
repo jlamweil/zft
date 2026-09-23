@@ -53,7 +53,7 @@ def _iter_element_files(root: Path) -> list[Path]:
     Uses the extractor's skip policy (``lineage/extract.skipped_dir``) so the
     two walkers can never diverge: scratch/ kill-shard working copies and
     mutmut campaign trees are tool workspaces, never deliverable elements
-    (tethys-campaign lesson, 2026-09-07; matrix drifted from it and every
+    (campaign-host lesson, 2026-09-07; matrix drifted from it and every
     check re-parsed ~19k mirror files until 2026-09-16). Sorted once for
     deterministic order.
     """

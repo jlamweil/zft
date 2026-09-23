@@ -52,7 +52,7 @@ Aliases match `[A-Z0-9-]+` (uppercase). `zft extract` dumps the binding list as 
 
 ## Gates
 
-- `zft lint` – fast L0 (schema, content hashes, alias/duplicate detection). Use as a commit‑hook. In an opencode session the [edit gate](../plugins/README.md) runs this automatically on every `.zft/**` edit (`ZFT_HOOK_MODE=enforce` blocks on failure).
+- `zft lint` – fast L0 (schema, content hashes, alias/duplicate detection). Use as a commit‑hook. In an opencode session the [edit gate](../../plugins/README.md) runs this automatically on every `.zft/**` edit (`ZFT_HOOK_MODE=enforce` blocks on failure).
 - `zft check .` – full local gate: L0 → coverage → L1 property evidence → L2‑fast; prints JSON `{stage, ok, due, deferred, l1, gate_log, coverage, failures}`. Slower (runs pytest, mutation, gherkin). Green requires every **DUE** clause to be covered; clauses in contract `meta.target_milestone` beyond v0 are **deferred** and do not block. A green `check` proves **traceability, not conformance**: it does binding‑coverage for due clauses, L0 integrity, and bound‑suite execution for `kind: property` clauses — the clause's declared `property` is never compiled or executed (see `docs/KNOWN-GAPS.md`, Gap 001).
 - `zft gate-campaign --module <path> --tests <path> [--scope f1,f2] [--oracle <path>] [--conftest <path>] [--sandbox <dir>] [root]` – deep L2 mutation campaign (`gate` is an alias).
 - `zft repro <run_id> [root]` – re‑executes only the failed units of a run.

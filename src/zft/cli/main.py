@@ -17,6 +17,10 @@ KNOWN_FLAGS = {
     "--waivers", "--source-root",
 }
 
+_GLOBAL_USAGE = ("usage: zft <lint|extract|check|impact|gate|repro|attest|"
+                 "verify|export|negotiate|create|baseline|driver-gate|"
+                 "mutation-bar|task-gate> [root]")
+
 
 def _val(argv: list[str], flag: str):
     """Flag helper: returns value after `flag`, else None.
@@ -34,6 +38,33 @@ def _val(argv: list[str], flag: str):
 # Value-less flags (no following argument): never a flag value and never a
 # positional root (zft lineage BOOLEAN_FLAGS, unioned 2026-09-12).
 BOOLEAN_FLAGS = {"--resume"}
+
+# One-line usage per subcommand. `zft <cmd> --help` prints this instead of
+# falling through to running the command on a directory literally named
+# --help (the manual argv parser otherwise treats it as the root).
+USAGE = {
+    "lint": "zft lint [root]",
+    "extract": "zft extract [root]",
+    "check": "zft check [root]",
+    "impact": "zft impact <target> [--base REF] [root]",
+    "gate": ("zft gate --module <path> --tests <path> [--scope f1,f2] "
+             "[--oracle <path>] [--conftest <path>] [--sandbox <dir>] [--resume] [root]"),
+    "repro": "zft repro <run-id> [root]",
+    "attest": ("zft attest [--producer-model <m>] [--gate-model <m>] "
+               "[--key-out <path>] [--key-expires <date>] [root]"),
+    "verify": "zft verify --key-in <public-key.json> [--expect-keyid <k>] [root]",
+    "export": "zft export [--format matrix|dsse|summary] [root]",
+    "negotiate": "zft negotiate [--counter-terms <sheet|->] [--resume] [root]",
+    "create": ("zft create --alias <A> --domain <D> --title <T> "
+               "--statement <S> --property <P> [--kind test] [root]"),
+    "baseline": "zft baseline [root]",
+    "driver-gate": ("zft driver-gate [--producer-model <m>] [--gate-model <m>] "
+                    "[--counter-terms <sheet|->] [root]"),
+    "mutation-bar": ("zft mutation-bar <results-mut-*>... [--waivers <path>] "
+                     "[--source-root <path>]"),
+    "task-gate": ("zft task-gate <before|after> --subagent <type> "
+                  "--description <text>"),
+}
 
 
 def _split_root(argv: list[str]) -> tuple[list[str], Path]:
@@ -90,15 +121,16 @@ def _model_identity(argv: list[str]) -> tuple[str | None, str | None]:
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv:
-        print("usage: zft <lint|extract|check|impact|gate|repro|attest|verify|export|"
-              "negotiate|create|baseline|driver-gate|mutation-bar|task-gate> [root]")
+        print(_GLOBAL_USAGE)
         return 2
     # Global help flags
     if argv[0] in ("-h", "--help"):
-        print("usage: zft <lint|extract|check|impact|gate|repro|attest|verify|export|"
-              "negotiate|create|baseline|driver-gate|mutation-bar|task-gate> [root]")
+        print(_GLOBAL_USAGE)
         return 0
     cmd = argv[0]
+    if any(a in ("-h", "--help") for a in argv[1:]):
+        print(USAGE.get(cmd, _GLOBAL_USAGE))
+        return 0
     if argv[-1] in KNOWN_FLAGS:  # dangling flag: _val would index past argv
         print(f"missing value for {argv[-1]}")
         return 2
@@ -488,7 +520,13 @@ def main(argv: list[str] | None = None) -> int:
             print(f"counter-terms refused: {e}")
             return 2
 
-        contract = load_contract(root)
+        try:
+            contract = load_contract(root)
+        except FileNotFoundError as e:
+            # a consumer root without .zft/contracts gets the typed refusal
+            # every other subcommand gives, not a substrate traceback
+            print(f"negotiate refused: {e}")
+            return 1
         resumed = resume(root / ".zft" / "runs")
         if resumed is not None:
             led, sm = resumed

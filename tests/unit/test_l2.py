@@ -2,8 +2,16 @@
 import json
 
 from zft.debug.ledger import RunLedger
-from zft.gates.l2 import run_l2
+from zft.gates.l1 import L1Verdict
+from zft.gates.l2 import (
+    _contract_meta,
+    _current_milestone,
+    _reverse_elements,
+    _workspace_name,
+    run_l2,
+)
 from zft.gates.l3 import build_gate_log
+from zft.lineage import extract as _extract_mod
 
 
 def _seed(tmp_path):
@@ -228,3 +236,195 @@ def test_l2_reverse_coverage_configured_but_empty_warns(tmp_path):
     assert "matched no deliverable files" in verdict.warnings[0]
     assert "tests/absent" in verdict.warnings[0]
     assert "TR-REVERSE-COVERAGE baseline absent" in verdict.warnings[1]
+
+
+# ---------------------------------------------------------------------------
+# kill-shard pins (0920 l2 cut): helper contracts pinned directly; run_l2's
+# run_l1 seam faked for exact call-shape/verdict-field/ledger-event asserts.
+# ---------------------------------------------------------------------------
+
+BASELINE_ABSENT_WARNING = (
+    "TR-REVERSE-COVERAGE baseline absent: the new-element direction "
+    "is inert (an absent baseline skips, it cannot flag) — seed it "
+    "with `zft baseline` (the first real extraction) to make "
+    "grandfathering live")
+UNCONFIGURED_WARNING = (
+    "TR-REVERSE-COVERAGE vacuous: contract meta.element_roots is "
+    "not configured — element set is empty, 0/0 must not read "
+    "as complete")
+
+
+def test_workspace_name_parses_pyproject(tmp_path):
+    # double-quoted name: strip('"') must actually strip (kills quote-char
+    # mutants); '=' inside the value pins the maxsplit-1 split
+    (tmp_path / "pyproject.toml").write_text(
+        'xname = 1\nname = "eq=ual"\n')
+    assert _workspace_name(tmp_path) == "eq=ual"
+    # single-quoted name: strip("'") must actually strip
+    (tmp_path / "pyproject.toml").write_text("name = 'sq-ws'\n")
+    assert _workspace_name(tmp_path) == "sq-ws"
+    # the "=" guard: a line not starting with "name" is skipped even with '='
+    (tmp_path / "pyproject.toml").write_text('xname = 1\nname = "real"\n')
+    assert _workspace_name(tmp_path) == "real"
+    # strip('"'/"'") is a char-set strip: an X at the value's edge must
+    # survive it (kills the XX"XX/XX'XX wrap mutants, which would eat the X)
+    (tmp_path / "pyproject.toml").write_text('name = "Xtest"\n')
+    assert _workspace_name(tmp_path) == "Xtest"
+    (tmp_path / "pyproject.toml").write_text("name = 'Xt'\n")
+    assert _workspace_name(tmp_path) == "Xt"
+    # absent pyproject -> None
+    assert _workspace_name(tmp_path / "nope") is None
+
+
+def test_current_milestone_and_contract_meta_defaults(tmp_path, monkeypatch):
+    monkeypatch.setattr("zft.gates.l2._contract_meta",
+                        lambda r: {"current_milestone": "M1"})
+    assert _current_milestone(tmp_path) == "M1"
+    monkeypatch.setattr("zft.gates.l2._contract_meta",
+                        lambda r: {})
+    assert _current_milestone(tmp_path) == "v0"
+    # meta key absent from the manifest: {} must come back, never None
+    monkeypatch.setattr("zft.spec.store.load_contract", lambda r: {})
+    assert _contract_meta(tmp_path) == {}
+
+
+def test_reverse_elements_universe_rules(tmp_path, monkeypatch):
+    # unconfigured: the exact vacuous warning, empty element set
+    monkeypatch.setattr("zft.gates.l2._contract_meta", lambda r: {})
+    warnings, elements = _reverse_elements(tmp_path)
+    assert warnings == [UNCONFIGURED_WARNING]
+    assert elements == []
+
+    # configured dir tree: .py files found, non-LANG and skipped dirs dropped
+    (tmp_path / "src" / "__pycache__").mkdir(parents=True)
+    (tmp_path / "src" / "a.py").write_text("x = 1\n")
+    (tmp_path / "src" / "notes.txt").write_text("x\n")
+    (tmp_path / "src" / "__pycache__" / "c.py").write_text("x\n")
+    (tmp_path / "src" / "depth" / "__pycache__").mkdir(parents=True)
+    (tmp_path / "src" / "depth" / "__pycache__" / "f.py").write_text("x\n")
+    monkeypatch.setattr("zft.gates.l2._contract_meta",
+                        lambda r: {"element_roots": ["src"]})
+    warnings, elements = _reverse_elements(tmp_path)
+    assert warnings == []
+    assert elements == ["src/a.py"]
+
+    # file entries: LANG-suffix file found, wrong-suffix file not
+    (tmp_path / "a.py").write_text("x\n")
+    (tmp_path / "x.toml").write_text("x\n")
+    monkeypatch.setattr("zft.gates.l2._contract_meta",
+                        lambda r: {"element_roots": ["a.py", "x.toml"]})
+    warnings, elements = _reverse_elements(tmp_path)
+    assert warnings == []
+    assert elements == ["a.py"]
+
+    # configured but matching nothing: warning names the sorted roots
+    monkeypatch.setattr("zft.gates.l2._contract_meta",
+                        lambda r: {"element_roots": ["zz", "aa"]})
+    warnings, elements = _reverse_elements(tmp_path)
+    assert warnings == [
+        "TR-REVERSE-COVERAGE vacuous: element_roots ['aa', 'zz'] "
+        "matched no deliverable files — element set is empty"]
+    assert elements == []
+
+
+def test_run_l2_forwards_run_l1_and_fills_verdict_fields(tmp_path, monkeypatch):
+    root = _seed(tmp_path)
+    calls = {}
+
+    def fake_run_l1(root, ledger=None, bindings=None, examples_timeout_s=None,
+                    write_cache=None):
+        calls.update(root=root, ledger=ledger, bindings=bindings,
+                     examples_timeout_s=examples_timeout_s,
+                     write_cache=write_cache)
+        return L1Verdict(stage="L1", ok=False, executed=5,
+                         failures=["BOOM: x"])
+
+    monkeypatch.setattr("zft.gates.l2.run_l1", fake_run_l1)
+    real_extract = _extract_mod.extract_bindings
+    extract_calls = []
+
+    def spy_extract(root, write_cache=None):
+        extract_calls.append(write_cache)
+        return real_extract(root, write_cache=write_cache)
+
+    monkeypatch.setattr("zft.lineage.extract.extract_bindings",
+                        spy_extract)
+    verdict = run_l2(root)
+    # forwarding: the real bindings, the ledger, the defaults — all exact
+    assert calls["ledger"] is None
+    assert calls["examples_timeout_s"] == 300
+    assert calls["write_cache"] is True
+    assert [b["alias"] for b in calls["bindings"]] == ["GATE-INV-01"]
+    assert extract_calls == [True]
+    # flat fields mirror the embedded L1 run exactly (no defaults leaking)
+    assert verdict.l1_ok is False
+    assert verdict.l1_executed == 5
+    assert verdict.stage == "L2-fast"
+    assert verdict.coverage["tier"] == "fast"
+    # the L1 failure lands in failures and names the clause-free fallback ids
+    assert verdict.ok is False
+    assert verdict.rejection["fault"] == "implementation"
+    assert verdict.rejection["clause_ids"] == ["BOOM"]
+
+
+def test_run_l2_ledger_events_and_rejection_exact(tmp_path, monkeypatch):
+    class FakeLedger:
+        def __init__(self):
+            self.events = []
+
+        def append(self, event):
+            self.events.append(event)
+
+    # run A: uncovered clause + both inert-direction warnings, l1 green
+    root = _seed(tmp_path)
+    (root / "tests" / "test_bound.py").unlink()
+    monkeypatch.setattr(
+        "zft.gates.l2.run_l1",
+        lambda *a, **k: L1Verdict(stage="L1", ok=True, executed=0))
+    led = FakeLedger()
+    verdict = run_l2(root, tier="fast", ledger=led)
+    assert verdict.warnings == [UNCONFIGURED_WARNING, BASELINE_ABSENT_WARNING]
+    assert verdict.failures == ["uncovered clauses (no valid binding): "
+                                "['GATE-INV-01']"]
+    assert verdict.rejection == {
+        "code": "L2_ACCEPTANCE",
+        "clause_ids": ["GATE-INV-01"],
+        "fault": "contract",
+        "expected": "all due clauses covered by bindings and executed evidence",
+        "actual": verdict.failures,
+        "evidence_refs": [],
+    }
+    assert led.events == [
+        {"event": "l2_coverage", "ok": False,
+         "uncovered": ["GATE-INV-01"]},
+        {"event": "l2", "ok": False, "tier": "fast",
+         "coverage": verdict.coverage, "failures": verdict.failures,
+         "warnings": verdict.warnings},
+    ]
+
+    # run B: baseline seeded, a new public src/ element unbound -> reverse red
+    root2 = _seed(tmp_path / "b")
+    (root2 / "src").mkdir()
+    (root2 / "src" / "newmod.py").write_text("def public_api():\n    return 1\n")
+    _write_contract(root2, {"element_roots": ["tests"]})
+    baseline_dir = root2 / ".zft" / "baseline"
+    baseline_dir.mkdir(parents=True)
+    (baseline_dir / "elements.json").write_text(json.dumps(
+        {"elements": ["src/old.py::old_fn"]}))
+    led2 = FakeLedger()
+    verdict2 = run_l2(root2, tier="fast", ledger=led2)
+    assert verdict2.warnings == []
+    assert verdict2.coverage["new_unbound"] == ["src/newmod.py::public_api"]
+    assert verdict2.failures == [
+        "new unbound elements since baseline: ['src/newmod.py::public_api']"]
+    assert verdict2.rejection["code"] == "L2_REVERSE_COVERAGE"
+    # uncovered is empty here: the new-unbound red blames the implementation
+    assert verdict2.rejection["fault"] == "implementation"
+    assert verdict2.rejection["clause_ids"] == []
+    assert led2.events == [
+        {"event": "l2_reverse_coverage", "ok": False,
+         "new_unbound": ["src/newmod.py::public_api"]},
+        {"event": "l2", "ok": False, "tier": "fast",
+         "coverage": verdict2.coverage, "failures": verdict2.failures,
+         "warnings": verdict2.warnings},
+    ]

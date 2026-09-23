@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zft"
-version = "0.2.0a2"
+version = "0.2.0a3"
 description = "ZFT (Zero-Friction Traceability): contract-first verification and trace matrix gates for multi-agent work"
 license = "Apache-2.0"
 requires-python = ">=3.12"
@@ -13,7 +13,7 @@ dependencies = [
     "hypothesis>=6.100",
     "pytest>=8",
     "pytest-bdd>=8",
-    "securesystemslib[cryptography]>=1.0",
+    "securesystemslib>=1.0",
     "ast-grep-py>=0.45",
     "cryptography>=50.0.1",
 ]

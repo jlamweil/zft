@@ -4,10 +4,19 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zft"
-version = "0.2.0a3"
+version = "0.2.0a4"
 description = "ZFT (Zero-Friction Traceability): contract-first verification and trace matrix gates for multi-agent work"
+readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.12"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Software Development :: Quality Assurance",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
 dependencies = [
     "jsonschema>=4.20",
     "hypothesis>=6.100",
@@ -17,6 +26,12 @@ dependencies = [
     "ast-grep-py>=0.45",
     "cryptography>=50.0.1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/jlamweil/zft"
+Repository = "https://github.com/jlamweil/zft"
+Issues = "https://github.com/jlamweil/zft/issues"
+Changelog = "https://github.com/jlamweil/zft/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 a2a = ["a2a-sdk>=0.3"]

@@ -7,7 +7,7 @@ author:
 type: software
 license: Apache-2.0
 licenseurl: https://www.apache.org/licenses/LICENSE-2.0
-version: 0.2.0a3
+version: 0.2.0a4
 keywords:
   - traceability
   - multi-agent

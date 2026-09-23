@@ -96,7 +96,7 @@ Durations are **effort** estimates; *(run)* = measured command runtime unless **
 > `private/enterprise/zft/alm/`, tests under `private/enterprise/tests/`
 > (`test_reqif_import.py`, `test_reqif_export.py`, `test_reqif_ids.py`,
 > `test_alm_sync.py`). The `zft sync` CLI command and the `reqif` export
-> format were removed from the public `zft` package (see `docs/PUBLIC_REPO.md`).
+> format were removed from the public `zft` package.
 
 | WP | Goal | Files | Test | Commit | Effort | Run (EST) |
 |---|---|---|---|---|---|---|

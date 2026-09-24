@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.2.0a6 — 2026-09-23
+
+Version-stamp consistency release, cut to supersede 0.2.0a5 **before either
+shipped** — nothing from a5 ever reached PyPI or npm, and a5's content ships
+here (its receipt, `RELEASE-0.2.0a5.json`, stays on record):
+
+- **`zft.__version__` tells the truth again** — the in-package version had
+  frozen at `0.2.0a1` across the a2–a5 cuts while the wheel METADATA moved
+  on: the only test on it asserted non-emptiness, so nothing failed when the
+  stamps drifted. A consumer asking the package for its version read one
+  three releases older than the artifact it imported.
+- **Stamps are now pinned to one source of truth** — a red-tested
+  consistency check ties `zft.__version__`, `CITATION.cff`, and the npm
+  `opencode-zft` version to `pyproject.toml`, so stamp drift is a failing
+  test at commit time, not a release-RC finding.
+
+## 0.2.0a5 — 2026-09-23
+
+Colleague-readiness pass, verified by a fresh `git clone` + `pip install zft`
+on two machines (HTTPS clone, no credentials, clean venv): lint reports 43
+clause nodes, `zft check` exits 0 against the shipped baseline, and
+attest + verify are green against the clone's own store.
+
+- **README accuracy** — the seed contract is 43 validated clause nodes, not
+  26 (the count now cites `zft lint` as the source of truth so it does not
+  drift silently).
+- **README install paths** — the opencode gates can be installed from npm
+  (`bun add -D opencode-zft`, add `"opencode-zft"` to `opencode.json`) or
+  copied from the repo; the changelog and `docs/` are now linked.
+
 ## 0.2.0a4 — 2026-09-23
 
 Documentation and packaging completeness release. The 0.2.0a3 wheel was

@@ -113,6 +113,31 @@ def _orig_fn_key(key: str) -> str:
     return key.rsplit("__mutmut_", 1)[0] + "__mutmut_orig"
 
 
+def canonical_mutation_text(text: str) -> str:
+    """The whitespace-normalized, scaffolding-canonicalized form of a
+    mutation text — half of a waiver's identity. ``__mutmut_(orig|N)``
+    variant renames collapse to ``__mutmut_X`` (the writer's def-line rule),
+    then indentation edges, trailing whitespace and blank padding are
+    stripped per line: none of that is logic, so none of it is identity."""
+    canon = _MUTMUT_VARIANT.sub("__mutmut_X", text)
+    return "\n".join(line.strip() for line in canon.strip().splitlines())
+
+
+def mutation_text_key(relpath: str, orig: str, mutant: str) -> str:
+    """A waiver review's identity: sha256(module + "\\0" + canon(orig) +
+    "\\0" + canon(mut)). Stable across mutmut renumberings of byte-identical
+    source, and different for any drift of module or either text."""
+    import hashlib
+
+    h = hashlib.sha256()
+    h.update(relpath.encode())
+    h.update(b"\0")
+    h.update(canonical_mutation_text(orig).encode())
+    h.update(b"\0")
+    h.update(canonical_mutation_text(mutant).encode())
+    return h.hexdigest()
+
+
 def classify(diff: dict | None, orig_src: str | None) -> str:
     """Survivor class for one mutant's mutation record, fail-closed.
 
@@ -143,14 +168,45 @@ def classify(diff: dict | None, orig_src: str | None) -> str:
     return "logic"
 
 
+def _diff_texts(diff: dict | None) -> tuple[str, str] | None:
+    """The (orig, mutant) texts of a diffs entry, if both are usable."""
+    if (isinstance(diff, dict) and isinstance(diff.get("orig"), str)
+            and isinstance(diff.get("mutant"), str)):
+        return diff["orig"], diff["mutant"]
+    return None
+
+
 def evaluate(shards: list[ShardInput], waivers: dict[str, dict] | None = None) -> dict:
-    """Typed bar report; IO-free. ok is True iff no unwaived suspects remain."""
+    """Typed bar report; IO-free. ok is True iff no unwaived suspects remain.
+
+    Waiver matching is by mutation identity: an entry whose ``text_key``
+    (mutation_text_key of the reviewed texts) equals a live row's waives it
+    — one review covers every live row of the same text, however mutmut
+    renumbered the generation. The legacy key alone still waives entries
+    that carry no text_key; a key match whose entry text_key differs from
+    the live row's never waives (the review proved other text — the
+    mis-attachment class reads unwaived, never a false green). A waived
+    text whose live row reads killed is reported under
+    ``verdict_contradictions`` as a fail-loud re-verify flag; dead is dead,
+    so it rides beside the bar instead of flipping ok.
+    """
     waivers = waivers or {}
+    by_text: dict[str, str] = {}
+    for wkey, meta in waivers.items():
+        tk = meta.get("text_key") if isinstance(meta, dict) else None
+        if isinstance(tk, str):
+            by_text.setdefault(tk, wkey)  # twins share one review: first wins
+
+    def _has_text_key(meta: dict) -> bool:
+        return isinstance(meta, dict) and isinstance(meta.get("text_key"), str)
+
     totals: dict[str, int] = {}
     survivor_classes: dict[str, int] = {}
     per_shard: dict[str, dict] = {}
     suspects: list[dict] = []
+    contradictions: list[dict] = []
     waived_count = 0
+    live_texts: set[str] = set()
 
     for shard in shards:
         st: dict[str, int] = {}
@@ -160,6 +216,11 @@ def evaluate(shards: list[ShardInput], waivers: dict[str, dict] | None = None) -
                 status = STATUS_BY_EXIT.get(raw, SUSPICIOUS)
                 st[status] = st.get(status, 0) + 1
                 totals[status] = totals.get(status, 0) + 1
+                texts = _diff_texts(fv.diffs.get(key))
+                text_key = (mutation_text_key(fv.relpath, *texts)
+                            if texts else None)
+                if text_key is not None:
+                    live_texts.add(text_key)
                 if status == SURVIVED:
                     if fv.source_digest_ok is False:
                         cls = "source_drift"  # mutation describes vanished code
@@ -171,14 +232,27 @@ def evaluate(shards: list[ShardInput], waivers: dict[str, dict] | None = None) -
                     if cls in COSMETIC:
                         continue
                 elif status not in BLOCKING_NON_KILLS:
+                    # killed: a waived text reading killed is the loud
+                    # re-verify flag, never silently stale
+                    if text_key is not None and text_key in by_text:
+                        contradictions.append(
+                            {"shard": shard.name, "mutant": key,
+                             "file": fv.relpath, "text_key": text_key,
+                             "waiver": by_text[text_key], "verdict": status})
                     continue
                 entry = {"shard": shard.name, "mutant": key, "file": fv.relpath,
-                         "class": (status if status != SURVIVED else cls)}
+                         "class": (status if status != SURVIVED else cls),
+                         "text_key": text_key}
                 d = fv.diffs.get(key)
                 if d is not None:
                     entry["mutation"] = f"{d.get('orig', '').strip()!r} -> " \
                                         f"{d.get('mutant', '').strip()!r}"
                 w = waivers.get(key)
+                if w is not None and _has_text_key(w) \
+                        and w["text_key"] != text_key:
+                    w = None  # the review proved other text: never honor blind
+                if w is None and text_key is not None and text_key in by_text:
+                    w = waivers[by_text[text_key]]
                 if w is not None:
                     waived_count += 1
                     entry.update(waived=True, reason=w.get("reason"),
@@ -189,7 +263,10 @@ def evaluate(shards: list[ShardInput], waivers: dict[str, dict] | None = None) -
         per_shard[shard.name] = {**st, "survivor_classes": dict(sorted(classes.items()))}
 
     known = {key for shard in shards for fv in shard.files for key in fv.verdicts}
-    stale = sorted(w for w in waivers if w not in known)
+    stale = sorted(
+        wkey for wkey, meta in waivers.items()
+        if (meta["text_key"] not in live_texts if _has_text_key(meta)
+            else wkey not in known))
     unwaived = [s for s in suspects if not s["waived"]]
     killed = totals.get(KILLED, 0)
     mutants = sum(totals.values())
@@ -207,6 +284,8 @@ def evaluate(shards: list[ShardInput], waivers: dict[str, dict] | None = None) -
         "suspects": sorted(unwaived, key=lambda s: (s["file"], s["mutant"])),
         "waived_count": waived_count,
         "stale_waivers": stale,
+        "verdict_contradictions": sorted(
+            contradictions, key=lambda c: (c["file"], c["mutant"])),
     }
 
 

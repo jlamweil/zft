@@ -4,6 +4,7 @@ contract."""
 from __future__ import annotations
 
 import json
+import re
 
 import pytest
 
@@ -14,10 +15,12 @@ from zft.gates.mutation_bar import (
     FileVerdicts,
     ShardInput,
     _orig_fn_key,
+    canonical_mutation_text,
     classify,
     evaluate,
     load_shard,
     load_waivers,
+    mutation_text_key,
     write_mutation_records,
 )
 
@@ -483,15 +486,20 @@ def test_evaluate_report_contract_pinned_field_by_field():
         {"shard": "mut-fixture", "mutant": "m.x_alpha__mutmut_2",
          "file": "src/x.py", "class": "logic",
          "mutation": "'return x + 1' -> 'return x - 1'",
+         "text_key": mutation_text_key("src/x.py", "    return x + 1\n",
+                                       "    return x - 1\n"),
          "waived": False, "reason": None, "killing_test": None},
         {"shard": "mut-fixture", "mutant": "m.x_alpha__mutmut_3",
          "file": "src/x.py", "class": "unattributed",
          "mutation": "'' -> ''",
+         "text_key": None,
          "waived": False, "reason": None, "killing_test": None},
         {"shard": "mut-fixture", "mutant": "m.x_alpha__mutmut_6",
          "file": "src/x.py", "class": "timeout",
          "mutation": "'a' -> 'b'",
+         "text_key": mutation_text_key("src/x.py", "a", "b"),
          "waived": False, "reason": None, "killing_test": None}]
+    assert rep["verdict_contradictions"] == []
 
 
 def test_waived_suspects_leave_the_report_counted():
@@ -518,6 +526,7 @@ def test_empty_bar_report_pins_degenerate_totals():
                              "not_checked": 0, "mutants": 0, "kill_rate": None}
     assert rep["suspects"] == []
     assert rep["stale_waivers"] == []
+    assert rep["verdict_contradictions"] == []
 
 
 def test_suspect_mutation_field_defaults_on_record_missing_texts():
@@ -706,3 +715,179 @@ def test_source_manifest_split_keeps_names_with_double_spaces(tmp_path):
 
     shard = load_shard(shard_dir, tmp_path)
     assert shard.files[0].source_digest_ok is True
+
+
+# --- (module, mutation-text) waiver identity — the bar-matcher (2026-09-23
+#     overnight sitting; three-for-three proposal recorded in
+#     scratch/hygiene-20260922/SITTING.md) --------------------------------------
+#
+# Mutmut numbering is not an identity: byte-identical source renumbers across
+# generations (09-21 night tail: 110/507 keys moved), and a drifted number
+# holds a different mutation (09-22 catalogue: 8 reasons mis-attached). The
+# waiver review actually covers (module, canonical mutation text); text_key
+# makes that identity mechanical.
+
+def test_canonical_mutation_text_collapses_scaffolding_and_whitespace():
+    # the def-line variant rename is scaffolding, never logic; indentation
+    # edges, trailing whitespace and blank padding are not identity either
+    a = "def x_f__mutmut_3(x=1):\n    return x + 1\n"
+    b = "def x_f__mutmut_orig(x=1):\n    return x + 1   \n"
+    assert canonical_mutation_text(a) == canonical_mutation_text(b)
+    assert "__mutmut_X" in canonical_mutation_text(a)
+    assert canonical_mutation_text("\n\n  x = 1\n  y = 2  \n\n") == "x = 1\ny = 2"
+    assert canonical_mutation_text(a) != canonical_mutation_text(
+        "def x_f__mutmut_orig(x=1):\n    return x - 1\n")
+
+
+def test_mutation_text_key_binds_identity_to_module_and_texts():
+    # digest pinned literal so the joiner/separator literals cannot drift
+    orig, mut = "    return x + 1\n", "    return x - 1\n"
+    assert mutation_text_key("src/x.py", orig, mut) == \
+        "d720fb852c12e6930635044b118b1e19dc62033f0deb083978c1ed359002842d"
+    # the re-key property: a renumbered generation holds the same identity
+    k1 = mutation_text_key("src/zft/gates/l1.py", orig, mut)
+    assert k1 == mutation_text_key("src/zft/gates/l1.py", orig, mut)
+    assert re.fullmatch(r"[0-9a-f]{64}", k1)
+    # a different module never shares the key (the _432 mis-attachment class)
+    assert mutation_text_key("src/zft/cli/main.py", orig, mut) != k1
+    assert mutation_text_key("src/zft/gates/l1.py", mut, orig) != k1
+
+
+def test_text_key_waiver_covers_a_renumbered_row():
+    # one review covers every live row of the same text: a generation that
+    # renumbers the mutation still reads waived, and the entry is not stale
+    old_key = "m.x_alpha__mutmut_86"
+    text_key = mutation_text_key("src/x.py", "    return x + 1\n",
+                                 "    return x - 1\n")
+    key, diffs, functions = _fixture_logic_mutant()  # new number, same texts
+    rep = evaluate([_shard({key: 0}, diffs, functions)],
+                   waivers={old_key: {"reason": "reviewed equivalent",
+                                      "killing_test": None,
+                                      "text_key": text_key}})
+    assert rep["ok"] is True
+    assert rep["waived_count"] == 1
+    assert rep["suspects"] == []  # waived rows leave the unwaived queue
+    assert rep["stale_waivers"] == []
+    assert rep["verdict_contradictions"] == []
+
+
+def test_legacy_key_waiver_without_text_key_still_waives_by_key():
+    # un-migrated entries keep working: the legacy key alone waives, as the
+    # 09-22 evening sheet (202 text_key-less entries) did all along
+    key, diffs, functions = _fixture_logic_mutant()
+    rep = evaluate([_shard({key: 0}, diffs, functions)],
+                   waivers={key: {"reason": "legacy row",
+                                  "killing_test": None}})
+    assert rep["ok"] is True
+    assert rep["waived_count"] == 1
+    assert rep["suspects"] == []
+    assert rep["stale_waivers"] == []
+
+
+def test_key_match_with_divergent_text_key_never_waives():
+    # the mis-attachment kill: a text_key-carrying entry may not waive a
+    # same-number row whose text differs — the review proved other text
+    key, diffs, functions = _fixture_logic_mutant()
+    rep = evaluate([_shard({key: 0}, diffs, functions)],
+                   waivers={key: {"reason": "authored for other text",
+                                  "killing_test": None,
+                                  "text_key": "0" * 64}})
+    assert rep["ok"] is False
+    s = rep["suspects"][0]
+    assert s["waived"] is False and s["reason"] is None
+    assert s["text_key"] != "0" * 64  # the live text is not what was reviewed
+    # the entry's review text matches nothing live: stale, loudly
+    assert rep["stale_waivers"] == [key]
+
+
+def test_waived_text_reading_killed_is_verdict_contradiction():
+    # a waived text the live generation KILLS is the fail-loud re-verify
+    # flag the 09-22 flaky-pin divergence would have raised a sitting early;
+    # it does not flip ok (dead is dead) but is never silently stale
+    text_key = mutation_text_key("src/x.py", "    return x + 1\n",
+                                 "    return x - 1\n")
+    key, diffs, functions = _fixture_logic_mutant()
+    twin = "m.x_alpha__mutmut_9"  # same text, different number
+    diffs = {**diffs, twin: _entry(changed="    return x - 1\n")}
+    verdicts = {key: 1, twin: 0}  # one generation kills it, one survives
+    rep = evaluate([_shard(verdicts, diffs, functions)],
+                   waivers={"m.x_alpha__mutmut_86": {
+                       "reason": "reviewed equivalent", "killing_test": None,
+                       "text_key": text_key}})
+    assert rep["ok"] is True  # dead is dead; the flag rides beside the bar
+    assert rep["suspects"] == []  # the surviving twin waived, killed listed
+    assert rep["verdict_contradictions"] == [{
+        "shard": "mut-fixture", "mutant": key, "file": "src/x.py",
+        "text_key": text_key, "waiver": "m.x_alpha__mutmut_86",
+        "verdict": "killed"}]
+
+
+def test_stale_waivers_read_by_text_identity():
+    t_live = mutation_text_key("src/x.py", "    return x + 1\n",
+                               "    return x - 1\n")
+    key, diffs, functions = _fixture_logic_mutant()
+    rep = evaluate(
+        [_shard({key: 0}, diffs, functions)],
+        waivers={
+            # key gone, text live: NOT stale — it covers the renumbered row
+            "m.x_rekeyed__mutmut_7": {"reason": "r1", "killing_test": None,
+                                      "text_key": t_live},
+            # key gone, text gone: stale by text
+            "m.x_gone__mutmut_8": {"reason": "r2", "killing_test": None,
+                                   "text_key": "1" * 64},
+            # no text_key, key gone: stale the legacy way
+            "m.x_gonenokey__mutmut_9": {"reason": "r3", "killing_test": None},
+            # key live and matching: waives its own row
+            key: {"reason": "r4", "killing_test": None,
+                  "text_key": t_live}})
+    assert rep["ok"] is True
+    assert rep["waived_count"] == 1  # one live row, waived once (by key)
+    assert rep["suspects"] == []
+    assert rep["stale_waivers"] == ["m.x_gone__mutmut_8",
+                                    "m.x_gonenokey__mutmut_9"]
+
+
+# --- matcher kill pins (2026-09-23 overnight sitting: survivors of the
+#     first regen over the matcher, scratch/barmatcher-20260923) ------------
+
+def test_canonical_mutation_text_replacement_token_is_pinned():
+    # the canonical replacement token is the writer's def-line rule spelled
+    # exactly; wider/narrower/case-flipped tokens change every text_key
+    assert canonical_mutation_text("def x_f__mutmut_3(x):\n    return x\n") == \
+        "def x_f__mutmut_X(x):\nreturn x"
+    assert canonical_mutation_text("def x_f__mutmut_orig(x):\n    return x\n") == \
+        "def x_f__mutmut_X(x):\nreturn x"
+
+
+def test_killed_row_with_unwaived_text_is_neither_flag_nor_crash():
+    # the contradiction lookup runs only for waived texts: a killed row
+    # carrying a diff but covered by no waiver is dead silence, not a flag
+    key, diffs, functions = _fixture_logic_mutant()
+    rep = evaluate([_shard({key: 1}, diffs, functions)])
+    assert rep["totals"]["killed"] == 1
+    assert rep["verdict_contradictions"] == []
+
+
+def test_contradictions_sort_by_file_then_mutant():
+    # the fail-loud flag is consumed by sheet passes: deterministic order
+    # (and a two-row list, so a missing key crashes rather than fakes order)
+    def fshard(rel, key):
+        return ShardInput(name="s", files=[FileVerdicts(
+            relpath=rel, verdicts={key: 1},
+            diffs={key: _entry(changed="    return x - 1\n")},
+            functions={"m.x_alpha__mutmut_orig": ORIG_FN})])
+
+    rep = evaluate(
+        [fshard("src/b.py", "m.x_alpha__mutmut_9"),
+         fshard("src/a.py", "m.x_alpha__mutmut_2")],
+        waivers={"w_b": {"reason": "r", "killing_test": None,
+                         "text_key": mutation_text_key(
+                             "src/b.py", "    return x + 1\n",
+                             "    return x - 1\n")},
+                 "w_a": {"reason": "r", "killing_test": None,
+                         "text_key": mutation_text_key(
+                             "src/a.py", "    return x + 1\n",
+                             "    return x - 1\n")}})
+    assert [(c["file"], c["mutant"]) for c in rep["verdict_contradictions"]] == [
+        ("src/a.py", "m.x_alpha__mutmut_2"),
+        ("src/b.py", "m.x_alpha__mutmut_9")]

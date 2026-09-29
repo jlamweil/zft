@@ -25,6 +25,19 @@ still not conformance. The reproduction below remains valid for
 `kind: test` clauses and, with a vacuous oracle added, for
 `kind: property` ones.
 
+### Update 2026-09-25 (narrowed probe committed as a machine check)
+
+The narrowed reproduction is now committed: `tests/unit/test_gap001_probe.py`
+builds this corpus (wrong impl + `kind: property` clause + vacuous oracle +
+vacuous bound test) and pins all three faces of the boundary through the real
+gate: `zft check` still returns `ok: true` on the provably wrong
+implementation when the oracle is vacuous (the residual — L1 executes, 1
+clause, still green); a missing oracle fails red (`L1_ORACLE_REQUIRED`) and
+an oracle that actually executes `answer()` fails red (`L1_ORACLE_FAIL`)
+via `run_l1`'s typed rejection (the narrowing). If a future change closes
+the residual, the first test goes red — that is the probe firing: retire
+this gap entry with it, do not weaken the test.
+
 ### Summary
 
 On 2026-09-10 an adversarial probe proved that `zft check` — the primary acceptance gate — accepts a provably wrong implementation. The clause's declared `property` string is never compiled or executed anywhere in `src/zft`; the gate verifies only that a bound test *exists* (forward traceability coverage), not that the implementation satisfies the clause. A producer can pass the gate with a fake `assert True` test bound to any clause, even when the implementation visibly violates the clause statement.

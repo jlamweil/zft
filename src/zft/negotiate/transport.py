@@ -55,7 +55,7 @@ from zft.negotiate.sm import (
     NegotiationSM,
 )
 from zft.negotiate.terms import digest_from_recorded, terms_string
-from zft.spec.store import load_contract
+from zft.spec.store import load_contract, require_contract_keys
 
 # A2A / JSON-RPC 2.0 error codes — a2a.utils.errors.JSON_RPC_ERROR_CODE_MAP
 # maps these numbers to the SDK client's typed A2AError subclasses.
@@ -162,6 +162,7 @@ class A2aNegotiationServer:
 
     def _contract_facts(self) -> tuple[str, int, int]:
         contract = load_contract(self._root)
+        require_contract_keys(contract)
         return contract["name"], len(contract["clause_ids"]), contract["version"] + 1
 
     # -- wire methods -------------------------------------------------------

@@ -96,7 +96,8 @@ The `zft task-gate` commands enforce contract‑binding at the subagent‑dispat
     - Exit 1: policy rejection (blocked).
     - Exit 2 or other: internal/usage error – the plugin fails open (dispatch proceeds).
     - Emits a JSON object on stdout describing the decision.
-  - `zft task-gate after --subagent <type> --description <text>` – runs after the subagent finishes, prepending a coverage verdict to the tool output. Exit 0 = `covered`; exit 1 = verdict with **missing** clause IDs (surfaced to the orchestrator, non-blocking — act on it before accepting the deliverable); exit 2 = error (ignored).
+  - `zft task-gate after --subagent <type> --description <text> [--changed <path> …] [--since-ref <git-ref>] [--scope changeset]` – runs after the subagent finishes, prepending a coverage verdict to the tool output. Exit 0 = `covered`; exit 1 = verdict with **missing** clause IDs (surfaced to the orchestrator, non-blocking — act on it before accepting the deliverable); exit 2 = error (ignored) — also the code for an **unresolvable changeset** (an unresolvable `--since-ref` must never become unscoped coverage).
+    - **Changeset scope** (`ENF-CHANGESET-VERDICT`): with any scoping flag the verdict covers only clauses bound inside those paths; `--scope changeset` alone declares an *empty* changeset (every due clause counts missing). Without scoping flags the verdict stays tree‑wide. The plugin supplies the flags automatically — child sessions' completed `edit`/`write` calls, else `--since-ref <dispatch HEAD>`.
 
 - **Plugin** (`.opencode/plugins/zft-gate.ts`) wraps the built‑in `task` tool: it calls `task-gate before` to possibly block the dispatch, and `task-gate after` to prepend a gate report. A sibling plugin (`.opencode/plugins/zft-lint-gate.js`) runs `zft lint` on every `.zft/**` edit.
   - Auto‑activates only in directories containing a `.zft/` folder.
@@ -104,6 +105,7 @@ The `zft task-gate` commands enforce contract‑binding at the subagent‑dispat
   - Install and full reference: [`.opencode/plugins/README.md`](../../plugins/README.md).
 
 - **Writer lanes** (e.g. `fixer`, `implementer`, `designer`, `general`, or any unknown type) must include a `[contract: <name>]` marker in the task description; the name resolves to `.zft/contracts/<name>.json`.
+- **Capability wins over the name.** When the plugin can resolve the subagent's permission, the lane follows the capability: an agent that can edit or run bash is a writer whatever it is called, and one with both denied is exempt. The name list is the fallback for dispatches the plugin cannot resolve. The decision and the ruleset it used are in the audit log; replay any one with `zft task-gate before --subagent X --description "…" --capability '<json>'` (or `--explain`).
 - **Read‑only lanes** – `explorer`, `explore`, `code‑explorer`, `librarian`, `oracle`, `analyst`, `councillor`, `vision`, `vision‑consultant`, `researcher` – are exempt from the contract requirement.
 
 - **Override** – a dispatch can be allowed without a contract by adding `[ungated: <reason>]` to the description, or by setting the environment variable `ZFT_ALLOW_UNGATED=1`. The audit log records `override: true` and the provided reason.

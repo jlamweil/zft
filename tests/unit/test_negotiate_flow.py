@@ -89,3 +89,23 @@ def test_negotiate_without_contract_refuses_typed(tmp_path, capsys):
     assert rc == 1
     assert "negotiate refused" in out
     assert "no contract manifest" in out
+
+
+def test_negotiate_with_malformed_manifest_refuses_typed(tmp_path, capsys):
+    """Probe finding (a8 wheel consumer arc, 2026-09-28): a manifest lacking
+    'version' drove the WHOLE negotiation and then died with an unhandled
+    KeyError traceback at the validated outcome. The CLI must refuse typed
+    BEFORE any state machine runs — the same surface as the no-manifest
+    refusal above."""
+    from zft.cli.main import main
+
+    contracts = tmp_path / ".zft" / "contracts"
+    contracts.mkdir(parents=True)
+    (contracts / "c.json").write_text('{"name": "c", "clause_ids": []}')
+    rc = main(["negotiate", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "negotiate refused" in out
+    assert "contract manifest malformed" in out
+    assert "version" in out
+    assert "Traceback" not in out

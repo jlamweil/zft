@@ -1,0 +1,29 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e .[dev,a2a]  # suite collects a2a_adapter (needs protobuf) — hermetic vs .venv
+      - name: ruff
+        run: ruff check src tests
+      - name: "self-check (gates on our own contract: L0 + L2-fast)"  # unquoted colon broke YAML — file never ran anywhere until 2026-09-08
+        timeout-minutes: 5  # kill criterion K-CI-1; measured 3.4s locally 2026-09-07
+        run: |
+          pip install -e . -q
+          zft lint
+          zft check .
+      - name: unit + property tests
+        run: pytest tests -q
+  # self-check ordered before pytest (same as the GitLab port): the gate costs
+  # ~3.4s and its typed rejection must reach the log first — a tampered store
+  # is diagnosed in seconds, never after a two-minute suite.

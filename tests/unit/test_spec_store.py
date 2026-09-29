@@ -83,3 +83,23 @@ def test_load_contract_names_the_empty_contracts_dir(tmp_path):
         match=r"^no contract manifest under \.zft/contracts$",
     ):
         load_contract(tmp_path)
+
+
+def test_require_contract_keys_names_the_missing_keys():
+    """A manifest missing the keys the negotiate flow consumes must be
+    rejected with THIS typed message (CLI refusal and A2A fault wording pin
+    against it) — not an unhandled KeyError deep in the validated outcome
+    (a8 wheel consumer-probe finding, 2026-09-28)."""
+    from zft.spec.store import require_contract_keys
+
+    with pytest.raises(
+        ValueError,
+        match=r"^contract manifest malformed \(missing key\(s\): version\)$",
+    ):
+        require_contract_keys({"name": "c", "clause_ids": []})
+    with pytest.raises(
+        ValueError,
+        match=r"missing key\(s\): name, version",
+    ):
+        require_contract_keys({"clause_ids": []})
+    require_contract_keys({"name": "c", "clause_ids": [], "version": 1})

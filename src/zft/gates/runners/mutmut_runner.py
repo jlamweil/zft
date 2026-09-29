@@ -51,6 +51,10 @@ class CampaignResult:
     # a hang is not evidence of a caught mutant: timed-out mutants are
     # excluded from `killed` and reported as their own class (wave2 risk #1)
     timed_out: list[str] = field(default_factory=list)
+    # health of the UNMUTATED suite in the sandbox, re-run after the campaign
+    # (the ok rule's `final_ok`). False means every kill above may be a
+    # collection/import failure, not a caught mutant — the report must say so.
+    baseline_ok: bool = True
 
 
 def generate_mutants(source: str, filename: str = "module.py") -> list[tuple[str, str, str]]:
@@ -195,7 +199,8 @@ def run_campaign(
             break
 
     module_path.write_text(original)
-    final_ok = _run_pytest_env(sandbox, test_paths, timeout_s, repo_root).ok
+    baseline = _run_pytest_env(sandbox, test_paths, timeout_s, repo_root)
+    final_ok = baseline.ok
     # Wave C / WP-C2 — exact ok rule:
     #   ok = final_ok and no in-scope survivors
     # Since WP-C1 skips out-of-scope mutants before execution (above), every
@@ -219,6 +224,7 @@ def run_campaign(
         in_scope_killed=in_scope_killed,
         in_scope_total=in_scope_total,
         timed_out=timed_out,
+        baseline_ok=baseline.ok,
     )
 
 

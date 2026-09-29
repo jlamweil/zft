@@ -386,3 +386,116 @@ def test_prepare_generated_pyproject_is_byte_exact(tmp_path):
         'addopts = "-q"\n'
     )
     assert (sandbox / "pyproject.toml").read_text() == expected
+
+
+# ---------------------------------------------------------------------------
+# D7 close (2026-09-28): the documented --conftest seam could not carry
+# sys.path setup — prepare_sandbox copied the consumer conftest via also_copy
+# then unconditionally overwrote sandbox/conftest.py with the generated
+# isolation conftest (fresh-consumer verdict D7_conftest_seam_clobbered_PRODUCT;
+# no test covered a consumer conftest surviving). The pins below hold BOTH
+# halves of the contract: the consumer conftest reaches the sandboxed run,
+# and the isolation guarantees survive it.
+# ---------------------------------------------------------------------------
+
+
+def test_consumer_conftest_survives_the_sandbox_root(tmp_path):
+    """A conftest.py arriving via also_copy (the --conftest seam) must not be
+    clobbered by the generated isolation conftest: it is preserved byte-exact
+    as conftest_consumer.py and the generated conftest loads it."""
+    src = tmp_path / "m.py"
+    src.write_text("def f():\n    return 1\n")
+    consumer = tmp_path / "conftest.py"
+    consumer.write_text("import sys\nsys.path.insert(0, '/deps')\n")
+    sandbox = prepare_sandbox(tmp_path / "sandbox", mutate_paths=[src],
+                              also_copy=[consumer])
+    preserved = sandbox / "conftest_consumer.py"
+    assert preserved.exists(), "consumer conftest must survive the sandbox"
+    assert preserved.read_text() == "import sys\nsys.path.insert(0, '/deps')\n"
+    generated = (sandbox / "conftest.py").read_text()
+    assert "os.environ.pop" in generated, "isolation preamble must stay"
+    assert "conftest_consumer" in generated, "generated conftest must load it"
+
+
+def test_no_consumer_conftest_leaves_the_generated_conftest_alone(tmp_path):
+    """Without a consumer conftest the sandbox root has exactly the generated
+    isolation conftest — no conftest_consumer.py artifact, byte-exact pin
+    (test_prepare_generated_conftest_is_byte_exact) unaffected."""
+    src = tmp_path / "m.py"
+    src.write_text("def f():\n    return 1\n")
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "test_g.py").write_text("def test_g():\n    assert True\n")
+    sandbox = prepare_sandbox(tmp_path / "sandbox", mutate_paths=[src],
+                              also_copy=[tests])
+    assert not (sandbox / "conftest_consumer.py").exists()
+
+
+def test_consumer_conftest_carries_sys_path_setup(tmp_path):
+    """The D7 empirical shape: a flat module whose tests need a sys.path
+    insert from the consumer conftest. Pre-fix the sandboxed baseline died
+    at collection (ModuleNotFoundError) behind the clobbered conftest."""
+    proj = tmp_path / "proj"
+    (proj / "src").mkdir(parents=True)
+    (proj / "src" / "deps.py").write_text("SUPPORT = 41\n")
+    (proj / "m.py").write_text("def f(x):\n    return x + 1\n")
+    (proj / "conftest.py").write_text(
+        "import sys\n"
+        f"sys.path.insert(0, {str((proj / 'src').resolve())!r})\n")
+    (proj / "tests").mkdir()
+    (proj / "tests" / "test_m.py").write_text(
+        "from deps import SUPPORT\n"
+        "from m import f\n"
+        "def test_f():\n"
+        "    assert f(SUPPORT) == 42\n")
+    sandbox = prepare_sandbox(tmp_path / "sandbox",
+                              mutate_paths=[proj / "m.py"],
+                              also_copy=[proj / "conftest.py", proj / "tests"])
+    from zft.gates.runners.pytest_runner import run_pytest
+
+    result = run_pytest(sandbox, ["tests/test_m.py"], timeout_s=120,
+                        env=gate_env())
+    assert result.ok, result.tail
+
+
+def test_consumer_conftest_setup_cannot_shadow_the_mirror(tmp_path):
+    """Isolation ordering: the consumer's sys.path inserts take effect, but
+    the sandbox is re-fronted afterwards — a stale real-tree copy the
+    consumer puts first on path must not shadow the mirrored module under
+    mutation (that would silently un-mutate the campaign)."""
+    proj = tmp_path / "proj"
+    (proj / "build").mkdir(parents=True)
+    (proj / "build" / "m.py").write_text("MARK = 'stale'\n")
+    (proj / "m.py").write_text("MARK = 'current'\n")
+    (proj / "conftest.py").write_text(
+        "import sys\n"
+        f"sys.path.insert(0, {str((proj / 'build').resolve())!r})\n")
+    (proj / "tests").mkdir()
+    (proj / "tests" / "test_m.py").write_text(
+        "import m\n"
+        "def test_current_wins():\n"
+        "    assert m.MARK == 'current'\n")
+    sandbox = prepare_sandbox(tmp_path / "sandbox",
+                              mutate_paths=[proj / "m.py"],
+                              also_copy=[proj / "conftest.py", proj / "tests"])
+    from zft.gates.runners.pytest_runner import run_pytest
+
+    result = run_pytest(sandbox, ["tests/test_m.py"], timeout_s=120,
+                        env=gate_env())
+    assert result.ok, result.tail
+
+
+def test_consumer_conftest_collision_is_a_typed_refusal(tmp_path):
+    """also_copy already carrying a conftest_consumer.py must not be silently
+    replaced by the --conftest preservation rename."""
+    src = tmp_path / "m.py"
+    src.write_text("def f():\n    return 1\n")
+    victim = tmp_path / "conftest_consumer.py"
+    victim.write_text("# pre-existing content\n")
+    consumer = tmp_path / "conftest.py"
+    consumer.write_text("# consumer\n")
+    with pytest.raises(ValueError, match="collides"):
+        prepare_sandbox(tmp_path / "sandbox", mutate_paths=[src],
+                        also_copy=[victim, consumer])
+    assert (tmp_path / "sandbox" / "conftest_consumer.py").read_text() == \
+        "# pre-existing content\n"

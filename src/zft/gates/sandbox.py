@@ -8,7 +8,12 @@
    single test FILES flatten to the root.
 3. conftest.py pins the sandbox at sys.path[0] (the mirrored mutated package
    shadows the installed one) and scrubs parent-env channels at startup, so
-   gate verdicts cannot be steered by the launching shell.
+   gate verdicts cannot be steered by the launching shell. A consumer
+   conftest arriving via also_copy (the --conftest seam) is preserved
+   byte-exact as conftest_consumer.py and exec'd after that preamble — its
+   sys.path setup and hooks apply inside the sandbox, and the sandbox is
+   re-fronted on sys.path so the mirror keeps shadowing whatever the
+   consumer's setup put first.
 4. Minimal mutmut-compatible pyproject (paths_to_mutate/also_copy).
 
 Isolation rules enforced here:
@@ -170,7 +175,7 @@ def prepare_sandbox(
     # conftest paths must be absolute: the subprocess cwd is already the sandbox,
     # so a relative sandbox arg would resolve inside itself
     sandbox_abs = sandbox.resolve()
-    (sandbox / "conftest.py").write_text(
+    generated = (
         "import os\n"
         "import sys\n"
         f"for _k in {STRIPPED_ENV_VARS!r}:\n"
@@ -178,6 +183,30 @@ def prepare_sandbox(
         f"os.chdir({str(sandbox_abs)!r})\n"
         f"sys.path.insert(0, {str(sandbox_abs)!r})\n"
     )
+    consumer = sandbox / "conftest.py"
+    if consumer.exists():
+        # D7: a conftest.py arriving via also_copy (the --conftest seam) would
+        # be clobbered by the write below. Preserve it byte-exact and load it
+        # after the isolation preamble, then re-front the sandbox on sys.path
+        # so the mirrored module keeps shadowing whatever real-tree copy the
+        # consumer's own setup put first.
+        preserved = sandbox / "conftest_consumer.py"
+        if preserved.exists():
+            raise ValueError(
+                f"consumer conftest collides with copied {preserved.name}")
+        consumer.rename(preserved)
+        generated += (
+            "# consumer conftest (--conftest), preserved verbatim as\n"
+            "# conftest_consumer.py; exec'd here after isolation so its\n"
+            "# sys.path setup and hooks apply inside the sandbox\n"
+            f"_consumer = {str(preserved.resolve())!r}\n"
+            "with open(_consumer, encoding='utf-8') as _f:\n"
+            "    exec(compile(_f.read(), _consumer, 'exec'), globals())\n"
+            f"if {str(sandbox_abs)!r} in sys.path:\n"
+            f"    sys.path.remove({str(sandbox_abs)!r})\n"
+            f"sys.path.insert(0, {str(sandbox_abs)!r})\n"
+        )
+    (sandbox / "conftest.py").write_text(generated)
 
     names = ", ".join(
         f'"{m.relative_to(sandbox).as_posix()}"' for m in mirrored.values())

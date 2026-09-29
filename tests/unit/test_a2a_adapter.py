@@ -1,13 +1,13 @@
 """C-32: a2a adapter — V7 semantics on the real protobuf SDK + negative tests."""
 import pytest
 
-from zft.negotiate.a2a_adapter import A2aAdapter, AdapterError
-
+# a2a-sdk is an optional extra — skip this module at collection if absent.
 pytest.importorskip("a2a")
 
 from a2a.types import Role, TaskState, TaskStatus  # noqa: E402
 from google.protobuf.json_format import MessageToDict  # noqa: E402
 
+from zft.negotiate.a2a_adapter import A2aAdapter, AdapterError  # noqa: E402
 from zft.negotiate.sm import NegotiationSM  # noqa: E402
 
 

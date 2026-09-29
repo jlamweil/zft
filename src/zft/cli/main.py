@@ -35,6 +35,23 @@ def _val(argv: list[str], flag: str):
     return None
 
 
+def _vals(argv: list[str], flag: str) -> list[str]:
+    """Flag helper: every value following an occurrence of `flag`, [] if none.
+
+    For repeatable flags (`task-gate after --changed p1 --changed p2`);
+    same guard as _val — a flag-shaped token is never a value.
+    """
+    out: list[str] = []
+    i = 0
+    while i < len(argv):
+        if argv[i] == flag and i + 1 < len(argv) and not argv[i + 1].startswith("--"):
+            out.append(argv[i + 1])
+            i += 2
+        else:
+            i += 1
+    return out
+
+
 # Value-less flags (no following argument): never a flag value and never a
 # positional root (zft lineage BOOLEAN_FLAGS, unioned 2026-09-12).
 BOOLEAN_FLAGS = {"--resume"}
@@ -381,19 +398,29 @@ def main(argv: list[str] | None = None) -> int:
                               scope_functions=scope, timeout_s=120, ledger=led,
                               repo_root=root, resume=resume)
         led.append({"event": "campaign_summary", "ok": result.ok,
+                    "baseline_ok": result.baseline_ok,
                     "total": result.total_mutants, "killed": result.killed,
                     "in_scope_killed": result.in_scope_killed,
                     "in_scope_total": result.in_scope_total,
                     "resumed": result.resumed,
                     "timed_out": len(result.timed_out)})
         led.close()
-        print(json.dumps({"ok": result.ok, "total": result.total_mutants,
+        print(json.dumps({"ok": result.ok, "baseline_ok": result.baseline_ok,
+                          "total": result.total_mutants,
                           "killed": result.killed,
                           "in_scope_killed": result.in_scope_killed,
                           "in_scope_total": result.in_scope_total,
                           "resumed": result.resumed,
                           "timed_out": len(result.timed_out),
                           "survivors": result.survivor_names}, indent=1))
+        if not result.baseline_ok:
+            print("gate: the sandboxed baseline suite is RED — kill/survivor "
+                  "counts are not trustworthy (a collection or import failure "
+                  "kills every mutant). Re-run with ZFT_KEEP_SANDBOX=1 to "
+                  "autopsy the sandbox; check the test's imports and path "
+                  "setup (--conftest). A src-layout --module mirrors only a "
+                  "real package: src/<pkg>/__init__.py must exist.",
+                  file=sys.stderr)
         return 0 if result.ok else 1
 
     if cmd == "repro":
@@ -506,7 +533,7 @@ def main(argv: list[str] | None = None) -> int:
         from zft.negotiate.resume import advance_to_validated, resume
         from zft.negotiate.sm import DEFAULT_RETRY_BUDGET, IllegalTransition, NegotiationSM
         from zft.negotiate.terms import CounterTermsError, parse_counter_terms, terms_digest
-        from zft.spec.store import load_contract
+        from zft.spec.store import load_contract, require_contract_keys
 
         sheet = _val(argv, "--counter-terms")
         try:
@@ -522,9 +549,11 @@ def main(argv: list[str] | None = None) -> int:
 
         try:
             contract = load_contract(root)
-        except FileNotFoundError as e:
-            # a consumer root without .zft/contracts gets the typed refusal
-            # every other subcommand gives, not a substrate traceback
+            require_contract_keys(contract)
+        except (FileNotFoundError, ValueError) as e:
+            # a consumer root without .zft/contracts — or with a manifest that
+            # is not one — gets the typed refusal every other subcommand
+            # gives, not a substrate traceback
             print(f"negotiate refused: {e}")
             return 1
         resumed = resume(root / ".zft" / "runs")
@@ -567,21 +596,60 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if cmd == "task-gate":
-        from zft.taskgate import gate_after, gate_before
+        from zft.taskgate import classify_trace, gate_after, gate_before
 
         # parse directly from argv: _split_root would misread the phase
         # positional ("before"/"after") as the root
         phase = argv[1] if len(argv) > 1 else None
         subagent = _val(argv, "--subagent") or ""
         description = _val(argv, "--description") or ""
+        rules = _parse_capability(argv)
         root = Path.cwd()
+
+        if "--explain" in argv:
+            # dry run: classify and report, enforce nothing, audit nothing
+            print(json.dumps(classify_trace(subagent, rules), indent=2))
+            return 0
+
+        # O1 instrumentation identity (gates-bench v3 §1): the plugin stamps
+        # its dispatch marker on every invocation; a hand-run without them
+        # produces the pre-instrumentation record schema.
+        since_ms_raw = _val(argv, "--since-ms")
+        since_ms: int | None = None
+        if since_ms_raw is not None:
+            try:
+                since_ms = int(since_ms_raw)
+            except ValueError:
+                print(f"error: --since-ms expects an integer "
+                      f"(got {since_ms_raw!r})", file=sys.stderr)
+                return 2
+        dispatch_id = _val(argv, "--dispatch-id")
+
         if phase == "before":
-            code, payload = gate_before(subagent, description, root)
+            code, payload = gate_before(subagent, description, root, rules=rules,
+                                        since_ms=since_ms, dispatch_id=dispatch_id)
         elif phase == "after":
-            code, payload = gate_after(subagent, description, root)
+            changed = _vals(argv, "--changed")
+            since_ref = _val(argv, "--since-ref")
+            scope = _val(argv, "--scope")
+            if scope is not None and scope != "changeset":
+                print(f"error: --scope accepts only 'changeset' (got {scope!r})",
+                      file=sys.stderr)
+                return 2
+            # scoping is active when any scoping flag is present;
+            # --scope changeset alone declares an (empty) changeset.
+            scoped = (scope == "changeset" or bool(changed)
+                      or since_ref is not None)
+            code, payload = gate_after(
+                subagent, description, root, rules=rules,
+                changed=changed if scoped else None,
+                since_ref=since_ref if scoped else None,
+                scope=scope, since_ms=since_ms, dispatch_id=dispatch_id)
         else:
             print("usage: zft task-gate <before|after> --subagent <type> "
-                  "--description <text>")
+                  "--description <text> [--capability '<json ruleset>'] [--explain] "
+                  "[--changed <path> ...] [--since-ref <git-ref>] [--scope changeset] "
+                  "[--since-ms <int>] [--dispatch-id <uuid>]")
             return 2
         print(json.dumps(payload, indent=2))
         return code
@@ -593,6 +661,26 @@ def main(argv: list[str] | None = None) -> int:
 def _oracle_path(argv: list[str]) -> Path | None:
     val = _val(argv, "--oracle")
     return Path(val) if val else None
+
+
+def _parse_capability(argv: list[str]) -> list[dict] | None:
+    """`--capability '<json>'` carries an opencode PermissionRule[] (the merged
+    ruleset a plugin resolved for the subagent). Malformed JSON degrades to the
+    name fallback (None) with a warning — never a crash, never an allow."""
+    raw = _val(argv, "--capability")
+    if raw is None:
+        return None
+    try:
+        rules = json.loads(raw)
+    except json.JSONDecodeError as e:
+        print(f"warning: --capability ignored (invalid JSON: {e}) — "
+              f"falling back to lane-name classification", file=sys.stderr)
+        return None
+    if not isinstance(rules, list):
+        print("warning: --capability ignored (expected a JSON array of rules) — "
+              "falling back to lane-name classification", file=sys.stderr)
+        return None
+    return rules
 
 
 def _conftest_path(argv: list[str]) -> Path | None:

@@ -6,23 +6,22 @@ interop claim is exercised literally rather than against a hand-rolled
 twin. Runs against a copy of the repo's .zft tree, never the repo.
 """
 import asyncio
+import builtins
 import json
 import os
 import shutil
+import signal
+import socket
 import subprocess
 import sys
 from pathlib import Path
 
-import httpx
 import pytest
-from google.protobuf.json_format import ParseDict
 
+pytest.importorskip("httpx")
 pytest.importorskip("a2a")
 
-import builtins
-import signal
-import socket
-
+import httpx  # noqa: E402
 from a2a.client.transports.jsonrpc import JsonRpcTransport  # noqa: E402
 from a2a.types import (  # noqa: E402  # noqa: E402
     AgentCard,
@@ -37,6 +36,7 @@ from a2a.utils.errors import (  # noqa: E402
     TaskNotFoundError,
     UnsupportedOperationError,
 )
+from google.protobuf.json_format import ParseDict  # noqa: E402
 
 from zft.debug.ledger import RunLedger  # noqa: E402
 from zft.negotiate import transport as transport_module
@@ -662,4 +662,24 @@ def test_main_explicit_flags_reach_the_server(monkeypatch, tmp_path):
     assert server._requested_port == port_no
     assert server.port == port_no
     assert server._root == Path(root)
+    server.stop()
+def test_malformed_manifest_faults_name_the_missing_keys(tmp_path):
+    """Same guard on the A2A wire: a version-less manifest must fault at CFП
+    time with the typed message, not KeyError the moment VALIDATED is
+    recorded (a8 wheel consumer-probe finding, 2026-09-28)."""
+    store = tmp_path / "malformed-store"
+    (store / ".zft" / "contracts").mkdir(parents=True)
+    (store / ".zft" / "contracts" / "c.json").write_text(
+        '{"name": "c", "clause_ids": []}')
+    server = A2aNegotiationServer(store, task_id=TASK)
+    server.start()
+    resp = _raw(server.port, {"jsonrpc": "2.0", "id": 9, "method": "SendMessage",
+                              "params": {"message": {"messageId": "m",
+                                                     "role": "ROLE_USER",
+                                                     "taskId": TASK,
+                                                     "metadata": {"action": "cfp"}}}})
+    assert resp["error"]["code"] == -32603
+    assert resp["error"]["message"] == (
+        "ValueError: contract manifest malformed (missing key(s): version)")
+    assert resp["id"] == 9
     server.stop()

@@ -22,14 +22,27 @@ Gap 001. Treat the reports as binding records, not as proof of acceptance.
 - **opencode** (built against the `1.18.x` plugin API)
 - **Python 3.12+** and the CLI: `pip install zft` (or `uv pip install zft`)
 - The `zft` executable reachable **one** of these ways (checked in this order):
-  `ZFT_BIN` env var → `<project>/.venv/bin/zft` → `zft` on `PATH`
-  → `python3 -m zft.cli.main` (lint gate only; falls back to
+  `ZFT_BIN` env var → `<project>/.venv/bin/zft` → `zft` on `PATH` or in
+  `~/.local/bin` → `python3 -m zft.cli.main` (falls back to
   `traceagent.cli.main` for the published 0.2.x wheel). Verify with `zft` —
   it should print the usage block and exit 0.
 
-No npm dependencies. The TypeScript plugin uses only `node:child_process`
-/ `node:fs` / `node:path` and a type-only import of `@opencode-ai/plugin`;
-opencode transpiles it at load, so there is nothing to build.
+  The `~/.local/bin` lookup exists because `uv tool install zft` / `pipx
+  install zft` / `pip install --user zft` all land there, and the opencode
+  server's `PATH` does not always include it — a project with a `.zft/` store
+  but no project venv otherwise yields "Executable not found in $PATH: zft".
+
+  Every candidate except an explicit `ZFT_BIN` must also **run**: a stale
+  `.venv` entry point (a `ModuleNotFoundError` traceback, as after the
+  `traceagent` → `zft` package rename) is skipped and resolution falls
+  through to the next candidate, instead of the gate failing open (dispatch)
+  or blocking every edit (lint, enforce mode) on a binary that cannot start.
+  `ZFT_BIN` stays authoritative — a bad explicit override fails loudly.
+
+No npm dependencies. The plugins use only `node:child_process` / `node:fs`
+/ `node:os` / `node:path` and (for the TypeScript one) a type-only import of
+`@opencode-ai/plugin`; opencode transpiles it at load, so there is nothing to
+build.
 
 ## Install
 
@@ -117,6 +130,14 @@ Fix the export endpoint to reject oversized payloads [contract: export]
   `vision-consultant`, `researcher`) — they cannot mutate the deliverable, so
   they pass ungated with a recorded reason. Every other subagent type
   (including unknown ones) is a **writer** and needs the marker.
+- **Capability wins over the name.** When the plugin can resolve the
+  subagent's permission via `client.app.agents()`, the lane follows the
+  capability, not the name: an agent that can edit or run bash is a writer
+  whatever it is called, and an agent with both denied is exempt. The
+  resolved ruleset is forwarded to the gate as `--capability '<json>'` and
+  appears in the audit record, so a classification is always replayable.
+  Resolution failure (old opencode, server hiccup, unknown agent) degrades
+  silently to the lane-name rules above — never to an allow.
 - **Escape hatch:** `[ungated: <reason>]` allows a writer dispatch and audits
   the reason (`override: true`). Use it deliberately — it appears in the log.
 - **Blocked dispatch:** the block reason (the CLI's JSON) is embedded in the
@@ -159,6 +180,23 @@ evidence layer:
 opencode's own `OPENCODE_PURE=1` disables all plugin loading — the escape
 hatch if a plugin ever breaks startup.
 
+## Changeset scoping of the after-verdict
+
+The `before` hook records a per-dispatch marker (callID → clock, `HEAD`,
+session); the `after` hook resolves it so the verdict counts only what this
+dispatch changed (`ENF-CHANGESET-VERDICT`):
+
+| situation | flags the plugin passes |
+| --- | --- |
+| child sessions visible, files edited | `--changed <path>` … (completed `edit`/`write` calls; `apply_patch` carries no path and escapes the scope — under-scope, never over) |
+| child sessions visible, no edits | `--scope changeset` — trusted empty, nothing inherited |
+| session API unusable | `--since-ref <dispatch HEAD>` — coarser, still attributable |
+| no marker / not a git repo | nothing — the tree-wide verdict |
+
+Degradation is always non-blocking and never fabricates a scope. The same
+flags are accepted by hand on `zft task-gate after`; without them the
+verdict is tree-wide exactly as before.
+
 ## Safety model
 
 The gates are designed so a plugin fault can never take the session down:
@@ -179,7 +217,9 @@ The gates are designed so a plugin fault can never take the session down:
 
 ## Exit codes of the CLI seams
 
-`zft task-gate before|after --subagent <type> --description <text>`
+`zft task-gate before|after --subagent <type> --description <text>` —
+`after` also accepts `--changed <path>` (repeatable), `--since-ref <git-ref>`,
+and `--scope changeset` (see changeset scoping above).
 
 | exit | meaning | dispatch-gate behaviour |
 | --- | --- | --- |
@@ -197,6 +237,12 @@ anything else is treated as a broken gate.
   exists at the session directory. Confirm the store, confirm `zft` runs from
   the session's environment, and **restart opencode** — plugin changes
   (including the install) are not hot-reloaded.
+- **`[zft gate] internal error ... Executable not found in $PATH: "zft"`.**
+  The dispatch gate could not find a `zft` for a project with no `.venv`.
+  Install it user-wide — `uv tool install zft` (or `pipx install zft`, or
+  `pip install --user zft`) — it lands in `~/.local/bin`, which the gate
+  checks even when the server's `PATH` omits it. Or set `ZFT_BIN` per
+  project. Restart opencode afterward; a hung session may need it twice.
 - **`GATE_UNAVAILABLE` / gate never green.** The configured `zft` cannot run:
   check `ZFT_BIN`, or `pip install zft` for the right interpreter.
 - **Every in-corpus edit fails L0.** One broken clause anywhere fails the
@@ -235,6 +281,27 @@ await hooks["tool.execute.before"]!(
   { args: { subagent_type: "explorer", description: "read the code" } },
 )
 ```
+
+To exercise the capability path, pass a stub `client` whose `app.agents()`
+resolves the subagent to a permission ruleset — an `explorer` that can edit
+must then throw:
+
+```ts
+const hooks = await ZftGate({
+  directory: "/path/to/store-root",
+  client: {
+    app: {
+      agents: async () => [
+        { name: "explorer", permission: [{ permission: "edit", pattern: "*", action: "allow" }] },
+      ],
+    },
+  },
+})
+```
+
+The classification logic itself (which ruleset is a producer) lives in
+`src/zft/taskgate.py` and is pinned by `oracle_CAPABILITY-CLASSIFICATION.py`
+— the plugin only resolves and forwards.
 
 **Verify end to end** in a throwaway project: scaffold a clause + contract
 (see *First run*), then dispatch work from opencode and inspect

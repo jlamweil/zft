@@ -16,14 +16,14 @@ import sys
 import threading
 from pathlib import Path
 
-import httpx
 import pytest
-from google.protobuf.json_format import ParseDict
 
+pytest.importorskip("httpx")
 pytest.importorskip("a2a")
-
+import httpx  # noqa: E402
 from a2a.client.transports.jsonrpc import JsonRpcTransport  # noqa: E402
 from a2a.types import AgentCard, Message, SendMessageRequest, TaskState  # noqa: E402
+from google.protobuf.json_format import ParseDict  # noqa: E402
 
 from zft.debug.ledger import RunLedger  # noqa: E402
 

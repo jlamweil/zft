@@ -368,6 +368,65 @@ def load_waivers(path):
     return data
 
 
+def fold_waivers(*sheets):
+    """Union waiver sheets at a fleet fold; IO-free. Later sheets win.
+
+    A key seen again with the SAME text_key (or none) merges into one entry:
+    reasons concatenate chronologically after `` | ALSO (fold): `` (skipping
+    reasons already contained verbatim), the first non-null ``killing_test``
+    survives. Entries sharing a ``text_key`` are one review of one mutation
+    text and collapse to the later lane's key, the earlier keys recorded
+    under ``folded_keys`` — one review covers every live row of the same
+    text. Entries without a ``text_key`` merge only on the exact key (no
+    lookalike text merging). A key re-seen with a DIFFERENT text_key is the
+    mis-attachment class surfacing at fold time: ValueError, never a silent
+    merge — the lane records decide.
+    """
+    folded: dict = {}
+    by_text: dict = {}
+
+    def merge(target, key, entry):
+        tk = entry.get("text_key")
+        if isinstance(tk, str) and target.get("text_key") \
+                and target["text_key"] != tk:
+            raise ValueError(
+                f"{key}: same key carries different text across sheets "
+                f"({target['text_key'][:12]}.. vs {tk[:12]}..) — "
+                "mis-attachment conflict, resolve from the lane records")
+        if isinstance(tk, str) and not target.get("text_key"):
+            target["text_key"] = tk  # the later lane's review identity rides
+        reason = entry.get("reason")
+        if (reason and reason != target.get("reason")
+                and reason not in (target.get("reason") or "")):
+            base = target.get("reason")
+            target["reason"] = (f"{base} | ALSO (fold): {reason}"
+                                if base else reason)
+        if target.get("killing_test") is None:
+            target["killing_test"] = entry.get("killing_test")
+
+    for sheet in sheets:
+        for key, entry in sheet.items():
+            tk = entry.get("text_key")
+            twin = by_text.get(tk) if isinstance(tk, str) else None
+            if twin is not None and twin != key:
+                # one review of one text: the later lane's live key carries
+                # it, the earlier keys ride along as provenance
+                target = folded.pop(twin)
+                merge(target, key, entry)
+                target.setdefault("folded_keys", []).append(twin)
+                folded[key] = target
+                by_text[tk] = key
+                continue
+            if key in folded:
+                merge(folded[key], key, entry)
+                continue
+            stored = dict(entry)
+            if isinstance(tk, str):
+                by_text.setdefault(tk, key)
+            folded[key] = stored
+    return folded
+
+
 # ---------------------------------------------------------------------------
 # Record writer: a scratch mutated tree -> per-file .mutdiff.json. Called by
 # jobs/mut-src.sh after a completed `mutmut run`; this function is the single

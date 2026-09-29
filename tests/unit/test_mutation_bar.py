@@ -18,6 +18,7 @@ from zft.gates.mutation_bar import (
     canonical_mutation_text,
     classify,
     evaluate,
+    fold_waivers,
     load_shard,
     load_waivers,
     mutation_text_key,
@@ -891,3 +892,110 @@ def test_contradictions_sort_by_file_then_mutant():
     assert [(c["file"], c["mutant"]) for c in rep["verdict_contradictions"]] == [
         ("src/a.py", "m.x_alpha__mutmut_2"),
         ("src/b.py", "m.x_alpha__mutmut_9")]
+
+
+# --- fold_waivers: union waiver sheets at a fleet fold, by text identity ----
+
+def _w(reason="reviewed r", killing_test=None, text_key=None):
+    e = {"reason": reason, "killing_test": killing_test}
+    if text_key is not None:
+        e["text_key"] = text_key
+    return e
+
+
+def _tk(module, orig="    return x + 1\n", mut="    return x - 1\n"):
+    return mutation_text_key(module, orig, mut)
+
+
+def test_fold_waivers_disjoint_sheets_union():
+    a = {"k_a": _w("ra")}
+    b = {"k_b": _w("rb")}
+    out = fold_waivers(a, b)
+    assert sorted(out) == ["k_a", "k_b"]
+    assert out["k_a"]["reason"] == "ra"
+    assert out["k_b"]["reason"] == "rb"
+
+
+def test_fold_waivers_same_key_identical_payload_dedups():
+    a = {"k": _w("r", "t1")}
+    b = {"k": _w("r", "t1")}
+    assert fold_waivers(a, b) == {"k": _w("r", "t1")}
+
+
+def test_fold_waivers_same_key_appends_new_reason_once():
+    a = {"k": _w("older review", "t1")}
+    b = {"k": _w("newer review", "t1")}
+    out = fold_waivers(a, b)
+    assert out["k"]["reason"] == "older review | ALSO (fold): newer review"
+    # idempotent: re-folding the same sheet must not grow the reason again
+    assert fold_waivers(out, b)["k"]["reason"] == \
+        "older review | ALSO (fold): newer review"
+
+
+def test_fold_waivers_text_key_twins_collapse_to_one_review():
+    # the proposal's fold rule: one review covers every live row of the same
+    # text -- two lanes' entries keyed at different numbers but carrying the
+    # same text_key are one review, not two waivers
+    tk = _tk("src/zft/gates/l1.py")
+    a = {"l1_old_430": _w("the review", "t", tk)}
+    b = {"l1_new_432": _w("the review", "t", tk)}
+    out = fold_waivers(a, b)
+    assert list(out) == ["l1_new_432"]  # later lane's live key carries it
+    assert out["l1_new_432"]["folded_keys"] == ["l1_old_430"]
+    assert out["l1_new_432"]["text_key"] == tk
+    # the identical reason must not be appended a second time
+    assert out["l1_new_432"]["reason"] == "the review"
+
+
+def test_fold_waivers_twins_with_different_reviews_keep_both_arguments():
+    tk = _tk("src/zft/gates/l1.py")
+    a = {"k_a": _w("review A", None, tk)}
+    b = {"k_b": _w("review B", "test_x", tk)}
+    out = fold_waivers(a, b)
+    assert list(out) == ["k_b"]
+    assert out["k_b"]["reason"] == "review A | ALSO (fold): review B"
+    assert out["k_b"]["killing_test"] == "test_x"  # first non-null survives
+
+
+def test_fold_waivers_legacy_entries_never_merge_by_text():
+    # no text_key: identity is the key alone -- same reason, different key,
+    # different lanes stay separate (merging them would waives-by-lookalike)
+    a = {"k_a": _w("same reason")}
+    b = {"k_b": _w("same reason")}
+    out = fold_waivers(a, b)
+    assert sorted(out) == ["k_a", "k_b"]
+
+
+def test_fold_waivers_same_key_different_text_key_is_a_conflict():
+    # the number holds different text in the two lanes: exactly the
+    # mis-attachment class -- fail loud for the lane records, never merge
+    a = {"k": _w("r1", text_key=_tk("src/a.py"))}
+    b = {"k": _w("r2", text_key=_tk("src/a.py", mut="    return x + 2\n"))}
+    with pytest.raises(ValueError, match="different text"):
+        fold_waivers(a, b)
+
+
+def test_fold_waivers_within_sheet_twins_collapse():
+    tk = _tk("src/a.py")
+    sheet = {"k_1": _w("r", text_key=tk), "k_2": _w("r", text_key=tk)}
+    out = fold_waivers(sheet)
+    assert list(out) == ["k_2"]  # the later key carries, consistently
+    assert out["k_2"]["folded_keys"] == ["k_1"]
+
+
+def test_fold_waivers_adopts_text_key_the_other_lane_proved():
+    # one lane's sheet still reviews by key alone; the other lane re-sees
+    # the same key WITH the text_key (the migration/enrichment class). The
+    # contract says same text_key (or none) merges — the merged entry must
+    # CARRY the later lane's review identity, not silently drop it: a
+    # dropped text_key would unattach the review at the next renumbering.
+    tk = _tk("src/a.py")
+    a = {"k": _w("r1")}
+    b = {"k": _w("r2", text_key=tk)}
+    out = fold_waivers(a, b)
+    assert out["k"]["text_key"] == tk
+    assert out["k"]["reason"] == "r1 | ALSO (fold): r2"
+    # reverse order: the earlier lane already carries the identity — kept
+    out2 = fold_waivers(b, a)
+    assert out2["k"]["text_key"] == tk
+    assert out2["k"]["reason"] == "r2 | ALSO (fold): r1"

@@ -42,3 +42,20 @@ def load_contract(root: Path | str) -> dict:
     if not contracts:
         raise FileNotFoundError("no contract manifest under .zft/contracts")
     return json.loads(contracts[-1].read_text())
+
+
+CONTRACT_MANIFEST_KEYS = ("name", "clause_ids", "version")
+
+
+# @trace("CON-VALIDATED-OR-NO-START")
+def require_contract_keys(contract: dict) -> None:
+    """Reject a manifest missing the keys the negotiate flow consumes.
+
+    Typed ValueError so the CLI refuses before any state machine runs and the
+    A2A wire faults with the same wording — never an unhandled KeyError at
+    the validated outcome (a8 wheel consumer-probe finding, 2026-09-28)."""
+    missing = [k for k in CONTRACT_MANIFEST_KEYS if k not in contract]
+    if missing:
+        raise ValueError(
+            "contract manifest malformed (missing key(s): "
+            + ", ".join(missing) + ")")

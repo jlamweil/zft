@@ -137,6 +137,29 @@ def test_campaign_kills_and_classifies(tmp_path):
     assert result.executed == result.in_scope_total
     assert result.in_scope_killed == 2
     assert result.survivors == []
+    assert result.baseline_ok is True
+
+
+# @trace("GATE-MUTATION-ATTRIBUTION")
+def test_baseline_red_is_surfaced_not_silent(tmp_path):
+    """A red sandboxed baseline must be visible on the result.
+
+    ok=false with 100% kills and zero survivors is the silent-misconfiguration
+    shape (first-try consumer proof, 2026-09-27): a flattened src-layout module
+    made every in-sandbox collection fail, each failure counted as a kill, and
+    the report's only signal was ok:false. The baseline verdict is now part of
+    the result so the CLI can say WHY the campaign is red.
+    """
+    sandbox = _prepare(tmp_path)
+    (sandbox / "tests" / "test_module.py").write_text(
+        "import module_missing_on_purpose\n\n"
+        "def test_placeholder():\n"
+        "    assert True\n"
+    )
+    result = run_campaign(sandbox, test_paths=["tests/test_module.py"])
+    assert result.baseline_ok is False
+    assert result.ok is False
+    assert result.survivors == []
 
 
 def test_resume_skips_prior_verdicts(tmp_path):
@@ -621,3 +644,36 @@ def test_generate_mutants_syntax_error_skips_without_stopping():
         "mod.py::fn:g::line:2::>-><",
         r"mod.py::fn:g::line:3::\+->-",
     ]
+
+
+# ---------------------------------------------------------------------------
+# D7 close (2026-09-28, campaign level): the fresh-consumer probe's cell —
+# with the consumer conftest clobbered, the sandbox baseline died at
+# collection and the gate reported ok:false with FAKE 1/1 kills. The
+# --conftest seam must carry sys.path setup into every sandboxed pytest run.
+# ---------------------------------------------------------------------------
+
+def test_campaign_consumer_conftest_carries_sys_path_setup(tmp_path):
+    proj = tmp_path / "proj"
+    (proj / "src").mkdir(parents=True)
+    (proj / "src" / "deps.py").write_text("SUPPORT = 41\n")
+    (proj / "module.py").write_text("def f(x):\n    return x + 1\n")
+    (proj / "conftest.py").write_text(
+        "import sys\n"
+        f"sys.path.insert(0, {str((proj / 'src').resolve())!r})\n")
+    (proj / "tests").mkdir()
+    (proj / "tests" / "test_module.py").write_text(
+        "from deps import SUPPORT\n"
+        "from module import f\n"
+        "def test_f():\n"
+        "    assert f(SUPPORT) == 42\n")
+    sandbox = prepare_sandbox(tmp_path / "sandbox",
+                              mutate_paths=[proj / "module.py"],
+                              also_copy=[proj / "conftest.py", proj / "tests"])
+    result = run_campaign(sandbox, test_paths=["tests/test_module.py"],
+                          timeout_s=120)
+    assert result.baseline_ok, "sandbox baseline must collect via the " \
+        "consumer conftest's sys.path setup"
+    assert result.total_mutants == 1
+    assert result.killed == 1, "the +->- mutant must be genuinely killed"
+    assert result.ok

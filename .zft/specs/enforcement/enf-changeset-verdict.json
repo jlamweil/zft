@@ -1,0 +1,20 @@
+{
+  "node_id": "01a0e6ea-0403-7a99-b210-2bc9bcea09b9",
+  "alias": "ENF-CHANGESET-VERDICT",
+  "domain": "enforcement",
+  "title": "Changeset-scoped coverage verdict",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "405f8c79aa8627b647af56f263dfc5155dfbac5b15023185e46eedf5b5ddfb63",
+  "invariants": [
+    {
+      "id": "ENF-CHANGESET-VERDICT-INV-01",
+      "statement": "WHEN a writer task completes with a declared changeset, THE SYSTEM SHALL compute the coverage verdict against bindings extracted only from those changed paths, and WHEN the changeset cannot be resolved, THE SYSTEM SHALL report an error verdict rather than unscoped coverage",
+      "property": "forall task t: changeset(t) => verdict(t) == coverage(due(t), bindings(changeset(t)))",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

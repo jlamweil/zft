@@ -8,6 +8,7 @@ them globally pollutes nothing.
 | Plugin | File | Hooks | What it enforces |
 | --- | --- | --- | --- |
 | **dispatch gate** | [`zft-gate.ts`](./zft-gate.ts) | `tool.execute.before` / `after` on the built-in `task` tool | Every subagent dispatch is either **bound to a contract** or explicitly recorded as ungated (`zft task-gate`). Blocks contract-less writer dispatches *before* they spawn; prepends the coverage verdict to the result. |
+| **session-binding gate** | [`zft-gate.ts`](./zft-gate.ts) | `tool.execute.before` on `edit` / `write` (deliverable paths) | The main session is a writer too: a deliverable edit before any recorded contract binding is **blocked** until the session binds itself (`zft task-gate before --subagent main --description "[contract: <name>] ..."` or an explicit `[ungated: <reason>]`). A gated dispatch binds the session automatically. Store-corpus edits (`.zft/**`) stay the lint gate's domain. |
 | **lint gate** | [`zft-lint-gate.js`](./zft-lint-gate.js) | `tool.execute.after` on `edit` / `write` | Every edit that lands in the contract corpus (`<root>/.zft/**`) is re-checked by L0 (`zft lint`) — the same gate CI runs, seconds after the edit instead of at commit time. |
 
 This is **traceability enforcement**. Neither plugin proves the deliverable
@@ -162,6 +163,27 @@ tool result as `[zft gate] coverage verdict …` — green (`covered`) or
 unbound clause IDs. The verdict is non-blocking information for the
 orchestrator; act on it before accepting the deliverable.
 
+**Main-session edits.** The session-binding gate closes the bypass where all
+work stays in the main session: the first deliverable edit (any path outside
+`.zft/**`) in a session with no recorded binding is blocked with a typed
+hint. Binding paths, all equal in the audit trail:
+
+```bash
+# bind the session to a contract (then retry the edit):
+zft task-gate before --subagent main --description "[contract: export] fix oversized-payload handling"
+# or declare the work deliberately ungated (audited as override):
+zft task-gate before --subagent main --description "[ungated: README typo]"
+# or simply dispatch a subagent with [contract: <name>] — that binds too
+```
+
+Notes: the binding check scans `.zft/audit.log` (the CLI's own records — the
+same trail CI and the dispatch gate write), throttled to one scan per 2 s
+per session; a plugin restart starts a fresh epoch, so re-bind once after a
+restart; `apply_patch` carries no file path and cannot be classified, so it
+passes this gate (conservatively under-gated, never over); every
+session-gate decision lands a `phase: "session-gate"` record in
+`.zft/gates-hook/taskgate.jsonl`.
+
 **Editing the store.** Every edit to `<root>/.zft/**` is re-linted. In
 `observe` mode (default) the outcome is recorded and a failure only warns;
 in `enforce` mode an L0 failure is thrown back into the session with the
@@ -185,9 +207,9 @@ evidence layer:
 | Env var | Meaning |
 | --- | --- |
 | `ZFT_BIN=<path>` | Point both plugins at a specific `zft` executable. |
-| `ZFT_GATE_DISABLED=1` | Disable the dispatch gate entirely. |
+| `ZFT_GATE_DISABLED=1` | Disable the dispatch **and** session-binding gates entirely. |
 | `ZFT_HOOK_MODE=observe\|enforce` | Lint gate: record-only (default) or block on L0 failure. |
-| `ZFT_ALLOW_UNGATED=1` | Authorize writer dispatches without the marker (audited as overrides). |
+| `ZFT_ALLOW_UNGATED=1` | Authorize writer dispatches without the marker, and main-session deliverable edits without a binding (audited as overrides). |
 
 opencode's own `OPENCODE_PURE=1` disables all plugin loading — the escape
 hatch if a plugin ever breaks startup.

@@ -1,0 +1,20 @@
+{
+  "node_id": "01a0d87c-4028-7a8e-8a7f-0296aff9c784",
+  "alias": "ENF-CAPABILITY-CLASSIFICATION",
+  "domain": "enforcement",
+  "title": "Lane classification by resolved capability",
+  "status": "VALIDATED",
+  "version": 1,
+  "content_hash": "872af55e0e692e981e12159815ffb5d1d1b7f4edcd8e186afb3890f8c115f8a9",
+  "invariants": [
+    {
+      "id": "ENF-CAPABILITY-CLASSIFICATION-INV-01",
+      "statement": "WHEN a subagent dispatch carries a resolved permission ruleset, THE SYSTEM SHALL classify the lane from that ruleset (producer iff it can edit or run bash; read-only iff both are catch-all denied), and WHEN no ruleset is given, THE SYSTEM SHALL fall back to the lane name",
+      "property": "forall ruleset r: (can_edit(r) or can_bash(r)) => producer(r)",
+      "check": {
+        "kind": "test"
+      }
+    }
+  ],
+  "external_links": []
+}

@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-09-29
+
+The first stable cut. PyPI's latest is still 0.2.0a6 and the repo moved
+through a7 and a8 without an upload, so this section carries what a stable
+consumer gets over the receipted 0.2.0a8 artifacts (whose content froze at
+the a8 cut): everything below landed on the cut's heels and exists in no
+prior artifact. Everything a7/a8 carried — the D1–D6 quickstart dead ends,
+the changeset-scoped after-gate, gate-baseline surfacing, capability-based
+classification — ships in this build too (sections below).
 
 - **The gate's `--conftest` seam actually carries now.** `prepare_sandbox`
   copied the consumer conftest into the sandbox and then unconditionally
@@ -13,6 +21,52 @@
   isolation preamble (env scrub, cwd, sandbox-first `sys.path`), so consumer
   path setup and hooks apply while the mirrored module keeps shadowing
   whatever the consumer's own setup puts first on the path.
+
+- **The task gate now leaves an audit trail.** Every `task-gate
+  before/after` payload stamps its decision with `since_ms`, `dispatch_id`,
+  and `gate_ms`, and the opencode/zcode plugin appends each gate event to a
+  durable `taskgate.jsonl` ledger beside the existing audit log — "did the
+  gate run for this dispatch, when, and how long" is answerable after the
+  fact from the filesystem alone, the durable record gates-bench v3 §1
+  specifies (INT-040).
+
+- **`zft negotiate` refuses a malformed manifest typed, before the state
+  machine runs.** A manifest missing `version` used to sail through the
+  whole negotiation and die in an unhandled `KeyError` at the validated
+  outcome; the refusal now happens at the door — `negotiate refused:
+  contract manifest malformed (missing key(s): …)`, exit 1 — with the
+  transport and spec-store paths hardened to match.
+
+- **Changeset error reasons quote git's diagnostic line.** When a
+  `--since-ref` cannot resolve, the error verdict carried git's *trailing*
+  output — the tail of the option-usage table — instead of the
+  `fatal:`/`error:`/`warning:` line that names the problem; the diagnostic
+  line is what the verdict reports now (probe-found on the a8 wheel).
+
+- **`require_contract_keys` is actually bound.** The store helper now
+  enforces the CON-VALIDATED-OR-NO-START refusal class it is named for,
+  instead of floating as an unbound clause.
+
+- **The zcode plugin ships.** `plugins/zft-gates` v0.1.0: a PostToolUse L0
+  lint hook and a Stop-time check gate — byte-twin of the codex hook,
+  drift-protected by shared-event tests, observe-mode default, enforce via
+  `ZFT_HOOK_MODE`/`ZFT_STOP_MODE`, fail-closed `GATE_UNAVAILABLE` — plus the
+  zft-gates skill and a dev marketplace entry.
+
+- **The GitLab CI port runs the post-rename binary.** It still invoked the
+  dead pre-rename `traceagent` name — the root cause of the red pipelines
+  since 09-25 — now fixed and pinned by a CI-parity test.
+
+- **The README stops documenting an install that cannot resolve.** Both
+  documented PyPI installs now say `pip install --pre zft` with the one-line
+  why (PyPI carries PEP 440 pre-releases only, a1–a8; this stable cut is
+  what lets the bare form tell the truth again once the owner uploads it) —
+  a pin test keeps the docs honest.
+
+- **Dev-tooling riders** (default-preserving, dev-lane only):
+  `jobs/mut-src.sh` gained `PY`/`SCRATCH_DIR`/`MUTMUT` env overrides and now
+  rides `.gitlab-ci.yml` and `.github/`, so mutation campaigns cut from git
+  archives no longer die on root-file readers.
 
 ## 0.2.0a8 — 2026-09-28
 

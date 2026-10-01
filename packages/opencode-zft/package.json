@@ -1,6 +1,6 @@
 {
   "name": "opencode-zft",
-  "version": "0.2.0-alpha.8",
+  "version": "0.2.0",
   "description": "opencode gates for zft — the contract-first traceability framework. A dispatch gate that requires a contract binding before implementation work, and an L0 lint gate that fires on every .zft/ edit.",
   "type": "module",
   "main": "index.ts",

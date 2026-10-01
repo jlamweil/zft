@@ -19,11 +19,17 @@
 // it is recorded as gate_unavailable and, in enforce mode, blocks.
 //
 // Binary resolution: ZFT_BIN > <project>/.venv/bin/zft
-// > `zft` on PATH > `python3 -m zft.cli.main`. An explicitly set ZFT_BIN that
-// cannot run is authoritative — it fails rather than silently falling back.
+// > `zft` on PATH (plus ~/.local/bin, where uv tool / pipx / pip --user land
+// and the server's PATH does not always include) > `python3 -m zft.cli.main`.
+// An explicitly set ZFT_BIN that cannot run is authoritative — it fails
+// rather than silently falling back. Any other candidate must also RUN
+// (runnable): a stale .venv entry point (ModuleNotFoundError after the
+// package rename) is skipped, never spawned into a traceback that would
+// block every edit.
 
 import { spawnSync } from "node:child_process"
 import fs from "node:fs"
+import os from "node:os"
 import path from "node:path"
 
 const TAG = "[zft lint]"
@@ -57,7 +63,11 @@ function inCorpus(absPath, root) {
   return rel !== "" && !rel.startsWith("..") && rel.split(path.sep)[0] === CORPUS_DIR
 }
 
-/** Resolve the gate. Returns [argv, null] or [null, reason]. */
+/** Resolve the gate. Returns [argv, null] or [null, reason].
+ *  ZFT_BIN is read on every call (authoritative, never memoized); the
+ *  candidate search is memoized per store because runnable() probes. */
+const GATE_MEMO = new Map()
+
 function resolveGate(directory) {
   for (const key of STORE_KEYS) {
     const override = process.env[key]
@@ -72,9 +82,20 @@ function resolveGate(directory) {
     if (!exe) return [null, `${key}=${JSON.stringify(override)}: executable not found`]
     return [[exe, ...argv.slice(1)], null]
   }
+  const memo = GATE_MEMO.get(directory)
+  if (memo !== undefined) return memo
+  const out = resolveCandidates(directory)
+  GATE_MEMO.set(directory, out)
+  return out
+}
+
+/** Candidate search (memoized by resolveGate). A candidate must run: a
+ *  stale entry point is skipped so resolution can fall through. */
+function resolveCandidates(directory) {
   const local = path.join(directory, ".venv", "bin", "zft")
-  if (fs.existsSync(local)) return [[local], null]
-  if (whichOr("zft")) return [["zft"], null]
+  if (fs.existsSync(local) && runnable([local])) return [[local], null]
+  const onPath = whichOr("zft")
+  if (onPath && runnable([onPath])) return [[onPath], null]
   // Last resort: run the module directly. Both import names are probed
   // because the published 0.2.x wheel still exposes `traceagent.cli.main`.
   const py = whichOr("python3") || whichOr("python")
@@ -83,6 +104,24 @@ function resolveGate(directory) {
     if (mod) return [[py, "-m", mod], null]
   }
   return [null, "no zft executable: set ZFT_BIN or install `pip install zft`"]
+}
+
+/** True when argv launches a zft: any run whose stderr carries no Python
+ *  traceback. One probe per store (resolveGate memoizes); catches stale
+ *  entry points and missing shebang interpreters. */
+function runnable(argv) {
+  try {
+    const res = spawnSync(argv[0], argv.slice(1), {
+      encoding: "utf8",
+      timeout: 10_000,
+      env: { ...process.env },
+    })
+    if (res.error) return false
+    const err = String(res.stderr ?? "")
+    return !/Traceback \(most recent call last\)|ModuleNotFoundError|No module named|Exec format error|command not found/.test(err)
+  } catch {
+    return false
+  }
 }
 
 /** Return the module name if `python -c 'import mod'` succeeds, else null. */
@@ -100,8 +139,13 @@ function probeModule(py, mod) {
 }
 
 function whichOr(cmd) {
-  // Minimal PATH lookup; avoids depending on a `which` binary.
-  const dirs = (process.env.PATH ?? "").split(path.delimiter).filter(Boolean)
+  // Minimal PATH lookup; avoids depending on a `which` binary. ~/.local/bin
+  // is always consulted (uv tool / pipx / pip --user) even when the server's
+  // PATH omits it.
+  const dirs = [
+    ...(process.env.PATH ?? "").split(path.delimiter).filter(Boolean),
+    path.join(os.homedir(), ".local", "bin"),
+  ]
   for (const dir of dirs) {
     const cand = path.join(dir, cmd)
     try {

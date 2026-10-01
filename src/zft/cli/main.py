@@ -14,12 +14,12 @@ KNOWN_FLAGS = {
     "--key-out", "--key-in", "--alias", "--domain", "--title", "--statement",
     "--property", "--kind", "--producer-model", "--gate-model", "--format",
     "--key-expires", "--expect-keyid", "--counter-terms",
-    "--waivers", "--source-root",
+    "--waivers", "--source-root", "--tail", "--window",
 }
 
 _GLOBAL_USAGE = ("usage: zft <lint|extract|check|impact|gate|repro|attest|"
                  "verify|export|negotiate|create|baseline|driver-gate|"
-                 "mutation-bar|task-gate> [root]")
+                 "mutation-bar|task-gate|metrics> [root]")
 
 
 def _val(argv: list[str], flag: str):
@@ -54,7 +54,7 @@ def _vals(argv: list[str], flag: str) -> list[str]:
 
 # Value-less flags (no following argument): never a flag value and never a
 # positional root (zft lineage BOOLEAN_FLAGS, unioned 2026-09-12).
-BOOLEAN_FLAGS = {"--resume"}
+BOOLEAN_FLAGS = {"--resume", "--follow"}
 
 # One-line usage per subcommand. `zft <cmd> --help` prints this instead of
 # falling through to running the command on a directory literally named
@@ -81,6 +81,8 @@ USAGE = {
                      "[--source-root <path>]"),
     "task-gate": ("zft task-gate <before|after> --subagent <type> "
                   "--description <text>"),
+    "metrics": ("zft metrics [--format summary|json] [--tail N] [--follow] "
+                "[--window day|hour] [root]"),
 }
 
 
@@ -653,6 +655,47 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         print(json.dumps(payload, indent=2))
         return code
+
+    if cmd == "metrics":
+        from zft.debug.metrics import aggregate, render, scan_runs, tail_runs
+
+        fmt = _val(argv, "--format") or "summary"
+        if fmt not in ("summary", "json"):
+            print(f"error: --format accepts summary|json (got {fmt!r})",
+                  file=sys.stderr)
+            return 2
+        window = _val(argv, "--window") or "day"
+        if window not in ("day", "hour"):
+            print(f"error: --window accepts day|hour (got {window!r})",
+                  file=sys.stderr)
+            return 2
+        runs_dir = root / ".zft" / "runs"
+        if not runs_dir.is_dir():
+            print(f"metrics: no runs at {runs_dir}", file=sys.stderr)
+            return 1
+        follow = "--follow" in argv
+        tail_raw = _val(argv, "--tail")
+        n = None
+        if tail_raw is not None:
+            try:
+                n = int(tail_raw)
+            except ValueError:
+                print(f"error: --tail expects an integer (got {tail_raw!r})",
+                      file=sys.stderr)
+                return 2
+        if follow or tail_raw is not None:
+            try:
+                for run in tail_runs(runs_dir, n=n, follow=follow):
+                    print(json.dumps(run, sort_keys=True))
+            except KeyboardInterrupt:
+                return 0  # tail -f semantics: Ctrl-C ends the stream cleanly
+            return 0
+        rep = aggregate(scan_runs(runs_dir), window=window)
+        if fmt == "json":
+            print(json.dumps(rep, indent=2))
+        else:
+            print(render(rep))
+        return 0
 
     print(f"unknown command: {cmd}")
     return 2

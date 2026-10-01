@@ -224,3 +224,28 @@ that would rewrite §3 here:
   differentiation table becomes sales collateral.
 - **Pactflow announces LLM/agent support** — likely a partner, not a threat;
   interop beats war.
+
+## 6. The three-layer coordination stack
+
+The 2026-10-01 recon of [whiteducksoftware/flock](https://github.com/whiteducksoftware/flock)
+put the acceptance layer on a three-layer map — context for who zft trusts
+and proves, not a layer we occupy:
+
+- **flock** — INTRA-RUNTIME orchestration: one deployer owns all agents,
+  Pydantic-typed artifacts over a DB blackboard (SQLite/Dapr); zero-trust is
+  not required because the boundary is one runtime.
+- **flockwork** (ours; kit name `swarmo`) — CROSS-BOUNDARY coordination:
+  agents share nothing but a git repo; the substrate is the git refspace
+  (`refs/swarm/*`), zero-trust, create-once CAS claims, host-side verdicts.
+- **zft** (this repo) — the CONTRACT + PROOF layer: the trust mechanism
+  itself — clauses + machine-checked evidence. A zft clause binds a flock
+  artifact as easily as a flockwork deliverable.
+
+> flock runs the swarm inside one boundary; flockwork is how swarms
+> coordinate across boundaries; zft is why you can trust either.
+
+Layer discipline: zft stays the **acceptance layer** and never becomes an
+orchestrator — the three-layer map is context for who zft trusts and proves,
+not a scope expansion. Name adjacency, stated once: zft is not affiliated
+with whiteducksoftware/flock; the names are adjacent, the layers are
+different.

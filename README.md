@@ -1,5 +1,11 @@
 # ZFT (Zero-Friction Traceability)
 
+When agents hand work to each other, acceptance runs on vibes: there is no
+pre-agreed definition of done, and when the deliverable is wrong there is no
+artifact-level answer to *which agreed item was missed*. Tracing tools
+observe what happened — they don't bind the work to what was agreed.
+
+ZFT turns the handoff into a contract with machine-checked evidence.
 Contract-grounded verification for multi-agent work.
 
 ## What ZFT is
@@ -47,14 +53,40 @@ the old codename.
 - **L3 · Signed attestation** — DSSE-enveloped attestation over the clause
   subjects, verifiable against the live store.
 
+## Honest state
+
+**Version.** 0.2.0 — the first stable cut (2026-09-29), live on PyPI.
+Requires **Python 3.12+**; the `zft` console script is the only entry point.
+
+**Battle-tested.** The gates police this repository's own development: the
+seed contract in [`.zft/specs/`](.zft/specs/) gates every commit, and each
+release cut went through its own L0–L3 pipeline. Beyond the dogfood, the
+gate loop was exercised end-to-end by a multi-agent research program's
+benchmark — **9 bench windows, 56 engaged agent pairs judged through the
+gates** under a preregistered, frozen-before-execution evaluation design.
+
+**Experimental.** `zft task-gate` (dispatch-boundary enforcement) and
+`zft impact` (impact queries) are the youngest surfaces; their semantics may
+still settle. The editor plugins (opencode via npm, Codex port in
+[`plugins/codex/`](plugins/codex/)) are thin CLI wrappers, observe-mode by
+default, enforce-only when you opt in.
+
+**Known boundary.** A green `zft check` proves **traceability, not
+conformance**: the gate mechanically verifies bindings, store integrity, and
+bound-suite execution — it does not execute your clause's semantics for you.
+[`docs/KNOWN-GAPS.md`](docs/KNOWN-GAPS.md) is the living register of exactly
+where that boundary sits, starting with Gap 001 and its committed
+adversarial probe.
+
 ## Install
 
 ```bash
-pip install --pre zft
+pip install zft
 ```
 
 Requires Python 3.12+ (the `zft` console script is the only entry point).
-Releases are PEP 440 pre-releases (`0.2.0aN`), hence pip's `--pre`.
+0.2.0 is the first release installable without `--pre` — before it, PyPI
+carried only PEP 440 pre-releases (`0.2.0aN`).
 
 ## Quickstart
 
@@ -135,7 +167,7 @@ on every `.zft/**` edit. Every decision lands in `.zft/audit.log` and
 `.zft/gates-hook/log.jsonl`.
 
 ```bash
-pip install --pre zft                                        # Python 3.12+
+pip install zft                                              # Python 3.12+
 
 # Install the gates — either from npm (versioned, auto-installed by opencode):
 bun add -D opencode-zft
@@ -171,11 +203,19 @@ working self-hosted example for every gate tier above.
 
 ## Design
 
+New here? [`docs/CONCEPTS.md`](docs/CONCEPTS.md) is the one-page mental
+model — contract, clause, binding, gates, ledger — with a worked example.
+
 Full architecture, decision records (D1–D6), and the verification pipeline
 specification live in [`designs/ARCHITECTURE.md`](designs/ARCHITECTURE.md).
 Release notes are in [`CHANGELOG.md`](CHANGELOG.md); the framework landscape
 research is under [`docs/research/`](docs/research) and the positioning
 analysis in [`docs/POSITIONING.md`](docs/POSITIONING.md).
+
+## Roadmap
+
+One line, no promises: the gates are becoming the trust layer between agents
+— the signed acceptance payload of one handoff is the contract of the next.
 
 ## License
 

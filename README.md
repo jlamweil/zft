@@ -165,18 +165,25 @@ work reaches writers through the harness's `task` tool with a
 `[contract: <name>]` marker in the description. **No custom subagent
 configuration is required** — lanes resolve by name with shipped defaults
 (a fixed read-only list; every other type is a writer), and where the host
-can resolve an agent's permissions, capability wins over the name. Dispatching
-everything from the main session is legal but bypasses the dispatch boundary
-(the edit-time gates and manual `zft task-gate` calls still apply). zcode and
-Codex have no dispatch gate; their enforcement is edit-time L0 plus (zcode)
-a Stop gate that holds *any* session completion — main or subagent — on a red
-store.
+can resolve an agent's permissions, capability wins over the name.
+
+The **desired end state is harness-agnostic: every writer works under a
+recorded contract binding** (or an explicit, audited `[ungated: reason]`) —
+a subagent dispatch is one binding path, never the only one. opencode is
+there first: since the session-binding gate, a main-session edit on a
+deliverable path is itself blocked until the session binds (`zft task-gate
+before --subagent main --description "[contract: <name>] ..."` or an
+explicit `[ungated: ...]`), so main-session-only work can no longer slip the
+dispatch boundary. zcode and Codex still enforce edit-time (+ zcode Stop
+gate) only; their dispatch-boundary paths need host-contract pinning
+(zcode PreToolUse on the agent-spawn tool; Codex exposes PostToolUse only —
+a documented ceiling, see `plugins/codex/README.md`).
 
 ### The four integrations
 
 | Harness | Artifact | Dispatch boundary | Edit boundary | Completion boundary | Doc |
 | --- | --- | --- | --- | --- | --- |
-| **opencode** | npm `opencode-zft` (or copy `zft-gate.ts` + `zft-lint-gate.js`) | ✅ `task` tool wrapped: writer dispatches need `[contract: <name>]`, blocks before spawn, coverage verdict after | ✅ `zft lint` on every `.zft/**` edit (observe/enforce) | coverage verdict surfaced to the orchestrator | [`.opencode/plugins/README.md`](.opencode/plugins/README.md) |
+| **opencode** | npm `opencode-zft` (or copy `zft-gate.ts` + `zft-lint-gate.js`) | ✅ `task` tool wrapped: writer dispatches need `[contract: <name>]`, blocks before spawn, coverage verdict after; **main-session binding gate**: a deliverable edit before any recorded binding is blocked until the session binds (`zft task-gate before --subagent main ...`) | ✅ `zft lint` on every `.zft/**` edit (observe/enforce) | coverage verdict surfaced to the orchestrator | [`.opencode/plugins/README.md`](.opencode/plugins/README.md) |
 | **zcode** | `plugins/zft-gates` (marketplace `dev-traceagent-zcode`) or workspace `.zcode/config.json` | — (workflow carried by the skill) | ✅ PostToolUse L0 on `.zft/**` edits (observe/enforce) | ✅ Stop gate: `zft check` before *any* session may stop, subagent or main | [`plugins/zft-gates/README.md`](plugins/zft-gates/README.md) |
 | **Codex** | `plugins/codex` (skill + PostToolUse hook) | — (workflow carried by the skill) | ✅ PostToolUse L0 on `.zft/**` edits (observe/enforce) | — | [`plugins/codex/README.md`](plugins/codex/README.md) |
 | **pre-commit** | `.pre-commit-hooks.yaml` (`zft-lint`, `zft-check`) | — | ✅ at commit time (`zft-lint`) and pre-push (`zft-check`: L0 + L2-fast + gherkin) | — | [`.pre-commit-hooks.yaml`](.pre-commit-hooks.yaml) |

@@ -1,0 +1,29 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "^(Edit|Write)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/gates_hook.py",
+            "timeout": 90,
+            "statusMessage": "zft L0 (contract store)"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/stop_gate.py",
+            "timeout": 150,
+            "statusMessage": "zft check (pre-stop gate)"
+          }
+        ]
+      }
+    ]
+  }
+}

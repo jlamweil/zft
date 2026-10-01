@@ -21,6 +21,18 @@ Gap 001. Treat the reports as binding records, not as proof of acceptance.
 
 - **opencode** (built against the `1.18.x` plugin API)
 - **Python 3.12+** and the CLI: `pip install zft` (or `uv pip install zft`)
+- **A seeded contract store** (`zft create` + a contract manifest under
+  `.zft/contracts/`) — fail-closed (`CON-VALIDATED-OR-NO-START`): without a
+  store nothing is enforced, and `zft lint` says so in a typed rejection.
+- **Subagent dispatch is the dispatch boundary — no subagent configuration
+  is required.** The gate wraps the built-in `task` tool: enforcement means
+  implementation work reaches writers *through subagent dispatches* with a
+  `[contract: <name>]` marker in the description. Lanes resolve by name with
+  shipped defaults (fixed read-only list; every other type is a writer);
+  where opencode can resolve an agent's permissions, capability wins over
+  the name — no custom agent types needed. Dispatching everything from the
+  main session is legal but bypasses the dispatch boundary; the lint gate
+  and manual `zft task-gate` calls still apply.
 - The `zft` executable reachable **one** of these ways (checked in this order):
   `ZFT_BIN` env var → `<project>/.venv/bin/zft` → `zft` on `PATH` or in
   `~/.local/bin` → `python3 -m zft.cli.main` (falls back to

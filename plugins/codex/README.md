@@ -24,6 +24,24 @@ Host contract pinned from learn.chatgpt.com `/codex/hooks` and
 success; exit 2 + reason on stderr = blocking feedback that Codex swaps into
 the tool result; skill folders = `SKILL.md` with `name`/`description`.
 
+## Requirements (prerequisites for practical use)
+
+1. **Python 3.12+** and the CLI: `pip install zft` (stable, on PyPI).
+2. **A resolvable `zft` executable**: `ZFT_BIN` (authoritative) > `zft` on
+   `PATH` > `python3 -m zft.cli.main`. A broken gate is a typed
+   `GATE_UNAVAILABLE` — never green.
+3. **A seeded contract store** (`zft create` + a contract manifest under
+   `.zft/contracts/`). Fail-closed by design
+   (`CON-VALIDATED-OR-NO-START`): no store, nothing enforced.
+4. **One-time trust review**: Codex blocks non-managed hooks until approved
+   via `/hooks` (see Install).
+5. **No subagent configuration is required.** This integration enforces at
+   edit time only (PostToolUse L0); the skill carries the rest of the
+   workflow, including manual `zft task-gate before/after` around delegated
+   work if you want dispatch-boundary records. Edit-time gates hold
+   subagent edits exactly like main-session ones — the hook does not care
+   which session made the apply_patch.
+
 ## Proven without a live Codex install
 
 `pytest tests/unit/test_codex_gates_hook.py` drives the hook as a subprocess

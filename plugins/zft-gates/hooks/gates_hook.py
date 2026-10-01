@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
-"""Codex PostToolUse hook: run the zft L0 gate when an edit lands in the
+"""ZCode PostToolUse hook: run the zft L0 gate when an edit lands in the
 contract corpus.
 
-Contract (Codex hooks — learn.chatgpt.com/codex/hooks, fetched 2026-09-07):
-- one JSON event on stdin: {hook_event_name, tool_name, tool_input, cwd, ...};
-  apply_patch carries the patch text in tool_input.command, Edit/Write carry
-  tool_input.file_path;
-- exit 0 = success; exit 2 + reason on stderr = blocking feedback Codex swaps
+ZCode twin of plugins/codex/hooks/gates_hook.py — same policy, same env
+knobs (ZFT_BIN / ZFT_ROOT / ZFT_HOOK_MODE), same log. Behavior is protected
+from drift by tests/unit/test_zcode_gates_hook.py, which drives both files.
+
+Contract (ZCode hooks — workspace .zcode/config.json shape, verified live in
+the zcode-remote-driver driver repo, 2026-09-28; events are the documented
+seven: SessionStart, UserPromptSubmit, PreToolUse, PermissionRequest,
+PostToolUse, PostToolUseFailure, Stop):
+- one JSON event on stdin: {hook_event_name, tool_name, tool_input, cwd,
+  session_id, ...}; Edit/Write carry tool_input.file_path;
+- exit 0 = success; exit 2 + reason on stderr = blocking feedback ZCode swaps
   into the tool result. PostToolUse cannot undo the edit, so "enforce" here is
   a mandatory feedback loop, not prevention — a PreToolUse deny would have to
   predict L0 on a store state that does not exist yet.

@@ -7,7 +7,8 @@ from io import StringIO
 # main() separately (bare-argv, -h, --help), so a mutation of any one copy —
 # XX-wrap, case swap, None render — dies here, as do the exit-code literals.
 USAGE = ("usage: zft <lint|extract|check|impact|gate|repro|attest|verify|export|"
-         "negotiate|create|baseline|driver-gate|mutation-bar|task-gate> [root]")
+         "negotiate|create|baseline|driver-gate|mutation-bar|task-gate|metrics>"
+         " [root]")
 
 
 def _run_cli(args):

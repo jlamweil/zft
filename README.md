@@ -37,6 +37,20 @@ the `zft` import package and the 2026-09-12 note that kept
 `zft` canonical). Run state lives under `.zft/`; dated logs retain
 the old codename.
 
+## Where zft sits
+
+flock runs the swarm inside one boundary; flockwork is how swarms coordinate
+across boundaries; zft is why you can trust either.
+
+flock (whiteducksoftware/flock) orchestrates agents inside one runtime over a
+shared blackboard; flockwork (our git-refspace coordinator) moves work across
+trust boundaries where agents share nothing but a repo. zft is the
+contract-and-proof layer above both — it binds a deliverable from either world
+to a pre-agreed, machine-checked contract.
+
+Not affiliated with whiteducksoftware/flock (their pip package is
+flock-core); the names are neighbors, the layers are different.
+
 ## The L0–L3 verification gate
 
 `zft gate` enforces four sequential tiers:

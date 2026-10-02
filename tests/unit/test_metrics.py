@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 
 from zft.debug.ledger import RunLedger
-from zft.debug.metrics import aggregate, scan_runs, tail_runs
+from zft.debug.metrics import aggregate, dora, scan_runs, tail_runs
 
 
 # ---------------------------------------------------------------- helpers
@@ -350,3 +350,131 @@ def test_cli_metrics_refuses_missing_runs_dir(tmp_path):
     code, _, err = _cli(["metrics", str(tmp_path)])
     assert code == 1
     assert "no runs" in err.lower()
+
+
+# ------------------------------------------------- the DORA five (WQ-REDACTED)
+#
+# ops/DORA-METRICS-MAP.md layer 2: deployment frequency = gate-passed
+# landings per repo per window; lead time = change arrival (first gate
+# contact of a commit — ledgers carry no commit timestamp, and the module
+# derives every number from ledger bytes + mtimes) -> first gate-green;
+# CFR = gate-fail runs, flake = fail->pass on the SAME commit; recovery
+# = red -> green per commit; rework = gate re-runs per change. --dora is
+# the same read-only observer: a section, never a gate.
+
+GREEN_CHECK = [{"event": "l2", "ok": True, "failures": [], "tier": "fast",
+                "coverage": {"coverage_ratio": 1.0}, "warnings": []}]
+RED_L1 = [{"event": "l1", "ok": False}]
+
+
+def test_dora_deployment_frequency_landings_per_repo_per_window(tmp_path):
+    make_run(tmp_path / "runs", commit="c1" * 20, events=GREEN_CHECK, mtime=DAY1)
+    make_run(tmp_path / "runs", commit="c1" * 20, events=GREEN_CHECK,
+             mtime=DAY1 + 60)
+    make_run(tmp_path / "runs", commit="c2" * 20, events=GREEN_CHECK, mtime=DAY2)
+    make_run(tmp_path / "runs", commit="c2" * 20, events=RED_L1, mtime=DAY2 + 60)
+    d = dora(scan_runs(tmp_path / "runs"), window="day")
+    df = d["deployment_frequency"]
+    assert df["landed_total"] == 3  # the red run landed nothing
+    assert df["days_active"] == 2
+    assert df["mean_per_active_day"] == pytest.approx(1.5)
+    assert df["per_repo"]["c1" * 20]["total"] == 2
+    assert len(df["per_repo"]["c1" * 20]["per_window"]) == 1
+    assert sum(df["per_repo"]["c1" * 20]["per_window"].values()) == 2
+    assert sum(df["per_repo"]["c2" * 20]["per_window"].values()) == 1
+
+
+def test_dora_lead_time_change_arrival_to_green(tmp_path):
+    # c1: arrived (first gate contact) at DAY1, green 600s later
+    make_run(tmp_path / "runs", commit="c1" * 20, events=RED_L1, mtime=DAY1)
+    make_run(tmp_path / "runs", commit="c1" * 20, events=GREEN_CHECK,
+             mtime=DAY1 + 600)
+    # c2: arrived, never green — pending, not a measured span
+    make_run(tmp_path / "runs", commit="c2" * 20, events=RED_L1, mtime=DAY1)
+    d = dora(scan_runs(tmp_path / "runs"))
+    lt = d["lead_time_ms"]
+    assert lt["n"] == 1
+    assert lt["p50"] == pytest.approx(600_000.0)
+    assert lt["max"] == pytest.approx(600_000.0)
+    assert lt["pending"] == 1
+
+
+def test_dora_change_failure_rate_and_same_commit_flake(tmp_path):
+    # c1: fail then pass, NO source change between (same commit) = flake
+    make_run(tmp_path / "runs", commit="c1" * 20, events=RED_L1, mtime=DAY1)
+    make_run(tmp_path / "runs", commit="c1" * 20, events=GREEN_CHECK,
+             mtime=DAY1 + 60)
+    # c2: always fails = broken, not flaky
+    make_run(tmp_path / "runs", commit="c2" * 20, events=RED_L1, mtime=DAY1)
+    make_run(tmp_path / "runs", commit="c2" * 20, events=RED_L1,
+             mtime=DAY1 + 60)
+    d = dora(scan_runs(tmp_path / "runs"))
+    cfr = d["change_failure_rate"]
+    assert cfr["gate_fail_runs"] == 3
+    assert cfr["runs_with_gates"] == 4
+    assert cfr["rate"] == pytest.approx(0.75)
+    assert cfr["flake_commits"] == 1
+    assert cfr["commits_with_fails"] == 2
+    assert cfr["flake_rate"] == pytest.approx(0.5)
+
+
+def test_dora_recovery_red_to_green_per_commit(tmp_path):
+    # c1: red DAY1 -> green DAY1+600 = one recovery span of 600s
+    make_run(tmp_path / "runs", commit="c1" * 20, events=RED_L1, mtime=DAY1)
+    make_run(tmp_path / "runs", commit="c1" * 20, events=GREEN_CHECK,
+             mtime=DAY1 + 600)
+    # c2: red, red — never recovered, no span
+    make_run(tmp_path / "runs", commit="c2" * 20, events=RED_L1, mtime=DAY1)
+    make_run(tmp_path / "runs", commit="c2" * 20, events=RED_L1, mtime=DAY2)
+    # c3: green only — no red, no span
+    make_run(tmp_path / "runs", commit="c3" * 20, events=GREEN_CHECK, mtime=DAY1)
+    d = dora(scan_runs(tmp_path / "runs"))
+    rec = d["recovery_ms"]
+    assert rec["n"] == 1
+    assert rec["p50"] == pytest.approx(600_000.0)
+    assert rec["max"] == pytest.approx(600_000.0)
+    assert rec["red_commits"] == 2  # c1 and c2 saw a red
+
+
+def test_dora_rework_reruns_per_change(tmp_path):
+    make_run(tmp_path / "runs", commit="c1" * 20, events=RED_L1, mtime=DAY1)
+    make_run(tmp_path / "runs", commit="c1" * 20, events=GREEN_CHECK,
+             mtime=DAY1 + 60)
+    make_run(tmp_path / "runs", commit="c1" * 20, events=GREEN_CHECK,
+             mtime=DAY1 + 120)
+    make_run(tmp_path / "runs", commit="c2" * 20, events=GREEN_CHECK, mtime=DAY1)
+    d = dora(scan_runs(tmp_path / "runs"))
+    rw = d["rework"]
+    assert rw["commits"] == 2
+    assert rw["rerun_runs"] == 2  # c1's runs beyond its first
+    assert rw["max_reruns"] == 2
+    assert rw["rate"] == pytest.approx(0.5)  # 2 reruns / 4 runs
+
+
+def test_dora_empty_board_is_honest(tmp_path):
+    d = dora([])
+    assert d["deployment_frequency"]["landed_total"] == 0
+    assert d["deployment_frequency"]["per_repo"] == {}
+    assert d["deployment_frequency"]["mean_per_active_day"] is None
+    assert d["lead_time_ms"] == {"n": 0, "p50": None, "p90": None,
+                                 "max": None, "pending": 0}
+    assert d["change_failure_rate"]["rate"] is None
+    assert d["change_failure_rate"]["flake_rate"] is None
+    assert d["recovery_ms"]["n"] == 0 and d["recovery_ms"]["p50"] is None
+    assert d["rework"]["rate"] is None
+
+
+def test_cli_metrics_dora_flag_adds_section_default_omits_it(tmp_path):
+    make_run(tmp_path / ".zft" / "runs", events=GREEN_CHECK, mtime=DAY1)
+    root = str(tmp_path)
+    code, out, _ = _cli(["metrics", "--format", "json", root])
+    assert code == 0 and "dora" not in json.loads(out)
+    code, out, _ = _cli(["metrics", "--format", "json", "--dora", root])
+    assert code == 0
+    rep = json.loads(out)
+    assert "dora" in rep
+    assert rep["dora"]["deployment_frequency"]["landed_total"] == 1
+    code, out, _ = _cli(["metrics", "--dora", root])  # summary renders too
+    assert code == 0 and "dora" in out.lower()
+    from zft.cli.main import USAGE
+    assert "[--dora]" in USAGE["metrics"]

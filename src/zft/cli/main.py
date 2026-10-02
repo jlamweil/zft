@@ -54,7 +54,7 @@ def _vals(argv: list[str], flag: str) -> list[str]:
 
 # Value-less flags (no following argument): never a flag value and never a
 # positional root (zft lineage BOOLEAN_FLAGS, unioned 2026-09-12).
-BOOLEAN_FLAGS = {"--resume", "--follow"}
+BOOLEAN_FLAGS = {"--resume", "--follow", "--dora"}
 
 # One-line usage per subcommand. `zft <cmd> --help` prints this instead of
 # falling through to running the command on a directory literally named
@@ -82,7 +82,7 @@ USAGE = {
     "task-gate": ("zft task-gate <before|after> --subagent <type> "
                   "--description <text>"),
     "metrics": ("zft metrics [--format summary|json] [--tail N] [--follow] "
-                "[--window day|hour] [root]"),
+                "[--window day|hour] [--dora] [root]"),
 }
 
 
@@ -691,6 +691,9 @@ def main(argv: list[str] | None = None) -> int:
                 return 0  # tail -f semantics: Ctrl-C ends the stream cleanly
             return 0
         rep = aggregate(scan_runs(runs_dir), window=window)
+        if "--dora" in argv:
+            from zft.debug.metrics import dora
+            rep["dora"] = dora(scan_runs(runs_dir), window=window)
         if fmt == "json":
             print(json.dumps(rep, indent=2))
         else:

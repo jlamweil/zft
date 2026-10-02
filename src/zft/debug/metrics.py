@@ -2,7 +2,10 @@
 
 Sister reader to debug/ledger.py: never writes. Every number is derived
 from ledger bytes and filesystem mtimes. Depends on nothing above the
-debug layer (plan §2 dependency direction).
+debug layer (plan §2 dependency direction). `dora()` adds the five DORA
+keys (ops/DORA-METRICS-MAP.md layer 2) over the same summaries —
+`zft metrics --dora` (WQ-043); same read-only observer, a section, never
+a gate.
 
 Crash taxonomy (the stop-hook crash class: runs that died mid-report):
 - check runs must terminate on an `l2` event; anything else is a death,
@@ -37,6 +40,129 @@ EXPECTED_TERMINAL = {
 # terminals that mean "the gate said no, cleanly" — a fail, not a death
 CLEAN_REJECTIONS = {("check", "l0")}
 NOT_CRASH_CLASSES = (None, "unknown-stage", "unfinished-negotiation")
+
+
+def _window_key(ts: float, window: str = "day") -> str:
+    t = time.gmtime(ts)
+    if window == "hour":
+        return time.strftime("%Y-%m-%dT%H:00", t)
+    return time.strftime("%Y-%m-%d", t)
+
+
+def dora(runs: list[dict], window: str = "day") -> dict:
+    """The five DORA keys over run summaries (ops/DORA-METRICS-MAP.md,
+    layer 2). Same observer discipline as aggregate(): derived from
+    ledger-derived summaries, never touching a gate.
+
+    deployment frequency  gate-passed landings (ok runs) per repo per
+                          window
+    lead time            change arrival -> first gate-green, per commit.
+                          Ledgers carry no commit timestamp and this
+                          reader derives everything from ledger bytes +
+                          mtimes, so 'arrival' is the commit's FIRST run
+                          (first gate contact) — the honest derivable
+                          anchor. A commit never green is counted
+                          `pending`, never turned into a span.
+    change failure rate   gate-fail runs / runs with gate evidence;
+                          flake = a commit that both failed and passed
+                          (fail -> pass with NO source change) —
+                          flake_commits / commits_with_fails
+    recovery             red -> green per commit (chronological; a green
+                          with no open red is not a recovery)
+    rework               gate re-runs per change: runs beyond a commit's
+                          first (repeated gate runs = reworked
+                          verification), rate over all runs
+
+    No measurement is a measured zero: rates/percentiles are None when
+    their denominator is empty.
+    """
+    per_repo: dict[str, dict] = {}
+    landed = 0
+    days: set[str] = set()
+    by_commit: dict[str, list[dict]] = {}
+    fail_runs = gated_runs = 0
+    for r in runs:
+        commit = r["git_commit"] or "?"
+        by_commit.setdefault(commit, []).append(r)
+        if r["ok"] is True:
+            landed += 1
+            days.add(_window_key(r["ts"], window))
+            repo = per_repo.setdefault(commit, {"total": 0, "per_window": {}})
+            repo["total"] += 1
+            wk = _window_key(r["ts"], window)
+            repo["per_window"][wk] = repo["per_window"].get(wk, 0) + 1
+        if any(v is False for v in r["gate_outcomes"].values()):
+            fail_runs += 1
+        if any(v is not None for v in r["gate_outcomes"].values()):
+            gated_runs += 1
+
+    lead_spans: list[float] = []
+    pending = 0
+    recovery_spans: list[float] = []
+    red_commits = 0
+    rerun_runs = 0
+    max_reruns = 0
+    flake_commits = commits_with_fails = 0
+    for commit, cruns in by_commit.items():
+        cruns = sorted(cruns, key=lambda r: (r["ts"], r["run_id"]))
+        reruns = len(cruns) - 1
+        rerun_runs += max(0, reruns)
+        max_reruns = max(max_reruns, reruns)
+        outcomes = [r["ok"] for r in cruns]
+        if any(o is False for o in outcomes):
+            commits_with_fails += 1
+            red_commits += 1
+            if any(o is True for o in outcomes):
+                flake_commits += 1
+        first_ok = next((r for r in cruns if r["ok"] is True), None)
+        if first_ok is None:
+            pending += 1
+        else:
+            lead_spans.append((first_ok["ts"] - cruns[0]["ts"]) * 1000)
+        open_red = None
+        for r in cruns:
+            if r["ok"] is False:
+                if open_red is None:
+                    open_red = r["ts"]
+            elif r["ok"] is True and open_red is not None:
+                recovery_spans.append((r["ts"] - open_red) * 1000)
+                open_red = None
+
+    def _ms(vals: list[float]) -> dict:
+        s = sorted(vals)
+        return {"n": len(s), "p50": _percentile(s, 0.5),
+                "p90": _percentile(s, 0.9), "max": s[-1] if s else None}
+
+    lead = _ms(lead_spans)
+    lead["pending"] = pending
+    rec = _ms(recovery_spans)
+    rec["red_commits"] = red_commits
+    return {
+        "deployment_frequency": {
+            "landed_total": landed,
+            "days_active": len(days),
+            "mean_per_active_day": round(landed / len(days), 2)
+            if days else None,
+            "per_repo": dict(sorted(per_repo.items())),
+        },
+        "lead_time_ms": lead,
+        "change_failure_rate": {
+            "gate_fail_runs": fail_runs,
+            "runs_with_gates": gated_runs,
+            "rate": round(fail_runs / gated_runs, 4) if gated_runs else None,
+            "flake_commits": flake_commits,
+            "commits_with_fails": commits_with_fails,
+            "flake_rate": round(flake_commits / commits_with_fails, 4)
+            if commits_with_fails else None,
+        },
+        "recovery_ms": rec,
+        "rework": {
+            "commits": len(by_commit),
+            "rerun_runs": max(0, rerun_runs),
+            "max_reruns": max_reruns,
+            "rate": round(rerun_runs / len(runs), 4) if runs else None,
+        },
+    }
 
 
 def _percentile(sorted_vals: list, q: float):
@@ -390,7 +516,40 @@ def render(rep: dict) -> str:
                  if w["coverage_mean"] is not None else "")
         out.append(f"window {w['window']}: {w['runs']} runs, {w['ok']} ok,"
                    f" {w['crashed']} crashed{cov_s}")
+    if rep.get("dora"):
+        out.append(_render_dora(rep["dora"]))
     return "\n".join(out)
+
+
+def _render_dora(d: dict) -> str:
+    """The DORA block as one dense line per concern pair (~78 cols)."""
+    df = d["deployment_frequency"]
+    lt = d["lead_time_ms"]
+    cfr = d["change_failure_rate"]
+    rec = d["recovery_ms"]
+    rw = d["rework"]
+
+    def pct(v):
+        return "-" if v is None else f"{v:.0%}"
+
+    def n_p(v, fmt):
+        return fmt(v) if v is not None else "-"
+
+    lead_s = (f"p50 {n_p(lt['p50'], _fmt_ms)} p90 {n_p(lt['p90'], _fmt_ms)}"
+              f" (pending {lt['pending']})")
+    rec_s = (f"n {rec['n']}, p50 {n_p(rec['p50'], _fmt_ms)}"
+             f" max {n_p(rec['max'], _fmt_ms)} (red commits {rec['red_commits']})")
+    return " | ".join([
+        f"dora landings: {df['landed_total']} over {df['days_active']} days"
+        f" (mean {df['mean_per_active_day'] if df['mean_per_active_day'] is not None else '-'}/day)",
+        f"lead: {lead_s}",
+        f"cfr: {cfr['gate_fail_runs']}/{cfr['runs_with_gates']}"
+        f" = {pct(cfr['rate'])}, flake commits {cfr['flake_commits']}"
+        f"/{cfr['commits_with_fails']} = {pct(cfr['flake_rate'])}",
+        f"recovery: {rec_s}",
+        f"rework: {rw['rerun_runs']} rerun runs / {rw['commits']} commits"
+        f" = {pct(rw['rate'])} (max {rw['max_reruns']})",
+    ])
 
 
 def _fmt_ms(v) -> str:

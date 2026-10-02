@@ -223,3 +223,26 @@ def test_task_gate_usage_documents_changeset_flags():
     assert r.returncode == 2, r.stdout + r.stderr
     for flag in ("--changed", "--since-ref", "--scope changeset"):
         assert flag in r.stdout, f"missing {flag} in usage: {r.stdout!r}"
+
+
+def test_create_refuses_alias_the_schema_rejects_before_writing(tmp_path):
+    """An alias violating the clause-node schema would be born-broken: the
+    L0 gate rejects the scaffold at its first lint. Create must refuse at
+    the CLI, before any file is written, naming the same pattern.
+
+    Appended at file end on purpose: this file carries @trace-decorated
+    tests whose (file, line) the md_anchor baseline pins — inserting
+    above them would shift pinned lines without a re-baseline."""
+    r = subprocess.run(
+        [sys.executable, "-m", "zft.cli.main", "create",
+         "--alias", "wq029-demo", "--domain", "x", str(tmp_path)],
+        capture_output=True, text=True)
+    assert r.returncode == 2, r.stdout + r.stderr
+    assert "^[A-Z0-9]+-[A-Z0-9-]+$" in r.stdout, "refusal must name the pattern"
+    assert not (tmp_path / ".zft").exists(), "refused create must write nothing"
+    r2 = subprocess.run(
+        [sys.executable, "-m", "zft.cli.main", "create",
+         "--alias", "WQ029-DEMO", "--domain", "x", str(tmp_path)],
+        capture_output=True, text=True)
+    assert r2.returncode == 0, r2.stdout + r2.stderr
+    assert (tmp_path / ".zft" / "specs" / "x" / "wq029-demo.json").exists()

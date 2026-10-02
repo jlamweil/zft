@@ -234,12 +234,18 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if report["ok"] else 1
 
     if cmd == "create":
+        import re
+
         from zft.spec.canon import canonical_hash
         from zft.spec.identity import new_uuid7
+        from zft.spec.schema import ALIAS_RE
 
         alias = _val(argv, "--alias")
         if not alias:
             print("create requires --alias")
+            return 2
+        if not re.match(ALIAS_RE, alias):
+            print(f"create: alias {alias!r} does not match {ALIAS_RE}")
             return 2
         domain = _val(argv, "--domain") or "misc"
         title = _val(argv, "--title") or alias

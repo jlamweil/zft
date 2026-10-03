@@ -20,7 +20,6 @@ import pytest
 from zft.debug.ledger import RunLedger
 from zft.debug.metrics import aggregate, dora, scan_runs, tail_runs
 
-
 # ---------------------------------------------------------------- helpers
 
 def make_run(runs_root: Path, stage="check", events=(), commit="a" * 40,
@@ -283,7 +282,7 @@ def test_tail_last_n_chronological_jsonl(tmp_path):
     assert len(lines) == 2
     assert lines[0]["ts"] < lines[1]["ts"]  # chronological, oldest first
     assert lines[-1]["ts"] == pytest.approx(DAY1 + 120, abs=0.001)
-    rendered = [json.loads(json.dumps(r)) for r in lines]  # JSON-safe dicts
+    assert [json.loads(json.dumps(r)) == r for r in lines] == [True] * len(lines)
 
 
 # ------------------------------------------------------------ read-only
@@ -341,7 +340,7 @@ def test_cli_metrics_summary_and_json_and_tail(tmp_path):
 
     code, out, _ = _cli(["metrics", "--tail", "1", root])
     assert code == 0
-    lines = [json.loads(l) for l in out.splitlines() if l.strip()]
+    lines = [json.loads(line) for line in out.splitlines() if line.strip()]
     assert len(lines) == 1
     assert lines[0]["crash_class"] == "died-after-l1"
 

@@ -537,11 +537,13 @@ def _render_dora(d: dict) -> str:
 
     lead_s = (f"p50 {n_p(lt['p50'], _fmt_ms)} p90 {n_p(lt['p90'], _fmt_ms)}"
               f" (pending {lt['pending']})")
+    mean_s = ("-" if df['mean_per_active_day'] is None
+              else df['mean_per_active_day'])
     rec_s = (f"n {rec['n']}, p50 {n_p(rec['p50'], _fmt_ms)}"
              f" max {n_p(rec['max'], _fmt_ms)} (red commits {rec['red_commits']})")
     return " | ".join([
         f"dora landings: {df['landed_total']} over {df['days_active']} days"
-        f" (mean {df['mean_per_active_day'] if df['mean_per_active_day'] is not None else '-'}/day)",
+        f" (mean {mean_s}/day)",
         f"lead: {lead_s}",
         f"cfr: {cfr['gate_fail_runs']}/{cfr['runs_with_gates']}"
         f" = {pct(cfr['rate'])}, flake commits {cfr['flake_commits']}"

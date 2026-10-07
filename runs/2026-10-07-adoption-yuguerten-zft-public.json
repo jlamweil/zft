@@ -1,0 +1,181 @@
+{
+  "n_runs": 396,
+  "span": {
+    "first": 1790884730.079408,
+    "last": 1791066757.7710788
+  },
+  "stages": {
+    "check": {
+      "runs": 322,
+      "complete": 322,
+      "crashed": 0,
+      "rejected": 0,
+      "ok": 93
+    },
+    "L2-fast": {
+      "runs": 74,
+      "complete": 74,
+      "crashed": 0,
+      "rejected": 0,
+      "ok": 74
+    }
+  },
+  "crash_classes": {},
+  "gates": {
+    "l0": {
+      "pass": 322,
+      "fail": 0
+    },
+    "l1": {
+      "pass": 187,
+      "fail": 135
+    },
+    "l2": {
+      "pass": 93,
+      "fail": 229
+    },
+    "campaign": {
+      "pass": 74,
+      "fail": 0
+    }
+  },
+  "flake": {
+    "aliases": {
+      "ID-CONTENT-CHANGE": {
+        "pass": 2,
+        "fail": 135
+      },
+      "TR-DETERMINISTIC-EXTRACTION": {
+        "pass": 2,
+        "fail": 135
+      }
+    },
+    "n_flaky": 2,
+    "by_commit": {
+      "864a0361166ab529a8d8d0c917c541c73f4bd0b5": [],
+      "98c5d8f2d9b092f193d9a0036595e7f77ef8d19c": [],
+      "ef4b8a26be8b32de2c40d435fd5f9d71d80351ca": [],
+      "c9fde858bf3d0d10139ad4d849dac9a620a9739f": [],
+      "f1429fea8a88dd7ada48de0239239e1aa1a33c8c": [],
+      "1f9709d1b18422353902508f182bda34f369c76e": []
+    }
+  },
+  "coverage": {
+    "trend": [
+      {
+        "window": "2026-10-01",
+        "runs": 167,
+        "ok": 32,
+        "crashed": 0,
+        "coverage_mean": 0.0,
+        "coverage_min": 0.0,
+        "coverage_max": 0.0
+      },
+      {
+        "window": "2026-10-03",
+        "runs": 226,
+        "ok": 132,
+        "crashed": 0,
+        "coverage_mean": 1.0,
+        "coverage_min": 1.0,
+        "coverage_max": 1.0
+      }
+    ],
+    "overall": {
+      "first": 0.0,
+      "last": 1.0,
+      "min": 0.0,
+      "max": 1.0
+    }
+  },
+  "repos": {
+    "864a0361166ab529a8d8d0c917c541c73f4bd0b5": {
+      "runs": 16,
+      "ok": 3,
+      "crashed": 0,
+      "flaky": []
+    },
+    "98c5d8f2d9b092f193d9a0036595e7f77ef8d19c": {
+      "runs": 144,
+      "ok": 27,
+      "crashed": 0,
+      "flaky": []
+    },
+    "ef4b8a26be8b32de2c40d435fd5f9d71d80351ca": {
+      "runs": 7,
+      "ok": 2,
+      "crashed": 0,
+      "flaky": []
+    },
+    "fa252ec9891acba7d468fa70c6b745b0daf5ba46": {
+      "runs": 3,
+      "ok": 3,
+      "crashed": 0
+    },
+    "c9fde858bf3d0d10139ad4d849dac9a620a9739f": {
+      "runs": 112,
+      "ok": 18,
+      "crashed": 0,
+      "flaky": []
+    },
+    "f1429fea8a88dd7ada48de0239239e1aa1a33c8c": {
+      "runs": 97,
+      "ok": 97,
+      "crashed": 0,
+      "flaky": []
+    },
+    "1f9709d1b18422353902508f182bda34f369c76e": {
+      "runs": 17,
+      "ok": 17,
+      "crashed": 0,
+      "flaky": []
+    }
+  },
+  "windows": [
+    {
+      "window": "2026-10-01",
+      "runs": 167,
+      "ok": 32,
+      "crashed": 0,
+      "coverage_mean": 0.0,
+      "coverage_min": 0.0,
+      "coverage_max": 0.0
+    },
+    {
+      "window": "2026-10-02",
+      "runs": 3,
+      "ok": 3,
+      "crashed": 0,
+      "coverage_mean": null,
+      "coverage_min": null,
+      "coverage_max": null
+    },
+    {
+      "window": "2026-10-03",
+      "runs": 226,
+      "ok": 132,
+      "crashed": 0,
+      "coverage_mean": 1.0,
+      "coverage_min": 1.0,
+      "coverage_max": 1.0
+    }
+  ],
+  "timing": {
+    "run_ms": {
+      "p50": 449,
+      "p90": 1230,
+      "max": 2387
+    },
+    "l1_clause_ms": {
+      "p50": 675,
+      "p90": 698,
+      "max": 698,
+      "cached_share": 0.5745341614906833
+    },
+    "mutant_ms": {
+      "p50": 630,
+      "p90": 856,
+      "max": 1168
+    }
+  }
+}

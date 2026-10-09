@@ -22,7 +22,7 @@
  */
 import type { Plugin } from "@opencode-ai/plugin";
 import { spawnSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, statSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { delimiter, isAbsolute, join, relative, sep } from "node:path";
@@ -252,13 +252,14 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
    *  event, never engagement. A ledger write failure warns and fails open —
    *  it must never break a dispatch. */
   const emitTaskgate = (rec: {
-    phase: "before" | "after";
-    dispatchId: string;
-    sinceMs: number;
-    durationMs: number;
-    exit: number;
-    subagent: string;
-    sessionID: string;
+    phase: "before" | "after" | "session-gate";
+    dispatchId?: string;
+    sinceMs?: number;
+    durationMs?: number;
+    exit?: number;
+    decision?: string;
+    subagent?: string;
+    sessionID?: string;
   }): void => {
     try {
       const dir = join(directory, ".zft", "gates-hook");
@@ -276,6 +277,95 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
     const sess = sessionOf(input);
     return call ? `c:${call}` : sess ? `s:${sess}` : "";
   };
+
+  // --- session-binding gate -------------------------------------------------
+  // Desired behavior: every writer works under a recorded contract binding —
+  // a subagent dispatch is one binding path, never the only one. A main-
+  // session edit on a deliverable path (anything outside .zft/**) before any
+  // binding is blocked with a typed hint; the agent binds via
+  // `zft task-gate before --subagent main --description "[contract: n] ..."`
+  // (or "[ungated: reason]") and retries. Binding evidence: the CLI's own
+  // audit.log record (phase before, subagent main, gated or override) or a
+  // gated dispatch in this process. Only exit-1-style policy blocks; fs
+  // faults fail open — a plugin error must never take the session down.
+
+  const sessionEpoch = Date.now();
+  /** Sessions bound in memory: a task dispatch this gate allowed. */
+  const boundSessions = new Set<string>();
+  /** Negative-scan throttle: audit.log is rescanned at most every 2 s per
+   *  session so the bind-then-retry loop stays instant but cheap. */
+  const lastScan = new Map<string, number>();
+  let overrideWarned = false;
+
+  /** A main-session binding record: phase before + subagent main, since the
+   *  plugin epoch (with a 2 s grace: a record written in the load race —
+   *  same wall-clock millisecond region as this module's init — is still
+   *  this session's binding, not a stale one). gated or explicitly
+   *  overridden; read-only/blocked records never bind. Scans the JSONL tail
+   *  only (bounded work per edit). */
+  const mainBindingInAudit = (): boolean => {
+    try {
+      const f = join(directory, ".zft", "audit.log");
+      if (!existsSync(f)) return false;
+      const lines = readFileSync(f, "utf8").split("\n").filter(Boolean);
+      for (let i = lines.length - 1; i >= 0 && i >= lines.length - 200; i--) {
+        try {
+          const r = JSON.parse(lines[i]) as Record<string, unknown>;
+          if (r.phase !== "before" || r.subagent !== "main") continue;
+          const ts = typeof r.ts === "number" ? r.ts : Date.parse(String(r.ts));
+          if (!Number.isFinite(ts) || ts < sessionEpoch - 2000) continue;
+          if (r.gated === true || r.override === true) return true;
+        } catch { /* one torn line never gates */ }
+      }
+      return false;
+    } catch (e) {
+      warn(`session-gate audit scan failed (${e instanceof Error ? e.message : String(e)}) — failing open`);
+      return true;
+    }
+  };
+
+  const sessionGate = (input: unknown, output: unknown): void => {
+    if (!active()) return;
+    const args = ((output as Record<string, unknown>)?.args ?? {}) as Record<string, unknown>;
+    const fp = typeof args.filePath === "string" ? args.filePath : "";
+    if (!fp) return; // unclassifiable: the lint gate judges post-hoc
+    const rel = rootRelative(fp);
+    if (rel === null) return; // outside this store root
+    if (rel.startsWith(".zft/") || rel === ".zft") return; // store corpus: lint gate domain
+    if (process.env.ZFT_ALLOW_UNGATED === "1") {
+      if (!overrideWarned) {
+        overrideWarned = true;
+        warn("ZFT_ALLOW_UNGATED=1 — main-session deliverable edits pass ungated (audited by policy, not here)");
+      }
+      return;
+    }
+    const sessionID = sessionOf(input);
+    if (sessionID && boundSessions.has(sessionID)) return;
+    const now = Date.now();
+    const last = lastScan.get(sessionID) ?? 0;
+    if (now - last >= 2000) {
+      lastScan.set(sessionID, now);
+      if (mainBindingInAudit()) {
+        if (sessionID) boundSessions.add(sessionID);
+        emitTaskgate({ phase: "session-gate", decision: "allow",
+                       subagent: "main", sessionID });
+        return;
+      }
+    } else if (lastScan.has(sessionID)) {
+      // within the throttle window after a failed scan: still unbound
+      throw new GateBlock(sessionGateHint());
+    }
+    throw new GateBlock(sessionGateHint());
+  };
+
+  const sessionGateHint = (): string =>
+    `${TAG} session-gate: deliverable edit before any contract binding.\n` +
+    `Bind this session's work, then retry the edit:\n` +
+    `  zft task-gate before --subagent main --description "[contract: <name>] <what>"\n` +
+    `or mark it deliberately ungated:\n` +
+    `  zft task-gate before --subagent main --description "[ungated: <reason>]"\n` +
+    `(dispatching a subagent with [contract: <name>] also binds the session)`;
+
 
   const sessionOf = (input: unknown): string => {
     const i = (input ?? {}) as Record<string, unknown>;
@@ -442,7 +532,23 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
   return {
     "tool.execute.before": async (input, output) => {
       try {
-        if (input.tool !== "task" || !active()) return;
+        const tool = input.tool;
+        if (!active()) return;
+        if (tool === "edit" || tool === "write") {
+          // session-binding boundary: deliverable edits need a recorded
+          // contract binding (dispatch, manual task-gate, or override)
+          try {
+            sessionGate(input, output);
+          } catch (e) {
+            if (e instanceof GateBlock) {
+              emitTaskgate({ phase: "session-gate", decision: "block",
+                             subagent: "main", sessionID: sessionOf(input) });
+            }
+            throw e;
+          }
+          return;
+        }
+        if (tool !== "task") return;
         const args = (output.args ?? {}) as Record<string, unknown>;
         const subagent = String(args.subagent_type ?? "");
         const description = String(args.description ?? "");
@@ -478,6 +584,9 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
         if (run.res.status !== 0) {
           warn(`unexpected exit code ${run.res.status} (before) — failing open`);
         }
+        // an allowed dispatch binds the orchestrating session: its own
+        // deliverable edits then pass the session-binding gate
+        if (run.res.status === 0 && sessionID) boundSessions.add(sessionID);
       } catch (e) {
         if (e instanceof GateBlock) throw e; // deliberate policy block
         warn(`hook error (before): ${e instanceof Error ? e.message : String(e)} — failing open`);

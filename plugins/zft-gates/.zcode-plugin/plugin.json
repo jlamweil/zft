@@ -1,0 +1,8 @@
+{
+  "name": "zft-gates",
+  "version": "0.1.0",
+  "description": "ZFT contract gates for ZCode: a PostToolUse hook runs the L0 lint gate on every .zft/** edit, and a Stop hook runs the fast check tier before any session (main or subagent) may finish.",
+  "author": { "name": "JL" },
+  "skills": "./skills",
+  "hooks": "./hooks/hooks.json"
+}

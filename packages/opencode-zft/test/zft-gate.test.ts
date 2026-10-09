@@ -142,3 +142,139 @@ test("T5: the before record survives a SIGKILL of the session mid-subagent", asy
   expect(recs[0].exit).toBe(0);
   expect(recs[0].dispatchId).toMatch(UUID_RE);
 });
+
+// ---------------------------------------------------------------------------
+// Session-binding gate (main-session deliverable edits). Desired behavior:
+// every writer works under a recorded contract binding — a subagent dispatch
+// is one binding path, never the only one. A main-session edit on a
+// deliverable path before any binding is blocked with a typed hint; a
+// manual `zft task-gate before --subagent main ...` record in audit.log
+// binds the session (gated or explicit [ungated] override).
+
+function auditPath(r: string): string {
+  return join(r, ".zft", "audit.log");
+}
+
+function appendAudit(r: string, rec: Record<string, unknown>): void {
+  mkdirSync(join(r, ".zft"), { recursive: true });
+  const f = auditPath(r);
+  const prev = existsSync(f) ? readFileSync(f, "utf8") : "";
+  writeFileSync(f, prev + JSON.stringify(rec) + "\n");
+}
+
+function editInput(r: string, sessionID: string): unknown {
+  return { tool: "edit", callID: "e-" + sessionID, sessionID };
+}
+
+test("session-gate: unbound main-session deliverable edit is blocked with a bind hint", async () => {
+  process.env.ZFT_BIN = makeStubZft(root);
+  const hooks = (await ZftGate({ directory: root, client: fakeClient() as never })) as Record<
+    string,
+    (i: unknown, o: unknown) => Promise<void>
+  >;
+  await expect(
+    hooks["tool.execute.before"](
+      editInput(root, "s-main"),
+      { args: { filePath: join(root, "src", "app.ts") } },
+    ),
+  ).rejects.toThrow(/task-gate before[\s\S]*\[contract:/);
+});
+
+test("session-gate: a manual task-gate before record binds the session", async () => {
+  process.env.ZFT_BIN = makeStubZft(root);
+  appendAudit(root, { ts: Date.now(), subagent: "main", lane: "writer",
+                      phase: "before", gated: true, contract: "x",
+                      override: false, reason: "contract on file" });
+  const hooks = (await ZftGate({ directory: root, client: fakeClient() as never })) as Record<
+    string,
+    (i: unknown, o: unknown) => Promise<void>
+  >;
+  await expect(
+    hooks["tool.execute.before"](
+      editInput(root, "s-manual"),
+      { args: { filePath: join(root, "src", "app.ts") } },
+    ),
+  ).resolves.toBeUndefined();
+});
+
+test("session-gate: an explicit [ungated] override record binds the session", async () => {
+  process.env.ZFT_BIN = makeStubZft(root);
+  appendAudit(root, { ts: Date.now(), subagent: "main", lane: "writer",
+                      phase: "before", gated: false, contract: null,
+                      override: true, reason: "typo fix" });
+  const hooks = (await ZftGate({ directory: root, client: fakeClient() as never })) as Record<
+    string,
+    (i: unknown, o: unknown) => Promise<void>
+  >;
+  await expect(
+    hooks["tool.execute.before"](
+      editInput(root, "s-override"),
+      { args: { filePath: join(root, "src", "app.ts") } },
+    ),
+  ).resolves.toBeUndefined();
+});
+
+test("session-gate: store-corpus edits are not session-gated (lint gate domain)", async () => {
+  process.env.ZFT_BIN = makeStubZft(root);
+  const hooks = (await ZftGate({ directory: root, client: fakeClient() as never })) as Record<
+    string,
+    (i: unknown, o: unknown) => Promise<void>
+  >;
+  await expect(
+    hooks["tool.execute.before"](
+      editInput(root, "s-store"),
+      { args: { filePath: join(root, ".zft", "specs", "protocol", "export-413.json") } },
+    ),
+  ).resolves.toBeUndefined();
+});
+
+test("session-gate: a gated dispatch binds the session in memory", async () => {
+  process.env.ZFT_BIN = makeStubZft(root);
+  const hooks = (await ZftGate({ directory: root, client: fakeClient() as never })) as Record<
+    string,
+    (i: unknown, o: unknown) => Promise<void>
+  >;
+  await hooks["tool.execute.before"](
+    { tool: "task", callID: "call-sg", sessionID: "s-dispatch" },
+    { args: { subagent_type: "builder", description: "[contract: perf] work" } },
+  );
+  await expect(
+    hooks["tool.execute.before"](
+      editInput(root, "s-dispatch"),
+      { args: { filePath: join(root, "src", "app.ts") } },
+    ),
+  ).resolves.toBeUndefined();
+});
+
+test("session-gate: ZFT_ALLOW_UNGATED=1 lets the edit through", async () => {
+  process.env.ZFT_BIN = makeStubZft(root);
+  process.env.ZFT_ALLOW_UNGATED = "1";
+  const hooks = (await ZftGate({ directory: root, client: fakeClient() as never })) as Record<
+    string,
+    (i: unknown, o: unknown) => Promise<void>
+  >;
+  await expect(
+    hooks["tool.execute.before"](
+      editInput(root, "s-allow"),
+      { args: { filePath: join(root, "src", "app.ts") } },
+    ),
+  ).resolves.toBeUndefined();
+  delete process.env.ZFT_ALLOW_UNGATED;
+});
+
+test("session-gate: every decision lands one taskgate.jsonl record", async () => {
+  process.env.ZFT_BIN = makeStubZft(root);
+  const hooks = (await ZftGate({ directory: root, client: fakeClient() as never })) as Record<
+    string,
+    (i: unknown, o: unknown) => Promise<void>
+  >;
+  await hooks["tool.execute.before"](
+    editInput(root, "s-blocked").constructor === Object
+      ? editInput(root, "s-blocked")
+      : editInput(root, "s-blocked"),
+    { args: { filePath: join(root, "src", "app.ts") } },
+  ).catch(() => {}); // blocked; the record must exist anyway
+  const recs = ledger(root).filter((r) => r.phase === "session-gate");
+  expect(recs.length).toBe(1);
+  expect(recs[0].decision).toBe("block");
+});

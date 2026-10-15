@@ -7,7 +7,7 @@
 
 ## 0. Duration model (measured basis + corrected projections)
 
-All numbers marked **measured** come from the `/tmp/traceagent-loop` lab; projections are marked and use the corrected cost model (§0.1).
+All numbers marked **measured** come from the `/tmp/zft-loop` lab; projections are marked and use the corrected cost model (§0.1).
 
 | Operation | Measured | Basis | Checkpoint? |
 | --- | --- | --- | --- |
@@ -127,7 +127,7 @@ Commit discipline unchanged: every commit green, one concern, ≤~400 lines, mes
 ### WP-7 — Attestation — 1 d
 | ID | Deliverable | Verification | Clauses |
 | --- | --- | --- | --- |
-| C-28 | `attest/dsse.py` + predicate **`https://traceagent.dev/attestations/TraceManifest/v1`** (versioned URI constant; new predicate shape ⇒ new version) | V8 fixtures | ATT-SIGNED-ACCEPTANCE |
+| C-28 | `attest/dsse.py` + predicate **`https://zft.dev/attestations/TraceManifest/v1`** (versioned URI constant; new predicate shape ⇒ new version) | V8 fixtures | ATT-SIGNED-ACCEPTANCE |
 | C-29 | `cli attest` (binds contract version, clause hashes, tree hash, gate log, tools) | tamper test (V8) | ATT-SIGNED-ACCEPTANCE |
 | C-30 | `cli export` — attested manifests only; **milestone-scoped coverage totals** | unit: refuses unattested run; deferred clauses excluded from due coverage | ATT-EXPORTS-FROM-ATTESTATIONS |
 

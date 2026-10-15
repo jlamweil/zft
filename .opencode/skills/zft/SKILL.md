@@ -1,6 +1,6 @@
 ---
 name: zft
-description: Contract-first, traceable coding work using zft. Use when starting or reviewing non-trivial coding work that must be provably traceable: author clause contracts, bind deliverable elements with @trace("ALIAS"), run the zft gate, and produce/export the trace manifest. Trigger on "zft", "traceagent", "contract-first", "clause", "coverage", "traceability", "trace matrix", or when accepting/rejecting a delegated deliverable.
+description: Contract-first, traceable coding work using zft. Use when starting or reviewing non-trivial coding work that must be provably traceable: author clause contracts, bind deliverable elements with @trace("ALIAS"), run the zft gate, and produce/export the trace manifest. Trigger on "zft", "zft", "contract-first", "clause", "coverage", "traceability", "trace matrix", or when accepting/rejecting a delegated deliverable.
 ---
 
 # zft

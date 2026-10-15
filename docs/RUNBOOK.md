@@ -138,7 +138,7 @@ finds the unfinished run, replays it through the state machine (typed
 
 ```bash
 # deterministic kill -9 mid-negotiation (demo seam; the kill is a real SIGKILL):
-ZFT_NEGOTIATE_KILL_AFTER=counter traceagent negotiate .
+ZFT_NEGOTIATE_KILL_AFTER=counter zft negotiate .
 zft negotiate .        # → "resuming negotiation run <id> from COUNTERED"
 ```
 

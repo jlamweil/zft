@@ -53,7 +53,7 @@ Prompt/workflow assets more than embeddable code. Steal: `FR-001`/`SC-001` ID co
 
 ### [rtmx](https://github.com/rtmx-ai/rtmx) — STUDY / run alongside · 81/100 · Apache-2.0 · active, small (31★, 28 contrib.)
 "Requirements traceability as a CSV file in git. Every requirement has an ID, a spec, and linked tests. Status derived from test results. AI agents query your requirements via MCP."
-**Direct competitor to our trace-matrix layer** — same-kind rule says don't fork; study and differentiate. Our differentiators over rtmx: negotiated contracts (not human-authored CSVs), clause→evidence tiers, bi-directional coverage, attestation. Worth running early traceagent pilots against rtmx as a baseline.
+**Direct competitor to our trace-matrix layer** — same-kind rule says don't fork; study and differentiate. Our differentiators over rtmx: negotiated contracts (not human-authored CSVs), clause→evidence tiers, bi-directional coverage, attestation. Worth running early zft pilots against rtmx as a baseline.
 
 ### [doorstop](https://github.com/doorstop-dev/doorstop) — SKIP for fork · 83/100 · **LGPL-3.0** ⚠️
 Same YAML-in-git idea, actively maintained. LGPL rules out fork-into-our-framework; acceptable only as an external tool.
@@ -124,4 +124,4 @@ The semantics we replicate in our registry: published contracts + accumulated **
 - License resolution: GitHub's search API returned `license: none` for many repos; all licenses above were verified from repo LICENSE files (strictdoc/in-toto/CrossHair are permissive despite `NOASSERTION` in the API; doorstop is genuinely LGPL-3.0).
 - Scores use the scaffold-search formula; `pytest-bdd` and `mutmut` are partial (contributors API returned empty); `a2a-python` and `mcp-python-sdk` forks/contributors estimated.
 - Negative searches (recorded to avoid re-searching): "requirements bdd gherkin" and "requirements code as" → `[]`; "property testing python" → junk (2-word miss — Hypothesis found by name); "crosshair" name searches are polluted by game-cheat repos (GitHub search limitation); no maintained EARS parser found.
-- Earlier research (multiagent-frameworks.md) already covers framework-level candidates (LangGraph, CrewAI, AutoGen/MAF): those are *orchestration peers*, not scaffold targets — traceagent layers on top of any of them via A2A/MCP, so none is adopted wholesale.
+- Earlier research (multiagent-frameworks.md) already covers framework-level candidates (LangGraph, CrewAI, AutoGen/MAF): those are *orchestration peers*, not scaffold targets — zft layers on top of any of them via A2A/MCP, so none is adopted wholesale.

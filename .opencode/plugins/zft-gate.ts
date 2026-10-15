@@ -166,11 +166,11 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
     const onPath = whichOr("zft");
     if (onPath && runnable([onPath])) return (resolvedGate = [onPath]);
     // Last resort: run the module directly. Both import names are probed
-    // because the published 0.2.x wheel still exposes `traceagent.cli.main`.
+    // because the published 0.2.x wheel still exposes `zft.cli.main`.
     const py = whichOr("python3") || whichOr("python");
     if (py) {
       const mod =
-        probeModule(py, "zft.cli.main") ?? probeModule(py, "traceagent.cli.main");
+        probeModule(py, "zft.cli.main");
       if (mod) return (resolvedGate = [py, "-m", mod]);
     }
     return (resolvedGate = null);

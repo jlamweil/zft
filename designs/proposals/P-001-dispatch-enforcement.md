@@ -28,8 +28,8 @@ The framework currently permits an orchestrator to dispatch a writer sub‑agent
    - Writer lanes (``fixer``, ``implementer``, ``designer``, ``general`` and any unknown type) require a ``[contract: <name>]`` marker that resolves to ``.zft/contracts/<name>.json``.
    - Read‑only lanes (``explorer``, ``explore``, ``code‑explorer``, ``librarian``, ``oracle``, ``analyst``, ``councillor``, ``vision``, ``vision‑consultant``, ``researcher``) are exempt.
    - An override marker ``[ungated: <reason>]`` or the environment variable ``ZFT_ALLOW_UNGATED=1`` permits a writer lane without a contract; the decision is recorded with ``gated: false``.
-4. **Audit log** – every decision appends a single JSONL line to ``<traceagent‑root>/.zft/audit.log`` (see `append_audit`).
-5. **Opencode plugin** (`.opencode/plugin/traceagent-gate.ts`):
+4. **Audit log** – every decision appends a single JSONL line to ``<zft‑root>/.zft/audit.log`` (see `append_audit`).
+5. **Opencode plugin** (`.opencode/plugin/zft-gate.ts`):
    - Wraps the built‑in ``task`` tool; runs the CLI in the ``before`` phase and blocks dispatch on exit 1.
    - In the ``after`` phase it prepends a ``[zft gate] <report>`` annotation to the sub‑agent result.
    - Scoped to projects containing ``.zft``; fails‑open on internal errors.

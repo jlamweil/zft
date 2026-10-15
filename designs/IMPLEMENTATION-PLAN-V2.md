@@ -118,7 +118,7 @@ Durations are **effort** estimates; *(run)* = measured command runtime unless **
 | WP | Goal | Files | Test | Commit | Effort |
 |---|---|---|---|---|---|
 | H1 | Upgrade `ai-conduct` clauses `kind: test` → `kind: property`; author **real** consumer oracles `oracle_AI-*.py` implementing each requirement | `.zft/specs/ai-conduct/*.json`, `.zft/oracles/*` | per-clause oracle tests (correct→GREEN, mutated oracle→RED) | `feat: enforceable AI-conduct clauses` | ~2 d |
-| H2 | **Remove the `v1` deferrals** so the 10 clauses become `due` (leave `ATT-EXTERNAL-IMPORT` deferred) | `.zft/contracts/traceagent-v0.json` | `check` green **because met**; `test_check_green_on_repo` expects **due = 39** | `chore: promote AI-conduct clauses to due` | ~0.3 d |
+| H2 | **Remove the `v1` deferrals** so the 10 clauses become `due` (leave `ATT-EXTERNAL-IMPORT` deferred) | `.zft/contracts/zft-v0.json` | `check` green **because met**; `test_check_green_on_repo` expects **due = 39** | `chore: promote AI-conduct clauses to due` | ~0.3 d |
 
 ---
 
@@ -199,7 +199,7 @@ Invariant per commit: `lint` + that WP's tests green. For shared files (`l1.py` 
 | R6 | Markdown anchor edge cases (fences, escapes) | anchor only on comment lines; unit tests for fences/escapes |
 | R7 | ReqIF identifier collisions / digit-leading UUIDs | `R_`/`RA_` prefix + NCName-safe normalization; tolerant mode |
 | R8 | Perf regression reintroduced | CI perf test asserts `check` ≤5 s and single extraction |
-| R9 | Multi-contract loader ambiguity (`store.py:41`) | keep AI-conduct items in `traceagent-v0`; H2 edits in place (no new contract file) |
+| R9 | Multi-contract loader ambiguity (`store.py:41`) | keep AI-conduct items in `zft-v0`; H2 edits in place (no new contract file) |
 | R10 | Resume silently loses scope counts / `--resume` unwired | C4: scope-aware checkpoint schema + CLI `--resume`; tests |
 | R11 | Large waves touch shared files → red intermediate commits | test-first + no-op stubs; targeted green per commit; full suite at wave boundaries |
 | R12 | Placeholder/fake oracles reintroduced (anti-theater) | H1 requires **real** oracles; the E1 self-test and mutated-oracle test catch fakes |
@@ -231,7 +231,7 @@ Persistent extraction daemon; additional languages; full multi-contract merge se
 2. **"After promotion `due` = 40."** Wrong: `ATT-EXTERNAL-IMPORT` stays deferred to `v0.1`, so **due = 39** (40 nodes − 1 deferred). The plan's 39 is correct.
 3. **"Wave C depends on Wave B."** Mutation correctness is independent of oracle execution; no edge.
 4. **"F depends on E" / "G depends on F for `external_links`."** Spurious — interchange exposes `external_links`; the human↔AI wave is orthogonal.
-5. **"Renaming the promoted contract file."** No new contract is created; H2 edits `traceagent-v0.json` in place.
+5. **"Renaming the promoted contract file."** No new contract is created; H2 edits `zft-v0.json` in place.
 6. **Structural refactors (dispatcher table, new cache/pin packages).** Optional; out of scope (§9).
 7. Most "CRITICAL: feature X does not exist" items are **restatements of the plan's own WPs**, not defects — the plan's premise is that these features are to be built.
 

@@ -9,7 +9,7 @@ maintain the project's rigorous, deterministic standards.
 ```bash
 # Clone the repository and cd into it
 git clone <repo-url>
-cd traceagent
+cd zft
 
 # Install the package in editable mode with dev extras
 pip install -e .[dev]

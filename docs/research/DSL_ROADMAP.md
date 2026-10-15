@@ -1,7 +1,7 @@
-# DSL_ROADMAP — what traceagent should steal from EARS tooling, OPA/Rego, and Sigstore
+# DSL_ROADMAP — what zft should steal from EARS tooling, OPA/Rego, and Sigstore
 
 > Status: proposal, 2026-09-05. Synthesized from training knowledge of the three
-> ecosystems; traceagent-side claims are grounded in the tree as of this date
+> ecosystems; zft-side claims are grounded in the tree as of this date
 > (file:line refs). Mechanisms are described at the design level — external API/CLI
 > details drift, so re-check primary sources before building anything that must
 > interoperate with those ecosystems directly. Complements, not replaces:
@@ -45,7 +45,7 @@ The repo already implements the *core* best bits of all three domains:
 
 - **Sigstore packaging**: DSSE envelopes, in-toto `Statement/v1`, custom
   versioned predicate URI, RFC 8785 JCS canonicalization, canonical-base64
-  rejection, subject-digest verification — `src/traceagent/attest/dsse.py`,
+  rejection, subject-digest verification — `src/zft/attest/dsse.py`,
   `attest/jcs.py`.
 - **OPA admission shape**: gate tiers, default-deny (missing binding = red,
   `gates/l1.py:79`, `gates/l2.py:63`), typed rejections with fault
@@ -185,7 +185,7 @@ is hard-coded in Python.
 **Proposal.** A small, schema-checked verify-policy document (JSON,
 content-addressed, referenced from contract meta):
 `{min_deterministic_coverage, deny_if_model_dependent, judge_excluded_allowed_domains,
-max_age_days, allowed_predicate_types}`. `traceagent verify --policy p.json`
+max_age_days, allowed_predicate_types}`. `zft verify --policy p.json`
 evaluates payload fields → accept/deny with named, clause-level reasons.
 Deliberately **not** Rego (see §3): six fields of fixed vocabulary beat an
 embedded evaluator when the authors are LLMs and the moat is the pipeline, not
@@ -243,7 +243,7 @@ re-runs the gates.
    `DSL_VERSION` (+ git rev) computed at check time, into the gate log and the
    TraceManifest predicate. A re-run of an old repro pinpoints gate drift as
    the cause of a verdict change.
-2. **VerificationSummary/v1**: `traceagent verify --summary out.json` emits a
+2. **VerificationSummary/v1**: `zft verify --summary out.json` emits a
    second, signed predicate type `{subject, policy_ref, result, checked_at,
    gate_fingerprint}`. This is the artifact that makes subagent fan-out
    auditable: an orchestrator accepts a subagent's deliverable on the strength
@@ -289,7 +289,7 @@ a key with no provenance (`dsse.py:267`), threshold hard-coded to 1
 for domain X?" has no artifact — which blocks the multiagent story it exists
 for.
 
-**Proposal.** `.traceagent/trust/root.json`:
+**Proposal.** `.zft/trust/root.json`:
 `{version, keys: [{keyid, public_key, owner, domains}], thresholds: {default,
 per-milestone}, max_age_days}`, self-signed over canonical form (JCS already
 exists). `verify` resolves keys *only* from the root; attestations carry a
@@ -328,7 +328,7 @@ the drift (gate fingerprint vs input digests).
 **Source.** EARS has a latent formal semantics its tooling exploits: every
 triggered statement is an implication (`trigger ⇒ obligation`), state-driven
 adds a hold-condition, unwanted adds a negated guard. Formal-EARS variants
-compile statements to guarded commands. traceagent owns both ends — a natural-
+compile statements to guarded commands. zft owns both ends — a natural-
 language surface (`dsl/ears.py`) and a formal core (`dsl/predicate.py`) — but
 they don't talk.
 
@@ -382,7 +382,7 @@ key's signature fails policy, with the failing matcher named.
 | **OPA bundles / REST services / decision-stream infra** | No server in the architecture; D5 is git-native; distribution = git | If a hosted registry layer (chainloop-class) is ever adopted |
 | **Full Rekor / Trillian / witness quorum** | Server weight without a multi-party threat model yet; R-08's hash chain + signed heads in git delivers the tamper-evidence property | When attestations are exchanged between organizations that don't share a git history |
 | **Fulcio keyless / OIDC** | No agent-identity ecosystem to federate with; ephemeral certs solve a PKI problem agents don't have yet | When a credible "OIDC for agents" exists; R-12's layout is the on-ramp |
-| **SLSA build-platform provenance levels verbatim** | traceagent doesn't run build platforms; the ladder's *shape* (negotiable graduated assurance) is the transferable part → R-03 | If deliverables start including built/released artifacts |
+| **SLSA build-platform provenance levels verbatim** | zft doesn't run build platforms; the ladder's *shape* (negotiable graduated assurance) is the transferable part → R-03 | If deliverables start including built/released artifacts |
 | **EARS-CTRL / mode-machine extensions** | YAGNI until a corpus demands mode systems; the six-pattern taxonomy (R-06) carries the value | First corpus with mode-based requirements |
 | **OCI referrers / Sigstore protobuf packaging** | Git-native store suffices; a second packaging format is pure overhead | When attestations must be discoverable via OCI registries |
 

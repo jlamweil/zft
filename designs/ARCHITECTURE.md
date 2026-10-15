@@ -1,4 +1,4 @@
-# TraceAgent — Unified System Architecture
+# ZFT — Unified System Architecture
 
 > **Canonical design document.** Supersedes `designs/PTE.md`, `designs/ZFT.md`, `designs/PTE ZFT.md`, and `designs/DEC.md` (preserved under [`designs/archive/`](archive/)). Project intent and vocabulary: [`CONTEXT.md`](../CONTEXT.md). Framework landscape evidence: [`docs/research/multiagent-frameworks.md`](../docs/research/multiagent-frameworks.md).
 >
@@ -22,7 +22,7 @@ Four prior documents describe overlapping slices of the same system. This doc me
 
 ## 1. The system in one page
 
-TraceAgent is a **contract-first traceability layer for multiagent work**. Agents exchange *contracts* (structured, clause-IDed acceptance criteria) and *deliverables*; a deterministic engine extracts which deliverable element satisfies which clause, verifies claims with mechanical evidence, and only then accepts the work. Compliance artifacts (trace matrices, ReqIF, ALM updates) are compiled outputs of that same graph — never hand-maintained.
+ZFT is a **contract-first traceability layer for multiagent work**. Agents exchange *contracts* (structured, clause-IDed acceptance criteria) and *deliverables*; a deterministic engine extracts which deliverable element satisfies which clause, verifies claims with mechanical evidence, and only then accepts the work. Compliance artifacts (trace matrices, ReqIF, ALM updates) are compiled outputs of that same graph — never hand-maintained.
 
 ```
                 ┌──────────────────────────────────────────────────────────┐
@@ -106,7 +106,7 @@ Format: Context → Options → Trade-off → Decision → Consequences. Status 
 1. Invariants must be written in a **constrained, machine-executable invariant DSL** — not free text. This is the biggest *new* work item unification exposes: every source doc stores `algebraic_property` as a string nothing can run. The DSL grammar is a v0 blocking task (§7).
 2. A clause declares its own verification kind(s): `property`, `type`, `judge` (§4 L3 rule) — so the gate knows what evidence it may accept.
 3. DEC's enforcement insight is preserved where it matters (code), without sacrificing PTE's universality (everything else).
-4. *(Amendment, 2026-09-04, from seeding the v0 contract)*: check kinds extended to **`property`, `type`, `test`, `judge`, `process`** — `test` = integration-test evidence, `process` = manual/processual check. First applied by `tools/contract_seed.py` / enforced by `tools/contract_lint.py` (both deleted since — enforcement now lives in `src/traceagent/spec/lint.py`, exposed as `traceagent lint`).
+4. *(Amendment, 2026-09-04, from seeding the v0 contract)*: check kinds extended to **`property`, `type`, `test`, `judge`, `process`** — `test` = integration-test evidence, `process` = manual/processual check. First applied by `tools/contract_seed.py` / enforced by `tools/contract_lint.py` (both deleted since — enforcement now lives in `src/zft/spec/lint.py`, exposed as `zft lint`).
 
 ### D2 — Clause identity: minted UUID vs. content-addressable hash?
 
@@ -274,7 +274,7 @@ Unchanged in substance from PTE/ZFT, now fed exclusively by attested manifests: 
 
 ## 7. Open questions (blocking v0 implementation)
 
-> Research input: [`docs/research/requirements-contracting-for-agents.md`](../docs/research/requirements-contracting-for-agents.md) §"What traceagent should adopt" proposes concrete, cited candidate answers for each question below (AgentSpec grammar + EARS + DbC for the DSL; Contract Net + OpenSpec deltas + FIPA typed acts for negotiation; Pact's broker/matrix for the registry). Treat them as inputs to decide, not decisions made. It also adds one evidence-backed requirement for D4: the gate (and its judge fallback) must be **independent of the producer's model** — same-model two-agent handoffs co-fail on 90% of failed missions (ABC II, arXiv:2608.12895).
+> Research input: [`docs/research/requirements-contracting-for-agents.md`](../docs/research/requirements-contracting-for-agents.md) §"What zft should adopt" proposes concrete, cited candidate answers for each question below (AgentSpec grammar + EARS + DbC for the DSL; Contract Net + OpenSpec deltas + FIPA typed acts for negotiation; Pact's broker/matrix for the registry). Treat them as inputs to decide, not decisions made. It also adds one evidence-backed requirement for D4: the gate (and its judge fallback) must be **independent of the producer's model** — same-model two-agent handoffs co-fail on 90% of failed missions (ABC II, arXiv:2608.12895).
 
 1. **Invariant DSL grammar** (D1) — the top blocking item. Which subset of algebraic property notation is both expressive enough for real clauses and mechanically compilable into Hypothesis/fast-check/QuickCheck generators?
 2. **Codegen coverage** — which `(clause shape → artifact kind)` pairs does v0 generate (e.g., property suite only? typed interfaces? test scaffolds?), and what is the graceful fallback when none apply?

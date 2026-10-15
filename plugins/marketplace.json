@@ -1,5 +1,5 @@
 {
-  "name": "dev-traceagent-zcode",
+  "name": "dev-zft-gates",
   "plugins": [
     {
       "name": "zft-gates",
@@ -7,8 +7,12 @@
       "version": "0.1.0",
       "description": "ZFT contract gates for ZCode: PostToolUse L0 lint on .zft/** edits and a Stop check gate before any session (main or subagent) may finish.",
       "displayName": "ZFT Gates",
-      "displayName_i18n": { "zh-CN": "ZFT 契约门禁" },
-      "description_i18n": { "zh-CN": "ZFT 契约门禁：.zft/** 编辑后自动跑 L0 lint，会话（含子代理）停止前跑 fast check 门禁。" },
+      "displayName_i18n": {
+        "zh-CN": "ZFT \u5951\u7ea6\u95e8\u7981"
+      },
+      "description_i18n": {
+        "zh-CN": "ZFT \u5951\u7ea6\u95e8\u7981\uff1a.zft/** \u7f16\u8f91\u540e\u81ea\u52a8\u8dd1 L0 lint\uff0c\u4f1a\u8bdd\uff08\u542b\u5b50\u4ee3\u7406\uff09\u505c\u6b62\u524d\u8dd1 fast check \u95e8\u7981\u3002"
+      },
       "category": "developer-tools"
     }
   ]

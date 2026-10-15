@@ -13,7 +13,7 @@
 #   ZFT_GATE_CMD          {folder}-template of the gate command
 #   ZFT_GATE_HOOK         off (default) | shadow | enforce
 #   ZFT_SEND_GATE_LOG     JSONL verdict log
-#                                (default <folder>/.traceagent/send-gate/log.jsonl)
+#                                (default <folder>/.zft/send-gate/log.jsonl)
 #   ZFT_SEND_GATE_TIMEOUT kill window in seconds (default 120, the
 #                                documented driver kill)
 #
@@ -55,7 +55,7 @@ if [ "$MODE" != "shadow" ] && [ "$MODE" != "enforce" ]; then
   exit 2
 fi
 
-LOG=${ZFT_SEND_GATE_LOG:-"$FOLDER/.traceagent/send-gate/log.jsonl"}
+LOG=${ZFT_SEND_GATE_LOG:-"$FOLDER/.zft/send-gate/log.jsonl"}
 KILL_S=${ZFT_SEND_GATE_TIMEOUT:-120}
 GATE_TEMPLATE=$ZFT_GATE_CMD
 

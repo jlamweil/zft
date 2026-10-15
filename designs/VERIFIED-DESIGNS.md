@@ -1,6 +1,6 @@
 # Verified Designs — the design loop, round 1–2
 
-> Method per the loop directive: propose designs → extract the hypotheses each design depends on → **verify every hypothesis with a real experiment** → revise designs on failure → repeat until convergence. No repository code was changed; all experiments ran in a throwaway lab (`/tmp/traceagent-loop`, Python 3.12 venv, 2026-09-04) against our real contract corpus (`.zft/specs`, 26 clauses).
+> Method per the loop directive: propose designs → extract the hypotheses each design depends on → **verify every hypothesis with a real experiment** → revise designs on failure → repeat until convergence. No repository code was changed; all experiments ran in a throwaway lab (`/tmp/zft-loop`, Python 3.12 venv, 2026-09-04) against our real contract corpus (`.zft/specs`, 26 clauses).
 > Companion: [ARCHITECTURE.md](ARCHITECTURE.md) (designs D1–D6, open questions §7). Contract status note: the 26 clauses remain **PROPOSED** — this loop produced the evidence for their design answers; applying patch P1 below still awaits consumer validation.
 
 ## Convergence summary
@@ -56,7 +56,7 @@ Two full rounds were needed. Round 1 ran all 9 verifications; four hypotheses **
 - Delta replay (OpenSpec-style): ADDED applied; MODIFIED with correct old-hash applied; MODIFIED with stale base rejected; REMOVED applied. 6/6.
 
 ### D-ATT (§5.4 — attestation) — VERIFIED
-- DSSE envelope (securesystemslib — the library under in-toto 3.x, whose legacy `models` API is gone in 3.1) signs a TraceManifest statement with the **real hashes of our 26 contract files**; ed25519 verify passes; a tampered clause digest is detected. Predicate URI minted: `https://traceagent.dev/attestations/TraceManifest/v1`.
+- DSSE envelope (securesystemslib — the library under in-toto 3.x, whose legacy `models` API is gone in 3.1) signs a TraceManifest statement with the **real hashes of our 26 contract files**; ed25519 verify passes; a tampered clause digest is detected. Predicate URI minted: `https://zft.dev/attestations/TraceManifest/v1`.
 
 ## Verified limitations (honest)
 1. **V6 thresholds** are calibrated on synthesized suites only (6/6). Calibration against real agent-authored suites stays open (§7.6) — needs a real corpus, by definition.

@@ -1,7 +1,7 @@
-# Competitor Landscape — traceagent
+# Competitor Landscape — zft
 
 > Compiled 2026-09-04 from the three research notes in this directory ([multiagent-frameworks](multiagent-frameworks.md), [requirements-contracting](requirements-contracting-for-agents.md), [scaffold-search-findings](scaffold-search-findings.md)) plus a gap-check on enterprise requirements management and agent-assurance vendors (sources at foot).
-> Scope: products and projects competing for the ground traceagent claims — **negotiated, clause-IDed contracts between agents, with deterministic deliverable↔contract traceability as the acceptance gate**.
+> Scope: products and projects competing for the ground zft claims — **negotiated, clause-IDed contracts between agents, with deterministic deliverable↔contract traceability as the acceptance gate**.
 
 ## 1. Category map — where we sit
 
@@ -10,7 +10,7 @@ Two axes that matter: **(A) is the contract a first-class artifact?** and **(B) 
 ```
                     Contract as artifact (versioned, clause-IDed, negotiated)
                                     ▲
-                     Spec Kit · Kiro │  traceagent (target)
+                     Spec Kit · Kiro │  zft (target)
                      OpenSpec · BMAD │
      Tessl (retreating)              │
   ───────────────────────────────────┼──────────────────────────────▶
@@ -28,7 +28,7 @@ Two axes that matter: **(A) is the contract a first-class artifact?** and **(B) 
 
 Closest in *intent*: they gate agents on requirements. Their gap, per [requirements-contracting research](requirements-contracting-for-agents.md): the counterparty is always a **human**, coverage is LLM keyword-inference, and no mechanical requirement→implementation mapping is stored.
 
-| Product | Overlap | Gap vs. traceagent | Threat | Posture |
+| Product | Overlap | Gap vs. zft | Threat | Posture |
 | --- | --- | --- | --- | --- |
 | **GitHub Spec Kit** (133k★) | Clause IDs, acceptance criteria, coverage audit, approval gates | Human-gated; `/speckit.analyze` coverage is LLM inference; no negotiation; no stored trace matrix | **Med** (distribution is theirs) | **Build-on**: adopt ID conventions & `[NEEDS CLARIFICATION]`; interop with spec.md as an import format |
 | **Amazon Kiro** | EARS acceptance criteria, approval gates, agent hooks | One agent, human-supervised; diff/history audit unbound to criteria | **Med-High** — if AWS adds multi-agent handoffs + criteria-bound evidence, they're on top of us | **Watch** closely; our wedge is negotiation + mechanical coverage |
@@ -38,7 +38,7 @@ Closest in *intent*: they gate agents on requirements. Their gap, per [requireme
 
 ### B. Agent-native traceability tools — the direct competitors
 
-| Product | Overlap | Gap vs. traceagent | Threat | Posture |
+| Product | Overlap | Gap vs. zft | Threat | Posture |
 | --- | --- | --- | --- | --- |
 | **rtmx** ([scaffold note](scaffold-search-findings.md)) | **The closest product**: requirements-as-CSV in git, linked tests, status *derived from test results*, MCP access for agents | No contract negotiation; no evidence tiers; no bi-directional coverage; CSV, not clause nodes; human-authored requirements | **Med** — same buyer, earlier stage (31★) | **Differentiate and consider interop** (its MCP query surface is the right instinct) |
 | **duvet** (AWS) | Bidirectional spec↔implementation links via annotations; derived compliance reports | Single spec document (RFC-style), annotation-only binding, human reviewing | **Low-Med** | Watch; pattern donor for D3 |
@@ -49,7 +49,7 @@ Closest in *intent*: they gate agents on requirements. Their gap, per [requireme
 
 LangGraph, Microsoft Agent Framework (AutoGen+SK), CrewAI, OpenAI Agents SDK ([prior coverage](multiagent-frameworks.md)). They own where agents run; we standardize over them via A2A/MCP.
 - **Threat: Med.** CrewAI's guardrails (gate + retry budget) are one feature-flag away from persisting the gate results as an artifact; if any of them ships "task contracts" natively, the integration wedge narrows. None currently holds a *versioned, negotiated* acceptance artifact or a deterministic coverage matrix.
-- **Posture: build-on + standardize.** Ship traceagent as an A2A extension + a guardrail-callable so the frameworks can adopt the layer rather than re-invent it.
+- **Posture: build-on + standardize.** Ship zft as an A2A extension + a guardrail-callable so the frameworks can adopt the layer rather than re-invent it.
 
 ### D. Guardrails, evals & observability — the "verification" neighbors
 
@@ -66,15 +66,15 @@ LangGraph, Microsoft Agent Framework (AutoGen+SK), CrewAI, OpenAI Agents SDK ([p
 
 **Jama Software, IBM DOORS/Rational, Siemens Polarion, Visure, PTC codeBeamer, Valispace.** They own traceability mindshare in regulated industries and are actively bolting on AI ([Jama: "AI in Requirements Management", 2026](https://www.jamasoftware.com/blog/ai-requirements-management) — AI catching ambiguous requirements and broken traceability).
 - **Threat: Low near-term** (their data model is document/ALM-centric; agent-native workflows are not their motion), but their *AI features validate our thesis* to enterprise buyers.
-- **Posture: integrate** — ReqIF import/export (strictdoc backend) makes traceagent clauses first-class citizens in their worlds; compliance export is our wedge into their accounts, not their feature into ours.
+- **Posture: integrate** — ReqIF import/export (strictdoc backend) makes zft clauses first-class citizens in their worlds; compliance export is our wedge into their accounts, not their feature into ours.
 
 ### G. Research & protocols — standardization threat/opportunity
 
-**ABC / AgentSpec / TraceGrant** (2026 papers): runtime contract enforcement semantics — no products yet. **A2A**: its extension mechanism is the natural standardization vehicle for a contract object; shipping traceagent's contract schema as an A2A extension turns the protocol into distribution instead of competition. **Threat: Low now; High if someone standardizes first.** Posture: adopt semantics, publish early.
+**ABC / AgentSpec / TraceGrant** (2026 papers): runtime contract enforcement semantics — no products yet. **A2A**: its extension mechanism is the natural standardization vehicle for a contract object; shipping zft's contract schema as an A2A extension turns the protocol into distribution instead of competition. **Threat: Low now; High if someone standardizes first.** Posture: adopt semantics, publish early.
 
 ## 3. The moat, stated once
 
-Everything above is missing at least one of the four things only traceagent combines:
+Everything above is missing at least one of the four things only zft combines:
 
 1. **Negotiation between agents** — a binding pre-work agreement (Contract Net / WS-Agreement lineage), not human approval gates.
 2. **Deterministic coverage both ways** — clause→element *and* element→clause, mechanically extracted (ast-grep-based), not LLM-inferred audits.

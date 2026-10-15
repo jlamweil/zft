@@ -1,9 +1,9 @@
 # ISO / Regulatory Conformance Mapping
 
 *This document provides a pragmatic mapping between the objectives of major
-standards and the artefacts implemented by **traceagent**.  The mapping is
-intended to show how traceagent can be used as a **back‑bone** within an ISO‑
-conformant development process.  It does **not** claim that traceagent itself is
+standards and the artefacts implemented by **zft**.  The mapping is
+intended to show how zft can be used as a **back‑bone** within an ISO‑
+conformant development process.  It does **not** claim that zft itself is
 qualified as a certified tool (e.g. DO‑330 TQL‑1).  Where a claim cannot be
 verified, it is marked **UNVERIFIED**.
 
@@ -11,7 +11,7 @@ verified, it is marked **UNVERIFIED**.
 
 ## 1. ISO/IEC/IEEE 29148 – Requirements Engineering
 
-| Objective (section) | Traceagent artefact | Status | Evidence (file / line) | What is required to meet it |
+| Objective (section) | ZFT artefact | Status | Evidence (file / line) | What is required to meet it |
 |---|---|---|---|---|
 | **Unique identifier** – each requirement shall have a globally unique ID. | Clause node `node_id` (UUIDv7) – e.g. `.zft/specs/identity/id-uuidv7-alias.json` (line 1) | **Met** | `src/zft/spec/identity.py:6‑12` (UUIDv7 generator) | Ensure all clauses are minted via `new_uuid7()` and stored in `.zft/specs/`. |
 | **Attributes** – status, version, traceability attributes. | Clause JSON fields `status`, `version`, `content_hash` (see `.zft/specs/*/*.json`). | **Met** | `src/zft/spec/canon.py:13‑19` (hash & excluded attrs) | Populate `status` and `version` consistently; tool already validates via L0. |
@@ -27,7 +27,7 @@ verified, it is marked **UNVERIFIED**.
 
 ## 2. IEC 62304 – Medical Device Software Lifecycle
 
-| Objective (clause) | Traceagent artefact | Status | Evidence | Required work |
+| Objective (clause) | ZFT artefact | Status | Evidence | Required work |
 |---|---|---|---|---|
 | **4.2.1 Software requirements** – traceable from user needs to software requirements. | Contract clause store (`.zft/specs/`) contains requirements; each clause can carry `external_links` to medical‑device need IDs. | **Met** (structure) | `src/zft/spec/store.py` (loading) | Populate `external_links` with medical‑device IDs; export to ReqIF for system‑level traceability. |
 | **5.5 Verification** – unit, integration, system testing, and verification of requirements. | Gates L1 (property suites) and L2 (mutation testing). | **Partial** – property DSL not executable (Gap 001). | `src/zft/gates/l2.py:66‑73` (coverage) | Add executable property evaluation (see P‑004). |
@@ -40,7 +40,7 @@ verified, it is marked **UNVERIFIED**.
 
 ## 3. ISO 26262 (Part 6 & Part 8) – Automotive Functional Safety
 
-| Objective (part/section) | Traceagent artefact | Status | Evidence | Needed to fulfil |
+| Objective (part/section) | ZFT artefact | Status | Evidence | Needed to fulfil |
 |---|---|---|---|---|
 | **6.4.2.1 Safety requirements** – each safety requirement must be uniquely identified and traceable. | Clause IDs (UUIDv7) with optional `safety_class` attribute (can be added). | **Partial** – attribute not yet defined. | `src/zft/spec/canon.py` (hash generation) | Extend clause schema to include `safety_class` (ASIL) and update lint. |
 | **6.4.3 Verification** – independent verification of each safety requirement. | L2 gate runs mutation testing, independent of producer model; model‑independence flag in attestation (`src/zft/attest/dsse.py:23‑25`). | **Partial** – independence currently labelled but not enforced. | `src/zft/attest/dsse.py:23‑25` (model_dependent) | Enforce that gate model differs from producer model (policy). |
@@ -53,7 +53,7 @@ verified, it is marked **UNVERIFIED**.
 
 ## 4. DO‑178C & DO‑330 – Avionics Software Certification
 
-| Objective (DO‑178C §) | Traceagent artefact | Status | Evidence | Gap / Work |
+| Objective (DO‑178C §) | ZFT artefact | Status | Evidence | Gap / Work |
 |---|---|---|---|---|
 | **4.1 Requirements coverage** – traceability from high‑level requirements to low‑level code. | Trace matrix (`src/zft/lineage/matrix.py`) provides forward coverage; contracts act as high‑level requirements. | **Partial** – reverse coverage (code → requirement) not fully covered for non‑code artefacts. | `src/zft/lineage/matrix.py:5‑24` | Extend `extract_bindings` to capture non‑code elements (e.g., doc sections). |
 | **9.1 Structural coverage** – statement, decision, MC/DC coverage metrics. | Mutation testing (`gates/l2.py` + `mutmut_runner.py`) approximates coverage; reports killed mutants. | **Partial** – not a formal structural coverage metric. | `src/zft/gates/mutmut_runner.py` | Add integration with coverage tools (e.g., `coverage.py`) to produce DO‑178C coverage reports. |
@@ -66,7 +66,7 @@ verified, it is marked **UNVERIFIED**.
 
 ## 5. ReqIF (OMG) – Requirements Interchange Format
 
-| Objective | Traceagent artefact | Status | Evidence | Needed |
+| Objective | ZFT artefact | Status | Evidence | Needed |
 |---|---|---|---|---|
 | Exchange of requirements with IDs, attributes, and trace links. | Export command (`zft export`) emits the trace matrix and DSSE summary; ReqIF generation is **not** in the open-source package. | **Missing (open source)** | `src/zft/attest/export.py` (contains no ReqIF logic) | ReqIF import/export is a proprietary **enterprise** feature, implemented in `private/enterprise/zft/reqif/` (see ATT-EXTERNAL-IMPORT, v0.1). |
 
@@ -76,7 +76,7 @@ verified, it is marked **UNVERIFIED**.
 
 ## 6. (Optional) ISO/IEC/IEEE 42010 – Architecture Description
 
-| Objective | Traceagent artefact | Status | Evidence | Gap |
+| Objective | ZFT artefact | Status | Evidence | Gap |
 |---|---|---|---|---|
 | Architecture viewpoints, models, and decisions. | Decision records D1‑D6 in `designs/ARCHITECTURE.md`; architecture diagram in `README`. | **Partial** – no formal model exchange format. | `designs/ARCHITECTURE.md` (sections D1‑D6) | Define a view model (e.g., ArchiMate) and export to a standard format. |
 
@@ -84,7 +84,7 @@ verified, it is marked **UNVERIFIED**.
 
 ## 7. ISO/IEC 25010 – Software Quality Model
 
-| Quality characteristic | Traceagent support | Status |
+| Quality characteristic | ZFT support | Status |
 |---|---|---|
 | Functional suitability | Clause‑to‑implementation binding, verification gates. | **Partial** (see Gap 001). |
 | Reliability | Mutation testing, deterministic gates, audit log. | **Met** |

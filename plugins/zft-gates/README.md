@@ -58,7 +58,7 @@ enforcement ships via `~/.config/environment.d/zft.conf`.
 ## Install (plugin route)
 
 Marketplace root is this directory's parent: `plugins/marketplace.json`
-declares dev market `dev-traceagent-zcode` → plugin `zft-gates@dev-traceagent-zcode`.
+declares dev market `dev-zft-gates` → plugin `zft-gates@dev-zft-gates`.
 In ZCode: Plugin Marketplace → Add → Add Plugin Marketplace → paste the
 `plugins/` directory → install **ZFT Gates**. Plugin hooks append to any
 config-file hooks; hand the workspace `.zcode/config.json` hook block over

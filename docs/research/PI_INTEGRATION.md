@@ -1,4 +1,4 @@
-# Pi (`earendil-works/pi`) — Integration Design for a traceagent Pi Package
+# Pi (`earendil-works/pi`) — Integration Design for a zft Pi Package
 
 > Researched and designed 2026-09-06. Primary source: shallow clone of
 > [earendil-works/pi](https://github.com/earendil-works/pi) at commit
@@ -8,7 +8,7 @@
 > stale), MIT license, description "AI agent toolkit: unified LLM API, agent
 > loop, TUI, coding agent CLI". All `pi` file:line citations below refer to the
 > pinned clone (mono-repo root unless prefixed `packages/coding-agent/`); all
-> `traceagent` citations to this repo.
+> `zft` citations to this repo.
 > Design context: [`designs/ARCHITECTURE.md`](../../designs/ARCHITECTURE.md)
 > (D4 gate tiers, D6 protocol), sibling design
 > [`DSH_INTEGRATION.md`](DSH_INTEGRATION.md) (same gate suite on a
@@ -118,14 +118,14 @@ Same gate suite as the dsh design, relocated to pi's flatter event model:
 | Turn-end check gate | `agent/turn-stopping` (serial, steer) | **no interception at turn close** — `agent_settled` + `pi.sendUserMessage(..., {deliverAs:"followUp"})` steering *loop* (§3.3) | `docs/extensions.md:567-581`, `1439-1467` |
 | Turn/commit record | `turn/end` session record | `turn_end` event (notification) + session JSONL entries | `docs/extensions.md:601-613` |
 | Evidence firehose | `session/event` emit | `--mode json` event stream (external collector) | `docs/json.md` |
-| Gate/attestation outcome into log | `session.append` + declaration merging, `ignorable: true` | `pi.appendEntry("traceagent/*", …)` custom entries — log-only, tolerated by stock readers | `docs/session-format.md:263-271` |
+| Gate/attestation outcome into log | `session.append` + declaration merging, `ignorable: true` | `pi.appendEntry("zft/*", …)` custom entries — log-only, tolerated by stock readers | `docs/session-format.md:263-271` |
 | Full mutation campaign on demand | `ctx.tools.register` | `pi.registerTool` | `docs/extensions.md:1365-1414` |
 | Check/attest workflows | plugin services + CLI | **skills** (instructions) driving the **CLI via bash** — the pi-native "CLI tools with READMEs" pattern | `README.md:499`, `docs/skills.md` |
 | Human `!` shell escape | — (n/a) | `user_bash` event could be gated too; **v0 skips** (human typed it) | `docs/extensions.md:879-906` |
 
-## 3. Design: `traceagent-pi` package
+## 3. Design: `zft-pi` package
 
-One pi package — extensions + skills — with the traceagent CLI as the only
+One pi package — extensions + skills — with the zft CLI as the only
 execution seam. No gate logic in TypeScript beyond policy matching; everything
 mechanical stays in Python.
 
@@ -138,7 +138,7 @@ harness — so path policy is **contract discipline, not a security boundary**.
 Tamper-evidence rests on the DSSE ed25519 signature and key custody, exactly as
 before. Pi's project-trust gate (`docs/extensions.md:355-368`) is a deployment
 prerequisite, not an enforcement mechanism of ours. What the integration
-enforces is traceagent's principle: "contracts must be cheap to satisfy
+enforces is zft's principle: "contracts must be cheap to satisfy
 honestly and expensive to fake" (`CONTEXT.md` §4.3).
 
 ### 3.2 `tool_call` — contract & evidence integrity gate
@@ -147,10 +147,10 @@ Pure in-process TypeScript (no subprocess — same decision as dsh §3.2:
 deterministic, cheap, per-call):
 
 - **Deny** `write`/`edit` whose `path` resolves (against `ctx.cwd`) into
-  `policy.protectPaths` (default `['.zft/**', '.traceagent/**']`) or outside
+  `policy.protectPaths` (default `['.zft/**', '.zft/**']`) or outside
   the project root. The clause store changes only through negotiation
-  (`traceagent negotiate`); evidence dirs only through the pipeline. Denial
-  reasons name the seam: `protected by traceagent: .zft/specs/... (amend via
+  (`zft negotiate`); evidence dirs only through the pipeline. Denial
+  reasons name the seam: `protected by zft: .zft/specs/... (amend via
   contract negotiation, clause <alias>)`. Same denial shape as
   `protected-paths.ts` (`examples/extensions/protected-paths.ts:13-29`).
 - **Ask** on `bash`/`powershell` matching `policy.askCommands` (default
@@ -175,24 +175,24 @@ turn-close interception**:
 
 - Config-gated (`check.onSettled`, default **false**): on `agent_settled`
   (pi will not auto-continue — `docs/extensions.md:567-570`), run
-  `traceagent check <root>` via `pi.exec` under `check.timeoutS` (default 300).
+  `zft check <root>` via `pi.exec` under `check.timeoutS` (default 300).
   Parse the JSON (keys: `ok`, `failures`, `due`, `deferred`, `l1`,
-  `gate_log`, `coverage` — `src/traceagent/cli/main.py:178-188`).
+  `gate_log`, `coverage` — `src/zft/cli/main.py:178-188`).
 - On `ok: false` and retries left: `pi.sendUserMessage(<bounded rejection:
   failures with clause IDs, due/deferred counts, deterministic_coverage>,
   { deliverAs: "followUp" })` — this starts a corrective turn. This is
-  traceagent's D6 "bounded, typed rejections naming clause IDs" as a
+  zft's D6 "bounded, typed rejections naming clause IDs" as a
   producer-facing loop, `check.maxRetries` (default 3) after which the
   extension stops steering and notifies the human (`ctx.ui.notify`,
   error-styled) — the human consumer is the wall the loop escalates to.
 - On timeout/CLI crash: **fail loud** — notify with the error, never silently
-  pass; the partial run stays resumable via `traceagent repro <run_id>`
-  (ledger checkpoint/resume, `src/traceagent/cli/main.py:235-251`).
+  pass; the partial run stays resumable via `zft repro <run_id>`
+  (ledger checkpoint/resume, `src/zft/cli/main.py:235-251`).
 - Enforce/observe symmetry: in observe mode the loop reports but does not
   steer.
-- **Small traceagent-side fix this surfaces**: `check` output does not include
+- **Small zft-side fix this surfaces**: `check` output does not include
   the `RunLedger` `run_id`, so the extension correlates its record with
-  `.traceagent/runs/` by newest-dir heuristics today; add `run_id` to the check
+  `.zft/runs/` by newest-dir heuristics today; add `run_id` to the check
   JSON (one line + test) and drop the heuristic.
 
 Enforcement at `tool_call` + steering loop + signature is the right honesty
@@ -202,25 +202,25 @@ is what actually binds.
 
 ### 3.4 EARS check as skill (not enforcement — instructions)
 
-`skills/traceagent-check/` — `SKILL.md` (frontmatter `name: traceagent-check`,
+`skills/zft-check/` — `SKILL.md` (frontmatter `name: zft-check`,
 description tuned for triggers like "check the contract", "why is the gate
 red", "validate against clauses", "EARS") plus `references/pipeline.md`
 (L0→L1→L2 tier reference, `designs/ARCHITECTURE.md` D4). Body instructs the
 agent to:
 
-1. Lint first: `traceagent lint .` — L0 static findings with `✗/⚠` rendering
-   (`src/traceagent/cli/main.py:65-83`); author clauses with
-   `traceagent create --alias --domain --title --statement --kind` where
+1. Lint first: `zft lint .` — L0 static findings with `✗/⚠` rendering
+   (`src/zft/cli/main.py:65-83`); author clauses with
+   `zft create --alias --domain --title --statement --kind` where
    `--statement` must parse as EARS:
    `[<WHEN|IF|WHILE|WHERE> <trigger>,] THE SYSTEM <SHALL|MUST> <response> [.]`
    — failures raise layered diagnostics (problem, excerpt, expected grammar,
-   fix hint; `src/traceagent/dsl/ears.py:1-7`).
-2. Run `traceagent check .`; read the JSON: `failures` name clause IDs and the
+   fix hint; `src/zft/dsl/ears.py:1-7`).
+2. Run `zft check .`; read the JSON: `failures` name clause IDs and the
    responsible role (surviving mutants ⇒ contract fault → spec agent; valid
    clause failing ⇒ implementation fault → producer, bounded retries);
    `gate_log.judge_excluded` lists clauses judged subjectively and excluded
    from `deterministic_coverage` claims.
-3. Before merge/attest: full mutation campaign `traceagent gate --module M
+3. Before merge/attest: full mutation campaign `zft gate --module M
    --tests T [--scope …]` (`main.py:191-233`) — minutes, so never inside a
    turn-close loop; the registered tool (§3.2's sibling, below) or plain bash.
 
@@ -228,8 +228,8 @@ The skill is the *workflow carrier*; it must never be the *enforcer* — the
 model can skip reading it (`docs/skills.md:69`). Enforcement lives in §3.2;
 the skill makes honest compliance cheap.
 
-**Registered tool for the campaign**: `pi.registerTool("traceagent_gate")`
-(typebox params `module`, `tests`, `scope?`) wrapping `traceagent gate` via
+**Registered tool for the campaign**: `pi.registerTool("zft_gate")`
+(typebox params `module`, `tests`, `scope?`) wrapping `zft gate` via
 `pi.exec` with a long timeout, returning the JSON summary (`ok`, `killed`,
 `in_scope_killed/total`, `survivors`) — the deliberate, on-demand path dsh
 gave a registered tool too (dsh §3.3). `promptSnippet`/`promptGuidelines`
@@ -237,14 +237,14 @@ written per the naming rule (`docs/extensions.md:1373-1375`).
 
 ### 3.5 Attest as CLI tool (the pi-native shape)
 
-`traceagent attest` / `verify` / `export` / `repro` / `negotiate` stay pure
+`zft attest` / `verify` / `export` / `repro` / `negotiate` stay pure
 CLI, invoked by the agent through bash — this *is* pi's stated pattern ("No
-MCP. Build CLI tools with READMEs", `README.md:499`). `skills/traceagent-attest/SKILL.md`
+MCP. Build CLI tools with READMEs", `README.md:499`). `skills/zft-attest/SKILL.md`
 is that README: preconditions (green `check` + green full `gate`),
-`traceagent attest .` → envelope at `.traceagent/attest.json` + rotating
-public key at `.traceagent/attest-key.pub.json` (`main.py:253-272`),
-self-check `traceagent verify --key-in .traceagent/attest-key.pub.json`,
-human-readable matrix `traceagent export --format matrix`, and the key-custody
+`zft attest .` → envelope at `.zft/attest.json` + rotating
+public key at `.zft/attest-key.pub.json` (`main.py:253-272`),
+self-check `zft verify --key-in .zft/attest-key.pub.json`,
+human-readable matrix `zft export --format matrix`, and the key-custody
 warning (ephemeral signer; `--key-out` to a custody path for durable
 verification). No auto-attest in the extension (contrast dsh §3.4's
 `attestOnGreen`) — attestation is a deliberate act by whoever owns the key.
@@ -253,19 +253,19 @@ verification). No auto-attest in the extension (contrast dsh §3.4's
 
 ```ts
 // gate outcome for one settled run — log-only, never model-visible
-pi.appendEntry("traceagent.gate", {
+pi.appendEntry("zft.gate", {
   ok, runId, gitCommit, failures, due, deferred,
   deterministicCoverage: coverage, gateLog,
 })
 // policy decision (observe mode records allows too)
-pi.appendEntry("traceagent.policy", { tool: event.toolName, decision, reason })
+pi.appendEntry("zft.policy", { tool: event.toolName, decision, reason })
 ```
 
 Custom entries persist in the session JSONL (`docs/session-format.md:267`) and
-are replayed on `session_start` to restore `/traceagent-status`
+are replayed on `session_start` to restore `/zft-status`
 (`docs/extensions.md:1480-1487`). No `ignorable`-flag concern: pi readers
 tolerate unknown custom entries, unlike dsh's required-on-read rule. Cross-ref
-remains the traceagent `RunLedger` — two append-only logs, each attesting the
+remains the zft `RunLedger` — two append-only logs, each attesting the
 other. If a turn narrative *should* reach the model (e.g. "gate red, fix
 these"), that goes through `sendUserMessage`, not entries — "model-visible ⟺
 logged" cuts the other way here: entries are for auditors, messages for
@@ -276,17 +276,17 @@ agents.
 No schema-validation framework in pi-land; hand-validate at `session_start`
 (the factory must not spawn processes or read project state — pi warns
 factories may run in invocations that never start a session,
-`docs/extensions.md:222-224`). Project-local config at `.pi/traceagent.json`,
+`docs/extensions.md:222-224`). Project-local config at `.pi/zft.json`,
 honored only when `ctx.isProjectTrusted()` (`docs/extensions.md:994-998`),
 same tunables as dsh §3.5 minus plugin-framework specifics:
 
 ```jsonc
 {
   "root": ".",
-  "bin": "traceagent",
+  "bin": "zft",
   "policy": {
     "mode": "observe",                       // "enforce" when trusted
-    "protectPaths": [".zft/**", ".traceagent/**"],
+    "protectPaths": [".zft/**", ".zft/**"],
     "askCommands": ["git push*", "rm -rf*"]
   },
   "check": { "onSettled": false, "timeoutS": 300, "maxRetries": 3 }
@@ -295,35 +295,35 @@ same tunables as dsh §3.5 minus plugin-framework specifics:
 
 Misconfiguration (missing `.zft/`, unresolvable `bin` — probe `--help` once at
 `session_start`): loud `ctx.ui.notify` + persistent `ctx.ui.setStatus`
-"traceagent: DISABLED (misconfig)" + handlers no-op. dsh could refuse to load;
+"zft: DISABLED (misconfig)" + handlers no-op. dsh could refuse to load;
 pi cannot — the compensating control is the loud, visible disable plus the
-`/traceagent-status` command showing why. Protocol constants stay fixed, not
+`/zft-status` command showing why. Protocol constants stay fixed, not
 config: record `customType` strings, the DSSE predicate URI, CLI flags
 (`AGENTS.md` principle carried over from dsh §3.5).
 
 ### 3.8 File layout, install
 
 ```
-traceagent-pi/
+zft-pi/
 ├── package.json            # pi manifest; peerDeps: @earendil-works/pi-coding-agent,
 │                           #   typebox ("*"); keywords: ["pi-package"]
 ├── README.md
 ├── extensions/
-│   └── traceagent-gate.ts  # single file (~250 lines): config resolve, tool_call gate,
-│                           #   agent_settled loop, registerTool, /traceagent-status,
+│   └── zft-gate.ts  # single file (~250 lines): config resolve, tool_call gate,
+│                           #   agent_settled loop, registerTool, /zft-status,
 │                           #   appendEntry records
 ├── skills/
-│   ├── traceagent-check/
+│   ├── zft-check/
 │   │   ├── SKILL.md
 │   │   └── references/pipeline.md
-│   └── traceagent-attest/
+│   └── zft-attest/
 │       └── SKILL.md
 └── test/                   # vitest, typechecked against pinned pi 0.85.1
 ```
 
 ```sh
-pi install -l /abs/path/traceagent-pi                       # local path, project settings
-pi install -l git:github.com/<org>/traceagent-pi@v0.1.0     # pinned for teams
+pi install -l /abs/path/zft-pi                       # local path, project settings
+pi install -l git:github.com/<org>/zft-pi@v0.1.0     # pinned for teams
 # project settings auto-install on startup once the project is trusted (packages.md:43)
 ```
 
@@ -336,10 +336,10 @@ allowed since only pi-bundled packages belong in `peerDependencies`
 
 | Milestone | Work | Est. |
 | --- | --- | --- |
-| M1 | Package scaffold (`pi` manifest, peerDeps), config resolution + validation at `session_start`, `/traceagent-status`, `bin` probe | 0.5 d |
-| M2 | `tool_call` gate: write/edit path protection, bash/powershell ask→(UI\|deny), observe/enforce, `traceagent.policy` records | 1 d |
-| M3 | Check integration: `agent_settled` loop (exec, JSON parse, followUp steering, retry bound), `traceagent_gate` registered tool, `run_id` in check JSON (traceagent side, 1 line + test) | 1 d |
-| M4 | Skills: `traceagent-check` (+ pipeline reference), `traceagent-attest` | 0.5 d |
+| M1 | Package scaffold (`pi` manifest, peerDeps), config resolution + validation at `session_start`, `/zft-status`, `bin` probe | 0.5 d |
+| M2 | `tool_call` gate: write/edit path protection, bash/powershell ask→(UI\|deny), observe/enforce, `zft.policy` records | 1 d |
+| M3 | Check integration: `agent_settled` loop (exec, JSON parse, followUp steering, retry bound), `zft_gate` registered tool, `run_id` in check JSON (zft side, 1 line + test) | 1 d |
+| M4 | Skills: `zft-check` (+ pipeline reference), `zft-attest` | 0.5 d |
 | M5 | E2E against real pi: `pi install -l`, TUI session red→green, print-mode deny degradation, `/reload` of the extension, session replay with our custom entries, CI pinned to pi 0.85.x (typecheck + handler unit tests) | 1.5 d |
 | **v0.1 total** | | **~4.5 dev-days** |
 | Maintenance | Per upstream minor (0.85.x moves fast — pushed today): re-run M5 smoke, chase event-type changes | 0.5 d each |
@@ -389,7 +389,7 @@ is one event handler plus two registrations.
   `packages/coding-agent/src/core/tools/{bash,write,edit,read}.ts`.
 - GitHub API repo metadata (stars 102,374; MIT; pushed_at 2026-09-06), fetched
   2026-09-06.
-- traceagent: `src/traceagent/cli/main.py` (check/gate/attest/verify/lint
-  surfaces, absolute-root binding), `src/traceagent/dsl/ears.py` (EARS grammar
+- zft: `src/zft/cli/main.py` (check/gate/attest/verify/lint
+  surfaces, absolute-root binding), `src/zft/dsl/ears.py` (EARS grammar
   + layered diagnostics), `CONTEXT.md` (§4 principles, §5 D4/D6),
   `docs/research/DSH_INTEGRATION.md` (comparative design on dsh).

@@ -1,6 +1,6 @@
 # POSITIONING — the acceptance layer, and nothing else
 
-> Status: verdict, 2026-09-07. The one-page answer to *what is traceagent,
+> Status: verdict, 2026-09-07. The one-page answer to *what is zft,
 > which layer does it own, who competes there, and what do we refuse to
 > become*. Distills [CONTEXT.md](../CONTEXT.md),
 > [docs/research/competitor-landscape.md](research/competitor-landscape.md),
@@ -15,7 +15,7 @@
 
 | Question | Answer |
 |---|---|
-| **Mission** | traceagent is the acceptance layer for multiagent work: it turns pre-agreed, clause-IDed contracts into deterministic, fail-closed verification and signed attestations — so that "done" is a checked artifact, not a judgment call. |
+| **Mission** | zft is the acceptance layer for multiagent work: it turns pre-agreed, clause-IDed contracts into deterministic, fail-closed verification and signed attestations — so that "done" is a checked artifact, not a judgment call. |
 | **Layer owned** | **Acceptance** — spec verification + attestation: contract authoring & negotiation → deterministic gates (L0–L3) → trace manifest → signed DSSE evidence. |
 | **Not our layer** | Harness, orchestration, model routing, runtime policy, observability. Commodity or wrong object; we standardize over them, never compete with them. |
 | **Direct competition** | The niche is effectively empty. Closest product: rtmx (~31★ — no negotiation, no evidence tiers, no bi-directional coverage). No player combines negotiation + deterministic coverage in both directions + evidence tiers + signed attestation. |
@@ -24,7 +24,7 @@
 
 ## 1. Mission
 
-> **traceagent is the acceptance layer for multiagent work: it turns
+> **zft is the acceptance layer for multiagent work: it turns
 > pre-agreed, clause-IDed contracts into deterministic, fail-closed
 > verification and signed attestations — so that "done" is a checked
 > artifact, not a judgment call.**
@@ -48,7 +48,7 @@ Every phrase is a boundary, not decoration:
 - **not a judgment call** — the thing being replaced: approval-by-conversation,
   LLM-as-judge vibes, self-graded homework.
 
-First user: this repo — the 26-clause self-check corpus gates traceagent's
+First user: this repo — the 26-clause self-check corpus gates zft's
 own development, and the adoption build order starts with CI and the
 maintainer's own harness (ECOSYSTEM_RANKING §0). First buyer: any team that
 must answer, after the fact, *which agreed item was missed and whose fault
@@ -68,7 +68,7 @@ is it* — currently unable to, because acceptance lives in transcripts.
  runtime policy & observability  OPA/Rego · LangSmith · Langfuse
  (what happened)                 · OTel
 ─────────────────────────────────────────────────────────────────
-▶ ACCEPTANCE — traceagent        contracts (EARS) · negotiation
+▶ ACCEPTANCE — zft        contracts (EARS) · negotiation
  (was it done as agreed?)        (A2A ext) · gates L0–L3 ·
                                  trace manifest · DSSE attestation
 ─────────────────────────────────────────────────────────────────
@@ -145,7 +145,7 @@ Refusals, each recorded somewhere enforceable:
 ### 3.4 The moat, stated once
 
 Every player above is missing at least one of the four things only
-traceagent combines (competitor-landscape §3):
+zft combines (competitor-landscape §3):
 
 1. **Negotiation between agents** — a binding pre-work agreement, not human
    approval gates.
@@ -171,12 +171,12 @@ features." The postmortem, quoted:
 > problems you know about."
 
 The uncomfortable, useful reading: an abandoned harness independently
-converged on the same mechanisms traceagent is built from. The README's five
+converged on the same mechanisms zft is built from. The README's five
 salvageable ideas are all present here — which is *validation of the
 mechanisms* and a *warning about the packaging*. The ideas were never what
 killed ELAI; building all of them, for no one, in one harness, was.
 
-| ELAI salvageable idea | In traceagent today | What we took / left |
+| ELAI salvageable idea | In zft today | What we took / left |
 |---|---|---|
 | Evidence outside the generating agent | Gates are deterministic, model-independent programs; `model_dependent` and `judge_excluded` are published *into the signed predicate*, not honored on trust (`attest/dsse.py:111`) | Took fully. It is the product's first principle |
 | Fail-closed verification | Default-deny: a clause without a binding is red, not skipped (`gates/l1.py:79`, `gates/l2.py:63`); subjective clauses quarantined visibly | Took fully |
@@ -188,11 +188,11 @@ Three operating rules, derived from the postmortem and enforced by existing
 repo documents:
 
 1. **Dogfood or it isn't real.** ELAI died as software its author didn't
-   rely on. Traceagent's first consumer is its own build (self-check corpus,
+   rely on. ZFT's first consumer is its own build (self-check corpus,
    CI gate as adoption surface #1, OpenCode plugin in the maintainer's daily
    loop — ECOSYSTEM_RANKING §0). If the gates can't police their own repo,
    this positioning is fiction.
-2. **One pipeline, finished.** ELAI accumulated 659 experiments. Traceagent
+2. **One pipeline, finished.** ELAI accumulated 659 experiments. ZFT
    has one pipeline — contract → verify → attest — and the roadmap's
    anti-steals (DSL_ROADMAP §3) are *explicit refusals*, not deferrals:
    no Rego, no Rekor server, no keyless OIDC, no SLSA build-platform levels.

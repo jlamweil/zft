@@ -1,4 +1,4 @@
-# DeepSeek Harness (`dsh`) — Integration Design for a traceagent Cordis Plugin
+# DeepSeek Harness (`dsh`) — Integration Design for a zft Cordis Plugin
 
 > Researched and designed 2026-09-06. Primary source: shallow clone of
 > [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) at
@@ -7,7 +7,7 @@
 > **213,948 stars** (the research brief's "~186k" is stale), MIT license,
 > description "Everything is a Plugin."
 > All `dsh` file:line citations below refer to the pinned clone; all
-> `traceagent` citations to this repo.
+> `zft` citations to this repo.
 > Design context: [`designs/ARCHITECTURE.md`](../../designs/ARCHITECTURE.md) (D4 gate tiers, D6 protocol), research notes in this directory.
 
 ## 0. Corrections to the research brief (verified against the clone)
@@ -28,8 +28,8 @@ The brief was mostly accurate. Four claims needed correction before design:
    it does not launder calls.
 3. **Plugins are TypeScript only.** The Python side of `dsh` (`python/`) is a
    subprocess/JSON-RPC client SDK (`python/README.md:5-16`); there is **no Python
-   plugin host**. traceagent is Python, so our plugin is a **thin TS adapter that
-   drives the `traceagent` CLI as a subprocess**, with the CLI as the stable seam.
+   plugin host**. zft is Python, so our plugin is a **thin TS adapter that
+   drives the `zft` CLI as a subprocess**, with the CLI as the stable seam.
 4. **Plugin config is Schemastery, not zod** (a vendored Standard-Schema validator,
    `vendor/schemastery`); plain config objects are rejected at load
    (`docs/user/develop/basic/config.md:45`).
@@ -88,7 +88,7 @@ in-process privilege as the shipped model adapter (full `Context` access,
 
 ## 2. The interception surface we map onto
 
-| Event | Mode | Fired at | Payload → listener power | traceagent use |
+| Event | Mode | Fired at | Payload → listener power | zft use |
 | --- | --- | --- | --- | --- |
 | `tools/pre-execute` | waterfall | `tools/src/index.ts:1466-1469` | `(exec{name,args,agent}, next)` → `{kind:'allow'} \| {kind:'deny'; reason} \| {kind:'ask'}` (`index.ts:578-584`) | **Contract-integrity gate** (see §3.2) |
 | `tools/post-execute` | waterfall | `index.ts:1735` (applied `1723-1757`) | `(exec, result, next)` → `{kind:'accept'; content?\|value}` or `{kind:'block'; feedback}` (`index.ts:590-593`) | v0: observe only (copy of result into gate evidence); substitution reserved |
@@ -101,29 +101,29 @@ Not mapped, noted for completeness: `tools/execute` (around-wrapper; may change
 only `exec.signal`), `agent/request` (frozen `LlmCallConfig` swap),
 `system-prompt/assemble`, `approval/request`, `subagent/*`, `workflow/*`.
 
-## 3. Design: `traceagent-dsh` bundle
+## 3. Design: `zft-dsh` bundle
 
-One npm package (`traceagent-dsh`), **three internal services** per the capability-seam
+One npm package (`zft-dsh`), **three internal services** per the capability-seam
 convention — Service Definition / Provider / Consumer — split as separate packages
 only if the roles evolve independently (per `AGENTS.md:112`):
 
 ```
 ┌─ Service Definition ─────────────────────────────┐
-│ traceagent service (inject: ['traceagent'])      │
+│ zft service (inject: ['zft'])      │
 │   check(root, level)  → CheckResult              │
 │   attest(root, keyOpts) → { envelope, keyid }    │
 │   verify(root, keyIn) → VerifyResult             │
 │   extract(root) → bindings[]                     │
 ├─ Service Provider ───────────────────────────────┤
-│ traceagent-cli-runner: spawns the Python CLI     │
+│ zft-cli-runner: spawns the Python CLI     │
 │ (bin, timeout, absolute-root binding, JSON in/   │
 │ out, exit-code → typed error). The CLI is the    │
 │ versioned seam; the plugin contains no gate      │
 │ logic of its own.                                │
 ├─ Consumers ──────────────────────────────────────┤
-│ traceagent-gates: listeners on                   │
+│ zft-gates: listeners on                   │
 │   tools/pre-execute + agent/turn-stopping        │
-│ traceagent-log: session.append writer (§3.4)     │
+│ zft-log: session.append writer (§3.4)     │
 └──────────────────────────────────────────────────┘
 ```
 
@@ -142,19 +142,19 @@ unload the plugin; they cannot forge the ed25519 signature).
 Pure in-process TS (no subprocess): cheap, deterministic, deny/allow/ask only.
 
 - **Deny** writes into the clause store and evidence dirs (config
-  `policy.protectPaths`, default `['.zft/**', '.traceagent/**']`) — the clause
-  store changes only through the negotiation path (`traceagent negotiate`,
+  `policy.protectPaths`, default `['.zft/**', '.zft/**']`) — the clause
+  store changes only through the negotiation path (`zft negotiate`,
   A2A adapter), never by a producer's `write`/`edit` tool call. Denial reasons
-  name the protected seam: `protected by traceagent: .zft/specs/... (amend via
+  name the protected seam: `protected by zft: .zft/specs/... (amend via
   contract negotiation, clause <alias>)`.
 - **Deny** writes/globs resolving outside the session workspace (`root`).
 - **Ask** for configured dangerous commands (`policy.askCommands`, e.g.
   `git push*`, `rm -rf*`) — routes to the harness approval service.
 - **`observe` mode** (config): every decision also appended as a
-  `traceagent/policy` session record; `allow` instead of `deny` (for latency-free
+  `zft/policy` session record; `allow` instead of `deny` (for latency-free
   shadow-running before enabling enforcement).
 
-This is traceagent principle "contracts must be cheap to satisfy honestly and
+This is zft principle "contracts must be cheap to satisfy honestly and
 expensive to fake" (`CONTEXT.md` §4.3) enforced at the harness boundary.
 
 > **M0 prototype (2026-09-06; removed 2026-09-11):** this exact seam was implemented and proven
@@ -169,18 +169,18 @@ expensive to fake" (`CONTEXT.md` §4.3) enforced at the harness boundary.
 ### 3.3 `agent/turn-stopping` → turn-end gate (the brief's "turn/end")
 
 When a turn is about to commit and `gates.turnEndLevel ≠ 'off'`, the consumer
-spawns `traceagent check <root>` (the L2-FAST pipeline: L0 → L2-fast → L1 →
-Gherkin fallback → gate log → reverse coverage; `src/traceagent/cli/main.py:120-189`)
+spawns `zft check <root>` (the L2-FAST pipeline: L0 → L2-fast → L1 →
+Gherkin fallback → gate log → reverse coverage; `src/zft/cli/main.py:120-189`)
 under `gates.timeoutS` (default 300). On `ok: false`:
 
 - **steer**, don't block — `turn-stopping` objects by steering, so the producer
   gets another step with the typed failure payload: the `failures` array, due /
   deferred clause counts, and `deterministic_coverage` from the check JSON. This
-  is exactly traceagent's D6 "bounded, typed rejections naming clause IDs"
+  is exactly zft's D6 "bounded, typed rejections naming clause IDs"
   surfaced through dsh's native steering channel.
 - On timeout or CLI crash: **fail loud** (steer with the error; never silently
   pass — `AGENTS.md:116`, and our own gate philosophy).
-- The full mutation campaign (`traceagent gate --module --tests`, minutes) is
+- The full mutation campaign (`zft gate --module --tests`, minutes) is
   **not** a turn-end gate; it is exposed as a registered tool (`ctx.tools.register`)
   so the producer/consumer agents run it deliberately at L2 merge time, and it
   becomes mandatory before attestation (`gates.requireFullGate: true`).
@@ -199,25 +199,25 @@ replay the log (`types.ts:465`):
 declare module '@deepseek-ai/dsh-session/types' {
   interface SessionEventMap {
     /** Gate outcome for one closed turn. Log-only, never model-visible. */
-    'traceagent/gate': {
+    'zft/gate': {
       turn: number
       level: 'L2-fast' | 'L2-full'
       ok: boolean
-      runId: string            // cross-ref: .traceagent/runs/<run_id>/events.jsonl
+      runId: string            // cross-ref: .zft/runs/<run_id>/events.jsonl
       gitCommit: string | null
       failures: string[]       // clause-IDed rejections (D6)
       deterministicCoverage: string
       gateLog: { stages: Record<string, boolean>; judgeExcluded: string[] }
     }
     /** DSSE TraceManifest envelope signed on a green pipeline. */
-    'traceagent/attestation': {
+    'zft/attestation': {
       turn: number
       envelope: { payloadType: string; payload: string; signatures: unknown[] }
       keyid: string
-      predicateType: 'https://traceagent.dev/attestations/TraceManifest/v1'
+      predicateType: 'https://zft.dev/attestations/TraceManifest/v1'
     }
     /** Pre-execute policy decision (observe mode records allows too). */
-    'traceagent/policy': {
+    'zft/policy': {
       turn: number; tool: string
       decision: 'deny' | 'ask' | 'observe-allow'
       reason: string
@@ -227,16 +227,16 @@ declare module '@deepseek-ai/dsh-session/types' {
 ```
 
 On a green turn (`gates.attestOnGreen: true`), the writer runs
-`traceagent attest <root>` (`cli/main.py:253-272`), reads the envelope from
-`.traceagent/attest.json`, and appends a `traceagent/attestation` record. The
+`zft attest <root>` (`cli/main.py:253-272`), reads the envelope from
+`.zft/attest.json`, and appends a `zft/attestation` record. The
 envelope is the in-toto Statement v1 / `TraceManifest/v1` predicate binding the
-clause-store subject digests (`src/traceagent/attest/dsse.py:29-59`), so the
+clause-store subject digests (`src/zft/attest/dsse.py:29-59`), so the
 trajectory log gains a *verifiable* acceptance record, not just prose. Note the
 CLI currently generates an ephemeral ed25519 signer and writes the public key
-alongside (`--key-out`, default `.traceagent/attest-key.pub.json`); for durable
+alongside (`--key-out`, default `.zft/attest-key.pub.json`); for durable
 verification the deployment sets `keys.publicKeyOut` to a path under key custody
-and later runs `traceagent verify --key-in`. Every record cross-references the
-traceagent `RunLedger` run id (`src/traceagent/debug/ledger.py:44-89`, append-only
+and later runs `zft verify --key-in`. Every record cross-references the
+zft `RunLedger` run id (`src/zft/debug/ledger.py:44-89`, append-only
 fsync'd JSONL) — two independent append-only logs, each attesting the other.
 
 ### 3.5 Validated Config surface (no hardcoded tunables)
@@ -248,11 +248,11 @@ in the service constructor (pattern: `session-title`, `index.ts:296-324`).
 import { Schema, type z } from '@deepseek-ai/schemastery'
 
 export interface Config {
-  root: string                                   // traceagent project root; resolved absolute, must contain .zft/
-  bin: string                                    // default 'traceagent'; or ['python','-m','traceagent']
+  root: string                                   // zft project root; resolved absolute, must contain .zft/
+  bin: string                                    // default 'zft'; or ['python','-m','zft']
   policy: {
     mode: 'enforce' | 'observe'                  // default 'observe' for v0.1
-    protectPaths: string[]                       // default ['.zft/**', '.traceagent/**']
+    protectPaths: string[]                       // default ['.zft/**', '.zft/**']
     askCommands: string[]                        // default ['git push*', 'rm -rf*']
   }
   gates: {
@@ -261,15 +261,15 @@ export interface Config {
     attestOnGreen: boolean                       // default true
     requireFullGate: boolean                     // default false — attest demands a green mutation campaign
   }
-  keys: { publicKeyOut?: string }                // default '.traceagent/attest-key.pub.json'
+  keys: { publicKeyOut?: string }                // default '.zft/attest-key.pub.json'
   agentScope: 'all-agents' | 'producer-only'     // via @deepseek-ai/dsh-scope scoping
 }
 export const Config: Schema<Config> = Schema.object({
   root: Schema.string().required(),
-  bin: Schema.string().default('traceagent'),
+  bin: Schema.string().default('zft'),
   policy: Schema.object({
     mode: Schema.union(['enforce', 'observe']).default('observe'),
-    protectPaths: Schema.array(String).default(['.zft/**', '.traceagent/**']),
+    protectPaths: Schema.array(String).default(['.zft/**', '.zft/**']),
     askCommands: Schema.array(String).default(['git push*', 'rm -rf*']),
   }).default({}),
   gates: Schema.object({
@@ -298,8 +298,8 @@ Project overlay (patch), matching the shipped patch shape
 ```yaml
 # cordis.patch.yml
 - insert:
-    - id: traceagent
-      name: traceagent-dsh
+    - id: zft
+      name: zft-dsh
       config:
         root: .
         policy:
@@ -313,9 +313,9 @@ Install as a third-party bundle (no marketplace; distribution is npm/git/tarball
 + the `dsh-plugin` GitHub topic, `docs/user/develop/basic/publish.md:35-101`):
 
 ```sh
-dsh plugin --profile demo add ./traceagent-dsh          # local path / npm / github:
+dsh plugin --profile demo add ./zft-dsh          # local path / npm / github:
 # from the Python SDK world:
-dsh plugin --profile sdk add file:/abs/path/traceagent-dsh   # python/sdk/README.md:35-45
+dsh plugin --profile sdk add file:/abs/path/zft-dsh   # python/sdk/README.md:35-45
 ```
 
 Layer order: bundle patches (profile `dsh.profile.bundles` order) → profile
@@ -326,10 +326,10 @@ win per row, and a patch **replaces** a row's whole `config` (no deep merge —
 ### 3.7 What stays Python
 
 All gate logic, codegen, mutation running, signing, and evidence storage remain
-in traceagent (`src/traceagent/`). The plugin adds ~zero product logic; it is
+in zft (`src/zft/`). The plugin adds ~zero product logic; it is
 wiring: spawn → parse JSON → decide → append. The CLI is the compatibility seam,
 so dsh-side breakage is contained to ~3 listener signatures + `session.append`,
-and traceagent-side changes ship without touching the plugin at all (same
+and zft-side changes ship without touching the plugin at all (same
 contract as our CLI flags today: `check`, `gate`, `attest`, `verify`, `extract`).
 
 ## 4. Effort estimate
@@ -337,7 +337,7 @@ contract as our CLI flags today: `check`, `gate`, `attest`, `verify`, `extract`)
 | Milestone | Work | Est. |
 | --- | --- | --- |
 | M1 | Bundle scaffold (TS ESM, `@deepseek-ai/cordis` peer dep), Schemastery Config + fail-loud resolution, CLI-runner service (spawn, timeout, absolute-root binding per our C-40 rule, exit-code → typed errors) | 1.5 d |
-| M2 | `tools/pre-execute` policy gate + observe/enforce modes + `traceagent/policy` records | 1 d |
+| M2 | `tools/pre-execute` policy gate + observe/enforce modes + `zft/policy` records | 1 d |
 | M3 | `agent/turn-stopping` gate + steer-with-failures + `turn/end` attest writer + event-map merge | 1.5 d |
 | M4 | E2E against real `dsh` (`dsh plugin add`, full session with a red→green producer), log-replay compat test (stock reader over log with our `ignorable` records), CI pinned to exact dsh version | 2 d |
 | **v0.1 total** | | **~6 dev-days** |
@@ -349,9 +349,9 @@ contract as our CLI flags today: `check`, `gate`, `attest`, `verify`, `extract`)
 | --- | --- | --- |
 | R1 | **Promised breaking changes** — "THERE WILL BE COMPATIBILITY-BREAKING CHANGES" (`README.md:12`); "Public APIs are pre-stable" (`AGENTS.md:7`) | Pin the exact dsh release in CI + profiles; keep the plugin surface at 3 events + `session.append` + Schemastery config so a break is a small, typed compile error, not a behavioral drift |
 | R2 | **Cordis is a vendored fork** (`vendor/cordis`) of upstream `cordiverse/cordis`; APIs may diverge from upstream docs | Import only `@deepseek-ai/cordis`, never upstream cordis packages; no direct `vendor/` imports (`AGENTS.md:152-154`) |
-| R3 | **Required-on-read session log**: unrecognized non-ignorable record types make stock builds refuse the log (`types.ts:465`) | Every `traceagent/*` record written `ignorable: true`; CI test replays a log containing our records with an unmodified dsh reader |
+| R3 | **Required-on-read session log**: unrecognized non-ignorable record types make stock builds refuse the log (`types.ts:465`) | Every `zft/*` record written `ignorable: true`; CI test replays a log containing our records with an unmodified dsh reader |
 | R4 | **Session file format/compression churn**: `session.v2.jsonl` + zstd default (`format.ts:53-55`) | We never parse dsh's log file ourselves — all writes via `session.append`, all reads via `session/event`; external consumers needing plaintext set `compression: 'none'` |
-| R5 | **No Python plugin host** — traceagent must be a subprocess (latency at turn close; env/PATH fragility) | CLI is the seam; turn-end runs only L2-fast (seconds), full campaign on explicit tool call; `timeoutS` with fail-loud; `bin` probe at load |
+| R5 | **No Python plugin host** — zft must be a subprocess (latency at turn close; env/PATH fragility) | CLI is the seam; turn-end runs only L2-fast (seconds), full campaign on explicit tool call; `timeoutS` with fail-loud; `bin` probe at load |
 | R6 | **Same-privilege trust model**: the gate runs inside the harness; unmounting it removes path enforcement | Treat path policy as discipline, not security; tamper-evidence is the DSSE signature + key custody (`keys.publicKeyOut`), documented in §3.1 |
 | R7 | **Decision-type drift**: `PreToolDecision`/`PostToolDecision`/`PreStepDecision` shapes are pre-stable (`tools/src/index.ts:578-593`) | Typecheck the plugin against the pinned dsh's TS types in CI (compile-time breakage detection, R1's flip side) |
 | R8 | **Steering semantics may change**: today `turn-stopping` objects by steering, not hard-blocking (`agent.ts:308`) | Accept steer as the contract for v0.1; if a hard gate is ever required, the fallback is `agent/pre-step` reject — at the cost of refusing a step that already happened, so prefer documenting the steer semantics upstream |
@@ -382,6 +382,6 @@ contract as our CLI flags today: `check`, `gate`, `attest`, `verify`, `extract`)
   `packages/session/session-title/src/index.ts`,
   `packages/bundle/base/cordis.patch.yml`, `python/README.md`, `python/sdk/README.md`.
 - GitHub API repo metadata (stars, license, pushed_at), fetched 2026-09-06.
-- traceagent: `src/traceagent/cli/main.py`, `src/traceagent/attest/dsse.py`,
-  `src/traceagent/debug/ledger.py`, `src/traceagent/gates/l3.py`,
+- zft: `src/zft/cli/main.py`, `src/zft/attest/dsse.py`,
+  `src/zft/debug/ledger.py`, `src/zft/gates/l3.py`,
   `CONTEXT.md` (§4 principles, §5 D4/D6).

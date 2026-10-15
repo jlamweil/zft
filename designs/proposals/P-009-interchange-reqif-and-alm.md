@@ -16,7 +16,7 @@
 
 ## Proposed delta (verified by H14/H16/H17/H17a/H18/H19)
 1. **ReqIF 1.2 import/export.** Root `<REQ-IF xmlns="http://www.omg.org/spec/ReqIF/20110401/reqif.xsd">`; map SPEC-OBJECT ↔ clause (statement/status), SPEC-RELATION ↔ trace link. Verified feasible: imported nodes pass the repo's `validate_node`; round-trip is identity-stable and **byte-deterministic**.
-2. **Identifier normalization.** ReqIF `IDENTIFIER` is `xsd:ID` (NCName; must start with a letter/`_`). zft UUIDv7 starts with a digit → do **not** emit it raw; use a prefixed identifier and carry the stable id in `ALTERNATIVE-ID`. Normalize imported lowercase ids to traceagent's uppercase alias rule; add a **tolerant validation mode** (real Polarion exports fail strict XSD: duplicate `xs:ID`). 
+2. **Identifier normalization.** ReqIF `IDENTIFIER` is `xsd:ID` (NCName; must start with a letter/`_`). zft UUIDv7 starts with a digit → do **not** emit it raw; use a prefixed identifier and carry the stable id in `ALTERNATIVE-ID`. Normalize imported lowercase ids to zft's uppercase alias rule; add a **tolerant validation mode** (real Polarion exports fail strict XSD: duplicate `xs:ID`). 
 3. **`external_links` becomes load-bearing** — populated on import (`{"system": "ReqIF", "external_id": ...}`), emitted on export; identity stable because it is already excluded from `content_hash`.
 4. **Enforcement.** Upgrade `ATT-EXTERNAL-IMPORT` from `kind: test` to `kind: property` with a consumer oracle (P-005) so "preserves external identity" is **executed**, not asserted.
 5. **ALM sync.** Reuse `spec/delta.py` + `registry/conflicts.py`: disjoint edits merge; same-clause divergence halts with a typed diff; identical concurrent edits also halt; deterministic (H16). No CRDT.

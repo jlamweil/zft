@@ -3,7 +3,7 @@
 > Status: verdict, 2026-09-06; **rev. 2, same evening** — corrected against
 > `docs/research/DSH_INTEGRATION.md` after it landed, plus primary-source
 > checks (opencode.ai/docs/plugins; badlogic/pi-mono + pi.dev/docs; GitHub API
-> for dsh repo metadata). Ranks the five adoption surfaces for traceagent
+> for dsh repo metadata). Ranks the five adoption surfaces for zft
 > (CI gate, OpenCode plugin, Pi integration, MCP server, DSH integration) and
 > fixes a build order with kill criteria per option. Corrections are marked
 > inline with their sources; superseded first-pass claims stay visible inside
@@ -72,7 +72,7 @@ one.
   of the maintainer's normal day. Proximity also de-risks: no packaging,
   no publishing, feedback latency of minutes.
 - **Pi minimalism fit** → drove #3 and its effort=1. Pi's ethos (small
-  core, user-land tools, no framework lock-in) is traceagent's ethos
+  core, user-land tools, no framework lock-in) is zft's ethos
   (git-native, no server, CLI-first). The predicted integration shape is a
   thin wrapper over the CLI, which is the same artifact the CI gate needs —
   so the marginal work after #1 is near zero, and the payoff is the
@@ -95,7 +95,7 @@ one.
 
 ### #1 · CI gate — pre-commit hook + CI pipeline
 
-**Shape.** `traceagent check .` (L0 + coverage + L1 fast tier) as a
+**Shape.** `zft check .` (L0 + coverage + L1 fast tier) as a
 pre-commit hook (`.pre-commit-hooks.yaml`) and as the CI job; `gate-campaign`
 (L2 mutation) stays a scheduled/manual job, not per-push. Deliverables:
 pinned environment (uv.lock already exists), an exit-code contract test
@@ -191,7 +191,7 @@ exactly the discipline we want.
 **Why #3.** Minimalism fit cuts both ways: low effort (no plugin SDK to
 fight, predicted wrapper ≲100 LOC), but also smaller strategic payoff than
 the big-harness options — it proves portability more than it distributes.
-Cheapest possible hedge against "traceagent is welded to one harness," and
+Cheapest possible hedge against "zft is welded to one harness," and
 it retires that objection with a second green check→attest cycle on a
 radically different agent.
 
@@ -236,7 +236,7 @@ surfaces, which is what moves value 2 → 3.
 
 **API corrections that shaped the ranking (doc §0, verified against the
 clone):** plugins are **TypeScript-only** — dsh's Python side is a
-subprocess/JSON-RPC client SDK with no plugin host — so traceagent
+subprocess/JSON-RPC client SDK with no plugin host — so zft
 integrates as a thin TS bundle driving the CLI, with the CLI as the versioned
 seam (doc §3.7; this is why the `verify`/`extract` CLI verbs matter). Turn-end
 interception is **`agent/turn-stopping`** (serial; objects by *steering*, so
@@ -289,7 +289,7 @@ export-summary, negotiate), server started out-of-band, never auto-attesting.
 **Why #5, not higher (rev 2 swapped it below DSH — see §2 #4).** MCP's
 promise is harness-agnostic reach — but the
 CLI already *is* the universal adapter: any agent that can execute a shell
-(which is all of them) can run `traceagent check`. The server adds a second
+(which is all of them) can run `zft check`. The server adds a second
 surface to keep byte-compatible with the first (tool schemas, transport,
 lifecycle) for marginal coverage gain. Worse, the *new* capability it
 unlocks today is letting a producer agent call `attest` on its own work —

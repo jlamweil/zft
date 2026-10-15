@@ -54,7 +54,7 @@ classification — ships in this build too (sections below).
   zft-gates skill and a dev marketplace entry.
 
 - **The GitLab CI port runs the post-rename binary.** It still invoked the
-  dead pre-rename `traceagent` name — the root cause of the red pipelines
+  dead pre-rename `zft` name — the root cause of the red pipelines
   since 09-25 — now fixed and pinned by a CI-parity test.
 
 - **The README stops documenting an install that cannot resolve.** Both
@@ -257,4 +257,4 @@ venv from the wheel.
 
 ## 0.2.0a2 — 2026-09-22
 
-- traceagent→zft rename completed; opencode plugin shipped with the cut.
+- zft→zft rename completed; opencode plugin shipped with the cut.

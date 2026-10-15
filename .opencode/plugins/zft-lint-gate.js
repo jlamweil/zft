@@ -97,10 +97,10 @@ function resolveCandidates(directory) {
   const onPath = whichOr("zft")
   if (onPath && runnable([onPath])) return [[onPath], null]
   // Last resort: run the module directly. Both import names are probed
-  // because the published 0.2.x wheel still exposes `traceagent.cli.main`.
+  // because the published 0.2.x wheel still exposes `zft.cli.main`.
   const py = whichOr("python3") || whichOr("python")
   if (py) {
-    const mod = probeModule(py, "zft.cli.main") ?? probeModule(py, "traceagent.cli.main")
+    const mod = probeModule(py, "zft.cli.main")
     if (mod) return [[py, "-m", mod], null]
   }
   return [null, "no zft executable: set ZFT_BIN or install `pip install zft`"]

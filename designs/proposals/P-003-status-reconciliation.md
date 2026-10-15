@@ -16,10 +16,10 @@ Several factual discrepancies have accumulated between the documented baseline a
 ## Current baseline text
 - `CONTEXT.md` §8 (line 100) states **26 clause nodes** in ``.zft/specs/``.
 - `designs/IMPLEMENTATION-PLAN.md` C‑00 (line 71) also references **26 clauses**.
-- The contract manifest (`.zft/contracts/traceagent-v0.json`) lists **30 clause IDs** and records a single deferred clause via `target_milestone` (`ATT‑EXTERNAL‑IMPORT`).
+- The contract manifest (`.zft/contracts/zft-v0.json`) lists **30 clause IDs** and records a single deferred clause via `target_milestone` (`ATT‑EXTERNAL‑IMPORT`).
 - `IMPLEMENTATION-PLAN.md` C‑18 mentions a non‑existent file `lineage/symbols.py`.
 - `IMPLEMENTATION-PLAN.md` C‑19b references a missing ``bench/`` directory.
-- The repository layout in `IMPLEMENTATION-PLAN.md` §2 omits several newly added artifacts: `src/zft/taskgate.py`, the Opencode plugin `.opencode/plugin/traceagent-gate.ts`, `src/zft/attest/jcs.py`, and `src/zft/lineage/impact.py`.
+- The repository layout in `IMPLEMENTATION-PLAN.md` §2 omits several newly added artifacts: `src/zft/taskgate.py`, the Opencode plugin `.opencode/plugin/zft-gate.ts`, `src/zft/attest/jcs.py`, and `src/zft/lineage/impact.py`.
 - `ARCHITECTURE.md` §4 does not document the `tier` parameter (`fast`/`full`) of `gates/l2.py`.
 - `docs/KNOWN-GAPS.md` Gap 001 records the acceptance‑gate deficiency (traceability vs. conformance).
 
@@ -50,11 +50,11 @@ The chosen approach follows the established **proposal‑first** workflow.
 
 ## Validation checklist
 - [ ] Verify clause count: `find .zft/specs -name "*.json" | wc -l` → **30**.
-- [ ] Confirm one deferred clause via `cat .zft/contracts/traceagent-v0.json` – `"target_milestone": {"ATT-EXTERNAL-IMPORT": "v0.1"}`.
+- [ ] Confirm one deferred clause via `cat .zft/contracts/zft-v0.json` – `"target_milestone": {"ATT-EXTERNAL-IMPORT": "v0.1"}`.
 - [ ] Run `pytest tests/unit/test_impact.py` – all tests pass, confirming implementation.
 - [ ] Check that `lineage/symbols.py` does not exist and that `_enclosing_symbol` is defined in `src/zft/lineage/extract.py`.
 - [ ] Verify that `bench/` directory is absent.
-- [ ] Confirm presence of `src/zft/taskgate.py`, `.opencode/plugin/traceagent-gate.ts`, `src/zft/attest/jcs.py`, and `src/zft/lineage/impact.py`.
+- [ ] Confirm presence of `src/zft/taskgate.py`, `.opencode/plugin/zft-gate.ts`, `src/zft/attest/jcs.py`, and `src/zft/lineage/impact.py`.
 - [ ] Ensure `gates/l2.py` defines a `tier` parameter (default `fast`) and that the value `full` is a documented option (though not currently used).
 - [ ] Confirm that `docs/KNOWN-GAPS.md` includes Gap 001 describing the acceptance‑gate issue.
 

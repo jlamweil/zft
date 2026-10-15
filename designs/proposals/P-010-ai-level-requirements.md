@@ -11,14 +11,14 @@ The design-verification loop (rounds 1–5) produced a set of **verified** findi
 
 ## Current baseline text
 - D6 interaction protocol defines producer/consumer roles and typed rejections, but no requirements on the AI's own evidence discipline.
-- The v0 contract (`traceagent-v0`) has 30 clauses; none express AI-conduct obligations.
+- The v0 contract (`zft-v0`) has 30 clauses; none express AI-conduct obligations.
 - `docs/AI-REQUIREMENTS.md` lists the ten requirements (currently documentation only).
 
 ## Proposed delta
 1. **Author 10 clauses** in domain `ai-conduct` (statements and properties as listed in `docs/AI-REQUIREMENTS.md`): `AI-EXECUTED-EVIDENCE`, `AI-INDEPENDENT-ORACLE`, `AI-CONTRACT-PIN`, `AI-SOURCE-SCOPE`, `AI-REVERSE-COVERAGE`, `AI-NONCODE-ANCHOR`, `AI-TOOL-CONFIDENCE`, `AI-EXTERNAL-IDENTITY`, `AI-HUMAN-APPROVAL`, `AI-SUBJECTIVE-QUARANTINE`.
 2. **Defer them to milestone `v1`** via contract `meta.target_milestone`, so they are visible/auditable but **do not block the v0 gate** (same mechanism as `TR-IMPACT-QUERY`/`ATT-EXTERNAL-IMPORT`).
 3. **Upgrade each to `kind: property`** with a consumer oracle (P-005) when its enforcing proposal lands, so the requirement is *executed*, not asserted.
-4. **Contract scope question**: AI-conduct requirements are a distinct concern from the product contract; either keep them in `traceagent-v0` with deferrals, or introduce multi-contract support (open question).
+4. **Contract scope question**: AI-conduct requirements are a distinct concern from the product contract; either keep them in `zft-v0` with deferrals, or introduce multi-contract support (open question).
 
 ## Verified evidence (basis)
 | Requirement | Finding | Proposal |

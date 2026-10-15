@@ -37,7 +37,7 @@ Gap 001. Treat the reports as binding records, not as proof of acceptance.
 - The `zft` executable reachable **one** of these ways (checked in this order):
   `ZFT_BIN` env var → `<project>/.venv/bin/zft` → `zft` on `PATH` or in
   `~/.local/bin` → `python3 -m zft.cli.main` (falls back to
-  `traceagent.cli.main` for the published 0.2.x wheel). Verify with `zft` —
+  `zft.cli.main` for the published 0.2.x wheel). Verify with `zft` —
   it should print the usage block and exit 0.
 
   The `~/.local/bin` lookup exists because `uv tool install zft` / `pipx
@@ -47,7 +47,7 @@ Gap 001. Treat the reports as binding records, not as proof of acceptance.
 
   Every candidate except an explicit `ZFT_BIN` must also **run**: a stale
   `.venv` entry point (a `ModuleNotFoundError` traceback, as after the
-  `traceagent` → `zft` package rename) is skipped and resolution falls
+  `zft` → `zft` package rename) is skipped and resolution falls
   through to the next candidate, instead of the gate failing open (dispatch)
   or blocking every edit (lint, enforce mode) on a binary that cannot start.
   `ZFT_BIN` stays authoritative — a bad explicit override fails loudly.

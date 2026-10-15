@@ -188,11 +188,11 @@ Three operating rules, derived from the postmortem and enforced by existing
 repo documents:
 
 1. **Dogfood or it isn't real.** ELAI died as software its author didn't
-   rely on. zft's first consumer is its own build (self-check corpus,
+   rely on. ZFT's first consumer is its own build (self-check corpus,
    CI gate as adoption surface #1, OpenCode plugin in the maintainer's daily
    loop — ECOSYSTEM_RANKING §0). If the gates can't police their own repo,
    this positioning is fiction.
-2. **One pipeline, finished.** ELAI accumulated 659 experiments. zft
+2. **One pipeline, finished.** ELAI accumulated 659 experiments. ZFT
    has one pipeline — contract → verify → attest — and the roadmap's
    anti-steals (DSL_ROADMAP §3) are *explicit refusals*, not deferrals:
    no Rego, no Rekor server, no keyless OIDC, no SLSA build-platform levels.

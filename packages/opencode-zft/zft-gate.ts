@@ -170,7 +170,7 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
     const py = whichOr("python3") || whichOr("python");
     if (py) {
       const mod =
-        probeModule(py, "zft.cli.main") ?? probeModule(py, "zft.cli.main");
+        probeModule(py, "zft.cli.main");
       if (mod) return (resolvedGate = [py, "-m", mod]);
     }
     return (resolvedGate = null);

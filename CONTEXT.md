@@ -1,4 +1,4 @@
-# zft — Project Context & Intent
+# ZFT — Project Context & Intent
 
 > Status: living document. This is the entry point for the project. Detailed design docs live in [`designs/`](designs/); framework landscape research lives in [`docs/research/`](docs/research/).
 

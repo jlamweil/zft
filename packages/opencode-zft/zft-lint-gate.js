@@ -100,7 +100,7 @@ function resolveCandidates(directory) {
   // because the published 0.2.x wheel still exposes `zft.cli.main`.
   const py = whichOr("python3") || whichOr("python")
   if (py) {
-    const mod = probeModule(py, "zft.cli.main") ?? probeModule(py, "zft.cli.main")
+    const mod = probeModule(py, "zft.cli.main")
     if (mod) return [[py, "-m", mod], null]
   }
   return [null, "no zft executable: set ZFT_BIN or install `pip install zft`"]

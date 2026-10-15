@@ -1,4 +1,4 @@
-# zft — Unified System Architecture
+# ZFT — Unified System Architecture
 
 > **Canonical design document.** Supersedes `designs/PTE.md`, `designs/ZFT.md`, `designs/PTE ZFT.md`, and `designs/DEC.md` (preserved under [`designs/archive/`](archive/)). Project intent and vocabulary: [`CONTEXT.md`](../CONTEXT.md). Framework landscape evidence: [`docs/research/multiagent-frameworks.md`](../docs/research/multiagent-frameworks.md).
 >
@@ -22,7 +22,7 @@ Four prior documents describe overlapping slices of the same system. This doc me
 
 ## 1. The system in one page
 
-zft is a **contract-first traceability layer for multiagent work**. Agents exchange *contracts* (structured, clause-IDed acceptance criteria) and *deliverables*; a deterministic engine extracts which deliverable element satisfies which clause, verifies claims with mechanical evidence, and only then accepts the work. Compliance artifacts (trace matrices, ReqIF, ALM updates) are compiled outputs of that same graph — never hand-maintained.
+ZFT is a **contract-first traceability layer for multiagent work**. Agents exchange *contracts* (structured, clause-IDed acceptance criteria) and *deliverables*; a deterministic engine extracts which deliverable element satisfies which clause, verifies claims with mechanical evidence, and only then accepts the work. Compliance artifacts (trace matrices, ReqIF, ALM updates) are compiled outputs of that same graph — never hand-maintained.
 
 ```
                 ┌──────────────────────────────────────────────────────────┐

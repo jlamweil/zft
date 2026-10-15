@@ -5,11 +5,11 @@
   "title": "Writer lanes require a contract",
   "status": "VALIDATED",
   "version": 1,
-  "content_hash": "a17b70db3e97db79c9aaf2be945fd6e382089b58d23d89e4319bf085f370fd9a",
+  "content_hash": "21b5f091427c8378e59ed4f1d91a29a2158a784e744b744b9c191a866a1c71d2",
   "invariants": [
     {
       "id": "ENF-WRITER-REQUIRES-CONTRACT-INV-01",
-      "statement": "WHEN a writer-lane subagent is dispatched in a traceagent-governed project without a contract reference, THE SYSTEM SHALL block the dispatch",
+      "statement": "WHEN a writer-lane subagent is dispatched in a zft-governed project without a contract reference, THE SYSTEM SHALL block the dispatch",
       "property": "forall dispatch d: writer(d) and not contract(d) and governed(d) => blocked(d)",
       "check": {
         "kind": "test"

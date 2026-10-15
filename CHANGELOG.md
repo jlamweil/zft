@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.1 — 2026-10-15
+
+Leak-free maintenance cut. Removed every reference to the project's former
+private identity (codename, hostnames, and absolute /home paths) from the
+tracked tree — docs, config, plugin sources, the zcode marketplace id
+(marketplace id renamed to dev-zft-gates), the L0-hashed spec and contract,
+and the baseline anchors. Both wheel-face version stamps bumped; a regression
+test now asserts the tree stays free of those identifiers.
+
 ## 0.2.0 — 2026-09-29
 
 The first stable cut. PyPI's latest is still 0.2.0a6 and the repo moved

@@ -69,7 +69,7 @@ flock-core); the names are neighbors, the layers are different.
 
 ## Honest state
 
-**Version.** 0.2.0 — the first stable cut (2026-09-29), live on PyPI.
+**Version.** 0.2.1 — leak-free maintenance cut (2026-10-15), live on PyPI.
 Requires **Python 3.12+**; the `zft` console script is the only entry point.
 
 **Battle-tested.** The gates police this repository's own development: the
@@ -262,7 +262,7 @@ workspace hooks by hand — both documented in
 [`plugins/zft-gates/README.md`](plugins/zft-gates/README.md). **Codex**: a
 symlink for the skill plus one hook table, in
 [`plugins/codex/README.md`](plugins/codex/README.md). **pre-commit**: add
-this repo with `rev: v0.2.0` and pick `zft-lint` / `zft-check` — see the
+this repo with `rev: v0.2.1` and pick `zft-lint` / `zft-check` — see the
 usage header in [`.pre-commit-hooks.yaml`](.pre-commit-hooks.yaml).
 
 ```

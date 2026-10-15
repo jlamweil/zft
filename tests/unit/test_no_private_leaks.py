@@ -3,26 +3,30 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+THIS = Path(__file__).resolve()
 
 
 def _tracked_files():
     out = subprocess.check_output(["git", "ls-files"], cwd=ROOT, text=True)
     for line in out.splitlines():
+        p = ROOT / line
+        if p.resolve() == THIS:
+            continue
         if line.startswith(".venv/"):
             continue
         if line == "tools/export-cut-check.sh":
             continue
-        yield ROOT / line
+        yield p
 
 
 def _patterns():
     cod = "trace" + "agent"
-    yield re.compile(r"/home/[A-Za-z0-9._-]+")
+    yield re.compile(r"/ho" + r"me/[A-Za-z0-9._-]+")
     yield re.compile(re.escape("dev-" + cod + "-zcode"))
     yield re.compile(r"\b" + re.escape(cod) + r"\b", re.IGNORECASE)
-    yield re.compile(r"HOST-A", re.IGNORECASE)
-    yield re.compile(r"HOST-B", re.IGNORECASE)
-    yield re.compile(r"ntfy\.sh")
+    yield re.compile(re.escape("teth" + "ys"), re.IGNORECASE)
+    yield re.compile(re.escape("yug" + "uer" + "ten"), re.IGNORECASE)
+    yield re.compile(re.escape("ntfy") + r"\.sh")
 
 
 def test_no_private_identifiers_in_tracked_sources():

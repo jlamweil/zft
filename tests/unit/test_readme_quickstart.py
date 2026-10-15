@@ -5,7 +5,7 @@ probe installed zft 0.2.0a6 from PyPI into a clean CPython 3.12.13 venv and
 executed the README quickstart verbatim on a fresh directory. Each failing
 assertion here corresponded to a step that either failed on first run or
 left the consumer with no documented way forward (the full command-by-command
-record lives in verdicts/fresh-consumer-traceagent-hq-20260927.json). The
+record lives in verdicts/fresh-consumer-zft-hq-20260927.json). The
 README is the contract for the documented path; these tests hold it to what
 was proven to work.
 """

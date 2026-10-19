@@ -82,6 +82,68 @@ const normalizeRules = (perm: unknown): Rule[] => {
   return [];
 };
 
+/** Compact, safe description of a client value for diagnostics; never throws. */
+const describe = (v: unknown): string => {
+  if (v === null || v === undefined) return String(v);
+  if (Array.isArray(v)) return `Array(${v.length})`;
+  if (typeof v === "object") {
+    try {
+      const s = JSON.stringify(v);
+      if (!s || s.length <= 200) return s ?? "Object";
+      return `${s.slice(0, 200)}…(+${s.length - 200})`;
+    } catch {
+      return `Object{${Object.keys(v as Record<string, unknown>).join(",")}}`;
+    }
+  }
+  return `${typeof v}(${JSON.stringify(String(v).slice(0, 100))})`;
+};
+
+/** Human-readable text for an opencode error payload. The SDK error envelope
+ *  carries { name, data: { message, ref } }; a thrown Error carries .message. */
+const errorText = (e: unknown): string => {
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === "object") {
+    const o = e as {
+      name?: unknown;
+      message?: unknown;
+      data?: { message?: unknown; ref?: unknown };
+    };
+    const name = typeof o.name === "string" ? o.name : "error";
+    const msg =
+      typeof o.data?.message === "string"
+        ? o.data.message
+        : typeof o.message === "string"
+          ? o.message
+          : describe(e);
+    const ref = typeof o.data?.ref === "string" ? ` (ref ${o.data.ref})` : "";
+    return `${name}: ${msg}${ref}`;
+  }
+  return describe(e);
+};
+
+/** The opencode SDK client passed to plugins resolves to a response envelope —
+ *  { data, error, request, response } (responseStyle "fields") — never the
+ *  bare payload, so reading the return directly as an array is always false
+ *  and silently degrades the gate. Unwrap `.data`; accept a bare array too.
+ *  Discriminated result so a failed call reports the server error, not a vague
+ *  "non-array". */
+type ApiArray =
+  | { ok: true; value: unknown[] }
+  | { ok: false; why: string };
+
+const apiArray = (res: unknown): ApiArray => {
+  if (Array.isArray(res)) return { ok: true, value: res };
+  if (res && typeof res === "object") {
+    const r = res as { data?: unknown; error?: unknown };
+    if (Array.isArray(r.data)) return { ok: true, value: r.data };
+    if (r.error !== undefined && r.error !== null) {
+      return { ok: false, why: `call failed — ${errorText(r.error)}` };
+    }
+    return { ok: false, why: `response had no data array — ${describe(res)}` };
+  }
+  return { ok: false, why: `non-array ${describe(res)}` };
+};
+
 export const ZftGate: Plugin = async ({ directory, client }) => {
   // Idempotency: opencode can load both the repo-local copy and the global
   // copy in the same process. Only the first registers hooks, so an enforced
@@ -117,9 +179,18 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
       if (!client?.app?.agents) return undefined;
       const now = Date.now();
       if (!agentCache || now > agentCache.expiry) {
-        const agents = (await client.app.agents()) as Array<{ name?: string; permission?: unknown }>;
+        const got = apiArray(await client.app.agents());
+        if (!got.ok) {
+          warn(
+            `agent lookup: client.app.agents() unusable (${got.why}) — ` +
+              "falling back to lane-name classification",
+          );
+        }
         const rules = new Map<string, Rule[]>();
-        for (const a of agents ?? []) {
+        for (const a of (got.ok ? got.value : []) as Array<{
+          name?: string;
+          permission?: unknown;
+        }>) {
           if (a?.name) rules.set(a.name, normalizeRules(a.permission));
         }
         agentCache = { rules, expiry: now + AGENT_TTL_MS };
@@ -423,19 +494,33 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
         };
       }).session;
       if (!sessionID || !sess?.children || !sess?.messages) return null;
-      const children = ((await sess.children({ sessionID })) ?? []) as Array<{
+      const childRes = apiArray(await sess.children({ sessionID }));
+      if (!childRes.ok) {
+        warn(
+          `changeset enumeration: session.children() unusable ` +
+            `(${childRes.why}) — falling back`,
+        );
+        return null;
+      }
+      const inWindow = (childRes.value as Array<{
         id?: string;
         time?: { created?: number };
-      }>;
-      const inWindow = children.filter((c) => epochMs(c?.time?.created) >= sinceMs);
+      }>).filter((c) => epochMs(c?.time?.created) >= sinceMs);
       if (inWindow.length === 0) return null; // dispatch not visible → fallback
       const out = new Set<string>();
       for (const child of inWindow) {
         if (!child?.id) continue;
-        const msgs = ((await sess.messages({ sessionID: child.id })) ?? []) as Array<{
+        const msgRes = apiArray(await sess.messages({ sessionID: child.id }));
+        if (!msgRes.ok) {
+          warn(
+            `changeset enumeration: session.messages() unusable ` +
+              `(${msgRes.why}) — falling back`,
+          );
+          return null;
+        }
+        for (const msg of msgRes.value as Array<{
           parts?: Array<Record<string, unknown>>;
-        }>;
-        for (const msg of msgs) {
+        }>) {
           for (const part of msg?.parts ?? []) {
             if (part?.type !== "tool") continue;
             const tool = String(part.tool ?? "");

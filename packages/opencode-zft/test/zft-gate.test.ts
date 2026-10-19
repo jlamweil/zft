@@ -278,3 +278,172 @@ test("session-gate: every decision lands one taskgate.jsonl record", async () =>
   expect(recs.length).toBe(1);
   expect(recs[0].decision).toBe("block");
 });
+
+// ---------------------------------------------------------------------------
+// SDK response-envelope shape (responseStyle "fields"): the real
+// @opencode-ai/sdk client resolves to { data, error, request, response },
+// never a bare array. The gate must unwrap .data, keep accepting bare arrays
+// (back-compat), and surface the error leg of the envelope legibly instead of
+// throwing "{} is not iterable".
+
+function captureGateWarnings(fn: () => Promise<unknown>): Promise<string[]> {
+  const lines: string[] = [];
+  const orig = process.stderr.write.bind(process.stderr);
+  process.stderr.write = ((chunk: unknown, ...rest: unknown[]) => {
+    const s = typeof chunk === "string" ? chunk : String(chunk);
+    for (const line of s.split("\n")) {
+      if (line.includes("[zft gate]")) lines.push(line);
+    }
+    return orig(chunk, ...rest) as boolean;
+  }) as typeof process.stderr.write;
+  return Promise.resolve()
+    .then(fn)
+    .finally(() => {
+      process.stderr.write = orig;
+    })
+    .then(() => lines);
+}
+
+function envelopeClient(children: unknown, messages: unknown) {
+  return {
+    app: {
+      log: async () => {},
+      agents: async () => ({
+        data: [{ name: "fixer", permission: [] }],
+        request: {},
+        response: {},
+      }),
+    },
+    session: {
+      children: async () => children,
+      messages: async () => messages,
+    },
+  };
+}
+
+test("T6: the real SDK envelope shape ({data,error,request,response}) works end-to-end", async () => {
+  const client = envelopeClient(
+    {
+      data: [{ id: "ses_child", time: { created: Date.now() } }],
+      request: {},
+      response: {},
+    },
+    {
+      data: [
+        {
+          parts: [
+            {
+              type: "tool",
+              tool: "edit",
+              state: {
+                status: "completed",
+                input: { filePath: join(root, "src", "app.ts") },
+              },
+            },
+          ],
+        },
+      ],
+      request: {},
+      response: {},
+    },
+  );
+  const hooks = (await ZftGate({ directory: root, client: client as never })) as Record<
+    string,
+    (i: unknown, o: unknown) => Promise<void>
+  >;
+  const input = {
+    tool: "task",
+    callID: "call-env",
+    sessionID: "ses_env",
+    args: { subagent_type: "fixer", description: "[contract: perf] work" },
+  };
+  const out = { output: "subagent result" };
+  const warnings = await captureGateWarnings(async () => {
+    await hooks["tool.execute.before"](input, { args: input.args });
+    await hooks["tool.execute.after"](input, out);
+  });
+  // no shape-diagnostic warnings: the envelope was unwrapped, not degraded
+  expect(warnings.filter((w) => w.includes("unusable")).length).toBe(0);
+  // normal flow proceeded: the after phase ran and prepended the verdict
+  const recs = ledger(root).filter((r) => r.phase === "after");
+  expect(recs.length).toBe(1);
+  expect(String(out.output)).toContain("coverage verdict");
+  expect(String(out.output)).toContain("subagent result");
+});
+
+test("T6: an error envelope from session.children() surfaces the server error legibly", async () => {
+  const client = envelopeClient(
+    {
+      error: { name: "UnknownError", data: { message: "boom", ref: "err_x" } },
+      request: {},
+      response: {},
+    },
+    { data: [], request: {}, response: {} },
+  );
+  const hooks = (await ZftGate({ directory: root, client: client as never })) as Record<
+    string,
+    (i: unknown, o: unknown) => Promise<void>
+  >;
+  const input = {
+    tool: "task",
+    callID: "call-err",
+    sessionID: "ses_err",
+    args: { subagent_type: "fixer", description: "[contract: perf] work" },
+  };
+  const out = { output: "subagent result" };
+  let threw = false;
+  const warnings = await captureGateWarnings(async () => {
+    await hooks["tool.execute.before"](input, { args: input.args });
+    try {
+      await hooks["tool.execute.after"](input, out);
+    } catch {
+      threw = true;
+    }
+  });
+  expect(threw).toBe(false);
+  const shape = warnings.filter((w) => w.includes("session.children() unusable"));
+  expect(shape.length).toBe(1);
+  expect(shape[0]).toContain("UnknownError");
+  expect(shape[0]).toContain("err_x");
+});
+
+test("T6: bare-array responses (pre-envelope clients) still work", async () => {
+  const client = {
+    app: { log: async () => {}, agents: async () => [] },
+    session: {
+      children: async () => [{ id: "ses_bare", time: { created: Date.now() } }],
+      messages: async () => [
+        {
+          parts: [
+            {
+              type: "tool",
+              tool: "write",
+              state: {
+                status: "completed",
+                input: { filePath: join(root, "src", "app.ts") },
+              },
+            },
+          ],
+        },
+      ],
+    },
+  };
+  const hooks = (await ZftGate({ directory: root, client: client as never })) as Record<
+    string,
+    (i: unknown, o: unknown) => Promise<void>
+  >;
+  const input = {
+    tool: "task",
+    callID: "call-bare",
+    sessionID: "ses_bare",
+    args: { subagent_type: "fixer", description: "[contract: perf] work" },
+  };
+  const out = { output: "subagent result" };
+  const warnings = await captureGateWarnings(async () => {
+    await hooks["tool.execute.before"](input, { args: input.args });
+    await hooks["tool.execute.after"](input, out);
+  });
+  expect(warnings.filter((w) => w.includes("unusable")).length).toBe(0);
+  const recs = ledger(root).filter((r) => r.phase === "after");
+  expect(recs.length).toBe(1);
+});

@@ -232,6 +232,7 @@ a documented ceiling, see `plugins/codex/README.md`).
 | **opencode** | npm `opencode-zft` (or copy `zft-gate.ts` + `zft-lint-gate.js`) | ✅ `task` tool wrapped: writer dispatches need `[contract: <name>]`, blocks before spawn, coverage verdict after; **main-session binding gate**: a deliverable edit before any recorded binding is blocked until the session binds (`zft task-gate before --subagent main ...`) | ✅ `zft lint` on every `.zft/**` edit (observe/enforce) | coverage verdict surfaced to the orchestrator | [`.opencode/plugins/README.md`](.opencode/plugins/README.md) |
 | **zcode** | `plugins/zft-gates` (marketplace `dev-zft-gates`) or workspace `.zcode/config.json` | — (workflow carried by the skill) | ✅ PostToolUse L0 on `.zft/**` edits (observe/enforce) | ✅ Stop gate: `zft check` before *any* session may stop, subagent or main | [`plugins/zft-gates/README.md`](plugins/zft-gates/README.md) |
 | **Codex** | `plugins/codex` (skill + PostToolUse hook) | — (workflow carried by the skill) | ✅ PostToolUse L0 on `.zft/**` edits (observe/enforce) | — | [`plugins/codex/README.md`](plugins/codex/README.md) |
+| **pi** | `packages/pi-zft` (extension: L0 edit gate + settle gate) | — (workflow carried by the skill) | ✅ `zft lint` on every `.zft/**` edit (observe/enforce) | ✅ settle gate: `zft check` at turn end, demand loop capped (default 3) | [`packages/pi-zft`](packages/pi-zft) (this README below) |
 | **pre-commit** | `.pre-commit-hooks.yaml` (`zft-lint`, `zft-check`) | — | ✅ at commit time (`zft-lint`) and pre-push (`zft-check`: L0 + L2-fast + gherkin) | — | [`.pre-commit-hooks.yaml`](.pre-commit-hooks.yaml) |
 
 Every decision is one JSONL line in `<root>/.zft/audit.log` (dispatches) and
@@ -256,8 +257,37 @@ cp .opencode/skills/zft/SKILL.md ~/.config/opencode/skills/zft/SKILL.md
 # restart opencode, then scaffold a clause + contract (see .opencode/plugins/README.md)
 ```
 
+**pi** quick start (the `pi-zft` extension — L0 edit gate + settle gate):
+
+```bash
+pip install zft                                              # Python 3.12+
+
+# Copy the extension into pi's extensions dir (global scope shown):
+mkdir -p ~/.pi/agent/extensions
+cp -r packages/pi-zft ~/.pi/agent/extensions/pi-zft
+# the extension imports the pi runtime types only; it needs no build step.
+
+# The zft workflow skill (Agent Skills spec — same SKILL.md zcode uses):
+mkdir -p ~/.agents/skills/zft-gates
+#   copy the skill from the zcode package:  plugins/zft-gates/skills/zft-gates/SKILL.md
+
+# restart pi; the gates are silent outside any .zft/ store.
+```
+
+Modes and knobs (same as the opencode port):
+
+- `ZFT_HOOK_MODE` — `observe` (default: record + report, never block) or
+  `enforce` (an L0 failure or a broken gate becomes an error result the
+  model must see).
+- `ZFT_BIN` — authoritative gate binary override.
+- `ZFT_SETTLE_CAP` — consecutive `zft check` failures before the settle
+  gate gives up (default 3). The demand text always cites the
+  `.zft/runs/<id>` run and tells the model to stop or fix.
+- Every gate decision is one JSONL line in `<root>/.zft/gates-hook/log.jsonl`.
+
 **zcode**: install *ZFT Gates* from the `dev-zft-gates` marketplace
 (this repo's `plugins/` directory is the marketplace root), or wire the
+
 workspace hooks by hand — both documented in
 [`plugins/zft-gates/README.md`](plugins/zft-gates/README.md). **Codex**: a
 symlink for the skill plus one hook table, in

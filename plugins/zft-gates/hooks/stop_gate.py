@@ -152,14 +152,15 @@ def main() -> int:
     gate_argv, reason = resolve_gate()
     if gate_argv is None:
         append_log(root, {**record, "decision": "gate_unavailable",
-                          "detail_tail": reason})
+                          "blocked": enforce, "detail_tail": reason})
         print(f"GATE_UNAVAILABLE: {reason}", file=sys.stderr)
         return 2 if enforce else 0
 
     status, gate_exit, detail, report = run_check(root, gate_argv)
     gate_rec = {"name": "CHECK", "status": status, "exit": gate_exit}
     if status == "passed":
-        append_log(root, {**record, "decision": "allow", "gate": gate_rec})
+        append_log(root, {**record, "decision": "allow",
+                          "blocked": False, "gate": gate_rec})
         return 0
     if status == "failed":
         n_failures = len((report or {}).get("failures") or [])
@@ -174,7 +175,7 @@ def main() -> int:
               file=sys.stderr)
         return 2 if enforce else 0
     append_log(root, {**record, "decision": "gate_unavailable",
-                      "gate": gate_rec, "detail_tail": detail})
+                      "blocked": enforce, "gate": gate_rec, "detail_tail": detail})
     print(f"GATE_UNAVAILABLE: check exited {gate_exit}; tail: {detail}",
           file=sys.stderr)
     return 2 if enforce else 0

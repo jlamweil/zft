@@ -233,3 +233,38 @@ test("turn_end: no store -> no message", () => {
   });
   rmSync(dir, { recursive: true, force: true });
 });
+
+// --- real pi tool contract (live Z2 finding, 2026-10-19) ---------------
+// pi's write/edit tools take a parameter named `path` (NOT `filePath` —
+// that is opencode's name). The session JSONL is ground truth:
+//   write -> {"path": "...", "content": "..."}
+// The gate must read the real parameter or it silently skips every edit.
+test("glue: reads the REAL pi write tool parameter (path), with filePath fallback", () => {
+  const store = mkStore(tmp());
+  mkdirSync(join(store, ".zft", "specs"), { recursive: true });
+  const stub = installZftStub(store, { lintExit: 0, lintOut: "L0 PASSED" });
+  withEnv({ ZFT_BIN: stub }, () => {
+    const pi = makeFakePi();
+    makeZftGlue()(pi);
+    const r = pi.fire("tool_result", {
+      toolName: "write", toolCallId: "real-1",
+      input: { path: ".zft/specs/x.json", content: "{}" }, content: [],
+    }, ctx(store));
+    assert.equal(r, undefined, "observe: no change on pass");
+    let log = readFileSync(join(store, ".zft", "gates-hook", "log.jsonl"), "utf8").trim().split("\n");
+    let rec = JSON.parse(log.at(-1)!);
+    assert.equal(rec.decision, "allow");
+    assert.deepEqual(rec.paths, [join(store, ".zft", "specs", "x.json")]);
+    // fallback: a legacy filePath field still works
+    const r2 = pi.fire("tool_result", {
+      toolName: "write", toolCallId: "real-2",
+      input: { filePath: ".zft/specs/y.json", content: "{}" }, content: [],
+    }, ctx(store));
+    assert.equal(r2, undefined);
+    log = readFileSync(join(store, ".zft", "gates-hook", "log.jsonl"), "utf8").trim().split("\n");
+    rec = JSON.parse(log.at(-1)!);
+    assert.equal(rec.decision, "allow");
+    assert.deepEqual(rec.paths, [join(store, ".zft", "specs", "y.json")]);
+  });
+  rmSync(store, { recursive: true, force: true });
+});

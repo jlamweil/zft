@@ -204,14 +204,14 @@ def main() -> int:
     gate_argv, reason = resolve_gate()
     if gate_argv is None:
         append_log(root, {**record, "decision": "gate_unavailable",
-                          "detail_tail": reason})
+                          "blocked": enforce, "detail_tail": reason})
         print(f"GATE_UNAVAILABLE: {reason}", file=sys.stderr)
         return 2 if enforce else 0
 
     status, gate_exit, detail = run_l0(root, gate_argv)
     if status == "passed":
         append_log(root, {**record, "decision": "allow",
-                          "gate": {"name": "L0", "status": status, "exit": gate_exit}})
+                          "blocked": False, "gate": {"name": "L0", "status": status, "exit": gate_exit}})
         return 0
     if status == "failed":
         append_log(root, {**record, "decision": "deny" if enforce else "allow",
@@ -222,6 +222,7 @@ def main() -> int:
               file=sys.stderr)
         return 2 if enforce else 0
     append_log(root, {**record, "decision": "gate_unavailable",
+                      "blocked": enforce,
                       "gate": {"name": "L0", "status": status, "exit": gate_exit},
                       "detail_tail": detail})
     print(f"GATE_UNAVAILABLE: gate exited {gate_exit}; tail: {detail}", file=sys.stderr)

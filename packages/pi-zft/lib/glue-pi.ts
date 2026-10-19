@@ -11,89 +11,17 @@
  */
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { spawnSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, statSync } from "node:fs";
-import os from "node:os";
-import { join, delimiter, isAbsolute, dirname } from "node:path";
+import { join } from "node:path";
 import * as P from "./policy.ts";
 
-const GATE_TIMEOUT_MS = 60_000;
+// Policy units (gate binary resolution, logging, timeouts) come from
+// lib/policy.ts, which re-exports zft-gate-core — the shared L0 policy.
+// This file keeps only the pi harness wiring: events, records, blocking.
 
-// ------------------------------------------------------- gate binary resolution
-// Ported verbatim from zft-lint-gate.js: ZFT_BIN is authoritative (verified
-// to exist, no silent fallback); then .venv/bin/zft; then PATH + ~/.local/bin;
-// then python3 -m zft.cli.main. Candidates must RUN (stale entry points
-// are skipped, never spawned into a traceback).
-
-const whichOr = (cmd: string): string | null => {
-  const dirs = [
-    ...(process.env.PATH ?? "").split(delimiter).filter(Boolean),
-    join(os.homedir(), ".local", "bin"),
-  ];
-  for (const d of dirs) {
-    const cand = join(d, cmd);
-    try { if (statSync(cand).isFile()) return cand; } catch { /* keep scanning */ }
-  }
-  return null;
-};
-
-const runnable = (argv: string[]): boolean => {
-  try {
-    const res = spawnSync(argv[0], argv.slice(1), { encoding: "utf8", timeout: 10_000 });
-    if (res.error) return false;
-    const err = String(res.stderr ?? "");
-    return !/Traceback \(most recent call last\)|ModuleNotFoundError|No module named|Exec format error|command not found/.test(err);
-  } catch {
-    return false;
-  }
-};
-
-const probeModule = (py: string, mod: string): string | null => {
-  try {
-    const res = spawnSync(py, ["-c", `import ${mod}`], { encoding: "utf8", timeout: 10_000 });
-    return res.status === 0 ? mod : null;
-  } catch { return null; }
-};
-
-const GATE_MEMO = new Map<string, [string[], string | null]>();
-
-export const resolveGate = (directory: string): [string[], string | null] => {
-  const override = process.env.ZFT_BIN;
-  if (override) {
-    const argv = override.trim().split(/\s+/).filter(Boolean);
-    if (!argv.length) return [null, `ZFT_BIN="${override}": empty command`];
-    const exe = isAbsolute(argv[0]) && existsSync(argv[0]) ? argv[0] : whichOr(argv[0]);
-    if (!exe) return [null, `ZFT_BIN="${override}": executable not found`];
-    return [[exe, ...argv.slice(1)], null];
-  }
-  const memo = GATE_MEMO.get(directory);
-  if (memo) return memo;
-  const local = join(directory, ".venv", "bin", "zft");
-  if (existsSync(local) && runnable([local])) { const o: [string[], null] = [[local], null]; GATE_MEMO.set(directory, o); return o; }
-  const onPath = whichOr("zft");
-  if (onPath && runnable([onPath])) { const o: [string[], null] = [[onPath], null]; GATE_MEMO.set(directory, o); return o; }
-  const py = whichOr("python3") || whichOr("python");
-  if (py) {
-    const mod = probeModule(py, "zft.cli.main");
-    if (mod) { const o: [string[], null] = [[py, "-m", mod], null]; GATE_MEMO.set(directory, o); return o; }
-  }
-  const o: [string[], string] = [null, "no zft executable: set ZFT_BIN or install `pip install zft`"];
-  GATE_MEMO.set(directory, o);
-  return o;
-};
-
-// ------------------------------------------------------------------ logging
-const appendLog = (root: string, record: Record<string, unknown>): void => {
-  try {
-    const log = join(root, P.LOG_REL);
-    const dir = dirname(log);
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    appendFileSync(log, JSON.stringify(record) + "\n");
-  } catch {
-    // audit trail, never a reason to crash the session
-  }
-};
-
-const now = (): string => new Date().toISOString();
+const now = P.now;
+const appendLog = P.appendLog;
+const resolveGate = P.resolveGate;
+const GATE_TIMEOUT_MS = P.GATE_TIMEOUT_MS;
 
 // ------------------------------------------------------------------- glue
 export const makeZftGlue = (): ((pi: ExtensionAPI) => void) => (pi: ExtensionAPI) => {
@@ -112,8 +40,13 @@ export const makeZftGlue = (): ((pi: ExtensionAPI) => void) => (pi: ExtensionAPI
       if (seen.has(key)) return undefined;
       seen.add(key);
 
-      const fp = (event.input as { filePath?: unknown })?.filePath;
-      if (typeof fp !== "string" || !fp.trim()) return undefined;
+      // pi's write/edit tools take `path` (opencode's name is `filePath` —
+      // kept as a fallback). Reading only one of the two made the gate
+      // silently skip every real edit (live Z2 finding, 2026-10-19).
+      const inp = event.input as { path?: unknown; filePath?: unknown };
+      const fpRaw = typeof inp?.path === "string" ? inp.path : inp?.filePath;
+      if (typeof fpRaw !== "string" || !fpRaw.trim()) return undefined;
+      const fp = fpRaw;
       const abs = P.toAbsolute(fp, ctx.cwd);
       const root = P.findStoreRoot(abs);
       if (!root) return undefined; // outside any store: completely silent
@@ -138,7 +71,7 @@ export const makeZftGlue = (): ((pi: ExtensionAPI) => void) => (pi: ExtensionAPI
       const [argv, reason] = resolveGate(root);
       const carry = { structuredContent: (event as { structuredContent?: unknown }).structuredContent };
       if (!argv) {
-        appendLog(root, { ...base, decision: "gate_unavailable", detail_tail: reason, blocked: enforce });
+        appendLog(root, P.gateUnavailableRecord(base, enforce, { detail_tail: reason }));
         return enforce
           ? { isError: true, content: [{ type: "text", text: `[zft lint] GATE_UNAVAILABLE: ${reason}` }], ...carry }
           : undefined;
@@ -150,14 +83,14 @@ export const makeZftGlue = (): ((pi: ExtensionAPI) => void) => (pi: ExtensionAPI
           cwd: root, encoding: "utf8", timeout: GATE_TIMEOUT_MS,
         });
       } catch (e) {
-        appendLog(root, { ...base, decision: "gate_unavailable", detail_tail: String(e), blocked: enforce });
+        appendLog(root, P.gateUnavailableRecord(base, enforce, { detail_tail: String(e) }));
         return enforce
           ? { isError: true, content: [{ type: "text", text: `[zft lint] GATE_UNAVAILABLE: ${String(e)}` }], ...carry }
           : undefined;
       }
       if (res.error) {
         const detail = res.error.message ?? "spawn failed";
-        appendLog(root, { ...base, decision: "gate_unavailable", detail_tail: detail, blocked: enforce });
+        appendLog(root, P.gateUnavailableRecord(base, enforce, { detail_tail: detail }));
         return enforce
           ? { isError: true, content: [{ type: "text", text: `[zft lint] GATE_UNAVAILABLE: ${detail}` }], ...carry }
           : undefined;
@@ -188,9 +121,10 @@ export const makeZftGlue = (): ((pi: ExtensionAPI) => void) => (pi: ExtensionAPI
     try {
       const root = P.findStoreRoot(ctx.cwd);
       if (!root) return;
+      const enforce = P.isEnforce(process.env.ZFT_HOOK_MODE ?? "observe");
       const [argv, reason] = resolveGate(root);
       if (!argv) {
-        appendLog(root, { ts: now(), event: "turn_end", decision: "gate_unavailable", detail_tail: reason });
+        appendLog(root, { ts: now(), event: "turn_end", decision: "gate_unavailable", blocked: enforce, detail_tail: reason });
         return;
       }
       let res: ReturnType<typeof spawnSync>;
@@ -199,7 +133,7 @@ export const makeZftGlue = (): ((pi: ExtensionAPI) => void) => (pi: ExtensionAPI
           cwd: root, encoding: "utf8", timeout: GATE_TIMEOUT_MS,
         });
       } catch (e) {
-        appendLog(root, { ts: now(), event: "turn_end", decision: "gate_unavailable", detail_tail: String(e) });
+        appendLog(root, { ts: now(), event: "turn_end", decision: "gate_unavailable", blocked: enforce, detail_tail: String(e) });
         return;
       }
       const out = ((res.stdout ?? "") + (res.stderr ?? "")).trim();

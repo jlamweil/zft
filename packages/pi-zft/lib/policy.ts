@@ -1,48 +1,54 @@
 /**
  * zft-gates pi policy — the pure decision tables (NO pi imports).
  *
- * Ports the opencode port (packages/opencode-zft/zft-lint-gate.js) verbatim:
- * the gate acts only on the contract corpus (<root>/.zft/**), outside a
- * store the plugin is completely silent, and a broken gate is never green
- * (gate_unavailable). Plus the verified pi settle-gate tables (LV4/LV7/LV8).
+ * The shared L0 policy units (store lookup, corpus membership,
+ * apply_patch parsing, binary resolution, never-green exit runner,
+ * logging) are RE-EXPORTED from zft-gate-core (synced to
+ * ../core/gate-core.js) so the opencode and pi adapters can never
+ * diverge on corpus logic. This file adds only the pi-specific tables:
+ * the pi edit-tool subset, the GateDecision mapping with the superset
+ * `blocked` key, and the verified pi settle-gate tables (LV4/LV7/LV8).
  */
-import { existsSync, readdirSync, statSync } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+import {
+  findStoreRoot,
+  inCorpus,
+  toAbsolute,
+  parsePatchPaths,
+  corpusPathsFor,
+  resolveGate,
+  runGate,
+  appendLog,
+  now,
+  resetGateMemo,
+  CORPUS_DIR,
+  LOG_REL,
+  GATE_TIMEOUT_MS,
+  gateUnavailableRecord,
+} from "../core/gate-core.js";
 
-export const CORPUS_DIR = ".zft";
-export const LOG_REL = join(CORPUS_DIR, "gates-hook", "log.jsonl");
-/** opencode parity: the gate fires on edit + write ONLY. */
+export {
+  findStoreRoot,
+  inCorpus,
+  toAbsolute,
+  parsePatchPaths,
+  corpusPathsFor,
+  resolveGate,
+  runGate,
+  appendLog,
+  now,
+  resetGateMemo,
+  CORPUS_DIR,
+  LOG_REL,
+  GATE_TIMEOUT_MS,
+  gateUnavailableRecord,
+};
+
+/** The pi edit-tool subset of the core EDIT_TOOLS: pi has no
+ *  apply_patch tool (its editor tools are edit/write), so the gate
+ *  fires on that subset. core.test.ts asserts the subset relation. */
 export const EDIT_TOOLS: ReadonlySet<string> = new Set(["edit", "write"]);
-
-// ---------------------------------------------------------------- triggers
-/** Walk up from startPath to the nearest directory containing .zft/. */
-export function findStoreRoot(startPath: string): string | null {
-  let dir = startPath;
-  try {
-    if (existsSync(dir) && statSync(dir).isFile()) dir = dirname(dir);
-  } catch {
-    dir = dirname(dir);
-  }
-  for (;;) {
-    if (isDir(join(dir, CORPUS_DIR))) return dir;
-    const parent = dirname(dir);
-    if (parent === dir) return null;
-    dir = parent;
-  }
-}
-
-function isDir(p: string): boolean {
-  try { return statSync(p).isDirectory(); } catch { return false; }
-}
-
-/** True iff absPath is inside <root>/.zft/** (the corpus seed policy). */
-export function inCorpus(absPath: string, root: string): boolean {
-  const rel = relative(root, absPath);
-  return rel !== "" && !rel.startsWith("..") && rel.split(sep)[0] === CORPUS_DIR;
-}
-
-export const toAbsolute = (fp: string, cwd: string): string =>
-  isAbsolute(fp) ? fp : resolve(cwd, fp);
 
 // --------------------------------------------------------------------- modes
 export const isEnforce = (mode: string | undefined): boolean => mode === "enforce";
@@ -55,8 +61,9 @@ export interface GateDecision {
   detail_tail?: string;
 }
 
-/** The L0 gate table (zft-lint-gate.js, ported): the CLI reserves exit 0
- *  for L0 PASSED and 1 for L0 FAILED; anything else is a broken gate. */
+/** The L0 gate table: the CLI reserves exit 0 for L0 PASSED and 1 for
+ *  L0 FAILED; anything else is a broken gate. The `blocked` key is the
+ *  superset record field (C4): every record carries it, true in enforce. */
 export function gateDecision(status: number, out: string, enforce: boolean): GateDecision {
   if (status === 0) {
     return { decision: "allow", blocked: false, gate: { name: "L0", status: "passed", exit: 0 } };

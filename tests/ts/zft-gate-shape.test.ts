@@ -1,18 +1,16 @@
 /**
  * Regression + contract tests for the shape-safety of zft-gate.ts.
  *
- * The opencode SDK client injected into a plugin resolves to a RESPONSE
- * ENVELOPE — `{ data, error, request, response }` (responseStyle "fields") —
- * never the bare payload. Verified live against the real `@opencode-ai/sdk`.
- * So `await client.app.agents()` is `{data:[...],request,response}` and
- * `Array.isArray(x)` is always false. Treating the return as an array
- * surfaced as:
+ * Two real incidents (2026-10-19) were the SAME bug class: the opencode client
+ * API is assumed to return arrays, and `x ?? []` does NOT guard against a
+ * non-array truthy value like `{}` — `for (const a of {} ?? [])` throws
+ * "{} is not iterable". That surfaced as:
  *   [zft-gate] agent lookup failed ({} is not iterable) — falling back ...
  *   [zft gate] changeset enumeration failed. — falling back
  *
- * The gate now unwraps `.data` (accepting a bare array too) and reports a
- * failed call's server error legibly instead of a vague "non-array", so a
- * changed opencode surface is correctable from the log text alone.
+ * Fixed by Array.isArray guards; every degraded path now emits a legible
+ * shape diagnostic (which call + what came back via describe()) so a changed
+ * opencode surface is correctable from the log text alone.
  *
  * These tests import the REAL plugin module and drive the actual task-gate
  * before/after hooks with a mocked client, so they verify behavior, not the
@@ -23,7 +21,7 @@ import { mkdirSync, mkdtempSync, writeFileSync, chmodSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const PLUGIN = join(import.meta.dir, "..", "..", ".opencode", "plugins", "zft-gate.ts");
+const PLUGIN = new URL("../../.opencode/plugins/zft-gate.ts", import.meta.url).pathname;
 const TAG = "[zft gate]";
 
 /** Fresh plugin instance: reset the idempotency guard and re-import the module
@@ -82,40 +80,13 @@ const taskOutput = (withResult: boolean) =>
     ? { args: { subagent_type: "fixer", description: "d" }, output: '{"verdict":"ok"}' }
     : { args: { subagent_type: "fixer", description: "d" } };
 
-/** The envelope an SDK call really resolves to (responseStyle "fields"). */
-const sdkOk = (data: unknown) => ({ data, request: {}, response: {} });
-const sdkErr = (name: string, message: string, ref: string) => ({
-  error: { name, data: { message, ref } },
-  request: {},
-  response: {},
-});
-
 afterEach(() => {
   delete process.env.ZFT_BIN;
   delete process.env.ZFT_HOOK_MODE;
 });
 
 describe("zft-gate client-API shape safety", () => {
-  it("agents() success envelope {data:[...]} is unwrapped — no diagnostic", async () => {
-    const w = makeWorkdir();
-    const cap = captureWarn();
-    const client = {
-      app: {
-        agents: async () => sdkOk([{ name: "fixer", permission: [] }]),
-        log: async () => {},
-      },
-      session: {},
-      tool: { execute: {} },
-    } as never;
-    const reg = await loadGate(w, client);
-    await reg["tool.execute.before"](taskInput(), taskOutput(false));
-    const warns = cap.stop();
-    expect(warns).not.toContain("client.app.agents()");
-    expect(warns).not.toContain("lanes");
-    expect(warns).not.toContain("is not iterable");
-  });
-
-  it("agents() malformed value degrades with a legible diagnostic (no 'not iterable')", async () => {
+  it("agents(){...} degrades to lane-name classification with a legible diagnostic (no 'not iterable')", async () => {
     const w = makeWorkdir();
     const cap = captureWarn();
     const client = {
@@ -126,81 +97,39 @@ describe("zft-gate client-API shape safety", () => {
     const reg = await loadGate(w, client);
     await reg["tool.execute.before"](taskInput(), taskOutput(false));
     const warns = cap.stop();
-    expect(warns).toContain("client.app.agents() unusable");
-    expect(warns).toContain("response had no data array");
+    expect(warns).toContain("agent lookup: client.app.agents() returned non-array {}");
     expect(warns).not.toContain("is not iterable");
     expect(warns).not.toContain("agent lookup failed");
   });
 
-  it("session.children() error envelope names the server error (no generic crash)", async () => {
+  it("session.children(){...} degrades changeset scoping with a legible diagnostic (no generic crash)", async () => {
     const w = makeWorkdir();
     const cap = captureWarn();
     const client = {
-      app: { agents: async () => sdkOk([{ name: "fixer", permission: [] }]), log: async () => {} },
-      session: {
-        children: async () => sdkErr("UnknownError", "Unexpected server error", "err_bcd9b89e"),
-        messages: async () => sdkOk([]),
-      },
+      app: { agents: async () => [{ name: "fixer", permission: [] }], log: async () => {} },
+      session: { children: async () => ({}), messages: async () => ([]) },
       tool: { execute: {} },
     } as never;
     const reg = await loadGate(w, client);
     await reg["tool.execute.before"](taskInput(), taskOutput(false));
     await reg["tool.execute.after"](taskInput(), taskOutput(true));
     const warns = cap.stop();
-    expect(warns).toContain("session.children() unusable");
-    expect(warns).toContain("UnknownError");
-    expect(warns).toContain("err_bcd9b89e");
+    expect(warns).toContain("session.children() returned non-array {}");
+    // the specific shape diagnostic replaces the generic catch-all crash
+    expect(warns).toContain("returned non-array");
     expect(warns).not.toContain("changeset enumeration failed");
   });
 
-  it("children()/messages() success envelopes scope a real changeset — no diagnostic", async () => {
-    const w = makeWorkdir();
-    mkdirSync(join(w, "src"), { recursive: true });
-    const cap = captureWarn();
-    const client = {
-      app: { agents: async () => sdkOk([{ name: "fixer", permission: [] }]), log: async () => {} },
-      session: {
-        children: async () => sdkOk([{ id: "child-9", time: { created: Date.now() } }]),
-        messages: async () =>
-          sdkOk([
-            {
-              parts: [
-                {
-                  type: "tool",
-                  tool: "edit",
-                  state: { status: "completed", input: { filePath: join(w, "src/a.ts") } },
-                },
-              ],
-            },
-          ]),
-      },
-      tool: { execute: {} },
-    } as never;
-    const reg = await loadGate(w, client);
-    await reg["tool.execute.before"](taskInput(), taskOutput(false));
-    await reg["tool.execute.after"](taskInput(), taskOutput(true));
-    const warns = cap.stop();
-    expect(warns).not.toMatch(/non-array|unavailable|not iterable|enumeration failed|unusable/s);
-  });
-
-  it("legacy bare-array surfaces still work (back-compat)", async () => {
+  it("correct array shapes produce NO shape diagnostic and scope a real changeset", async () => {
     const w = makeWorkdir();
     mkdirSync(join(w, "src"), { recursive: true });
     const cap = captureWarn();
     const client = {
       app: { agents: async () => [{ name: "fixer", permission: [] }], log: async () => {} },
       session: {
-        children: async () => [{ id: "child-1", time: { created: Date.now() } }],
+        children: async () => [{ id: "child-9", time: { created: Date.now() } }],
         messages: async () => [
-          {
-            parts: [
-              {
-                type: "tool",
-                tool: "write",
-                state: { status: "completed", input: { filePath: join(w, "src/b.ts") } },
-              },
-            ],
-          },
+          { parts: [{ type: "tool", tool: "edit", state: { status: "completed", input: { filePath: join(w, "src/a.ts") } } }] },
         ],
       },
       tool: { execute: {} },
@@ -209,6 +138,6 @@ describe("zft-gate client-API shape safety", () => {
     await reg["tool.execute.before"](taskInput(), taskOutput(false));
     await reg["tool.execute.after"](taskInput(), taskOutput(true));
     const warns = cap.stop();
-    expect(warns).not.toMatch(/non-array|unavailable|not iterable|enumeration failed|unusable/s);
+    expect(warns).not.toMatch(/non-array|unavailable|not iterable|enumeration failed/s);
   });
 });

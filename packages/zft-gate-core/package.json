@@ -1,0 +1,12 @@
+{
+  "name": "zft-gate-core",
+  "version": "0.1.0",
+  "description": "Pure, harness-free L0 gate policy for zft — shared by the opencode and pi gate adapters.",
+  "type": "module",
+  "main": "lib/gate-core.js",
+  "private": true,
+  "license": "Apache-2.0",
+  "files": [
+    "lib"
+  ]
+}

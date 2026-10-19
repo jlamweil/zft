@@ -225,7 +225,7 @@ gate) only; their dispatch-boundary paths need host-contract pinning
 (zcode PreToolUse on the agent-spawn tool; Codex exposes PostToolUse only —
 a documented ceiling, see `plugins/codex/README.md`).
 
-### The four integrations
+### The five integrations
 
 | Harness | Artifact | Dispatch boundary | Edit boundary | Completion boundary | Doc |
 | --- | --- | --- | --- | --- | --- |
@@ -238,6 +238,27 @@ a documented ceiling, see `plugins/codex/README.md`).
 Every decision is one JSONL line in `<root>/.zft/audit.log` (dispatches) and
 `<root>/.zft/gates-hook/log.jsonl` (edits) — the evidence layer; never delete
 by hand.
+**Gate-core architecture (the JS adapters).** The opencode and pi JS
+adapters are thin protocol shims over one pure, zero-dependency policy
+unit: `packages/zft-gate-core` (`findStoreRoot` / `inCorpus` / `parsePatchPaths`
+/ `corpusPathsFor` / `resolveGate` / `runGate` / `appendLog`, plus the
+`gateUnavailableRecord()` superset factory). Both adapters import it
+**relative** (`./core/gate-core.js`, a synced byte copy — no bare
+specifiers, no node_modules, no symlinks). `scripts/sync-zft-gates.mjs`
+owns the arrow: the **package dirs are canonical**; `.opencode/plugins/`
+and the packages' `core/` copies are deployed artifacts (the script runs
+as `pretest` and, in copy+assert mode, as `prepublishOnly`). One schema
+across every writer (opencode, pi, codex, zcode): every gate-decision
+record carries `blocked` (true iff the event was blocked); `blocked` is
+absent only from meta-records (`passthrough`, `unclassified`,
+`outside_root`). Cross-adapter drift is caught by
+`packages/zft-gate-core/test/parity.test.ts`, which fires identical
+events through both adapters and diffs the records. Caveat: pi loads
+extensions from user scope (`~/.pi/agent/extensions/`) or project scope
+(`<root>/.pi/extensions/`); the project scope is trust-gated — a
+fresh project silently no-ops until the extension is trusted (`-a` / trust
+grant), while the user scope is unaffected.
+
 
 **opencode** quick start:
 

@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-19",
+  "claim": "the pi extension port (packages/pi-zft) of the zft gates is wired and live-verified: L0 edit gate (observe/enforce, corpus-only, gate_unavailable is never green) and the capped settle gate (turn_end + pi.sendMessage(triggerTurn, followUp))",
+  "commits": {
+    "pi-zft policy+glue+index": "14650ef",
+    "docs wiring": "b57abf2",
+    "gitignore audit log": "1c947b1"
+  },
+  "verification": {
+    "unit": "29/29 (node --test 'packages/pi-zft/test/*.test.ts'; fake-pi + stub ZFT_BIN)",
+    "live_settle_pass": {
+      "cmd": "PI_CODING_AGENT_DIR=<sandbox> pi -p 'Reply exactly: SETTLE-SMOKE-OK' --provider albert --model albert-gpt-oss-120b --no-session (cwd = this repo)",
+      "audit": ".zft/gates-hook/log.jsonl",
+      "record": {"event": "turn_end", "decision": "settle", "ok": true, "cap": 3, "run": "e3ea1e62288c", "session_id": "01a15455-b578-737b-a340-09a11b02c417"}
+    },
+    "live_install_layout": {
+      "cmd": "same, with the README-documented cp -r packages/pi-zft ~/.pi/agent/extensions/pi-zft layout",
+      "record": {"event": "turn_end", "decision": "settle", "ok": true, "run": "e3873ee83318"}
+    },
+    "live_demand_give_up": "mechanism live-verified in the verification phase (V3/V6, sandbox ext-v3/ext-v6); the demand/give-up tables are contract-tested here (buildDemandText/buildGiveUpText carry explicit STOP instructions; cap-th failure gives up; give-up never repeats)"
+  },
+  "machine_logs": "sandbox evidence under ~ and sandbox/evidence/B5/ (not part of this repo); the durable records are the commit graph + this file"
+}

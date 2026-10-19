@@ -201,6 +201,21 @@ evidence layer:
 - `<root>/.zft/gates-hook/log.jsonl` — every edit-gate decision
   (`allow` / `deny` / `passthrough` / `gate_unavailable` / `outside_root`)
   with the L0 exit code and findings tail.
+**Record schema (superset, one across every writer).** Every
+gate-decision record (`allow` / `deny` / `gate_unavailable`) carries
+`blocked` — true iff the event was blocked (i.e. `enforce` mode). Meta
+records (`passthrough`, `unclassified`, `outside_root`) carry no `gate`
+and no `blocked`. `tool` uses the harness's own tool name, including
+`apply_patch` on opencode (its `paths` are the parsed, corpus-filtered
+targets — a patch with no corpus targets is a silent zero record), and
+`Write` / `Edit` everywhere. Example lines:
+
+```jsonl
+{"ts":"2026-10-19T12:00:00.000Z","event":"PostToolUse","tool":"Write","mode":"observe","session_id":"ses-1","root":"/proj","paths":"/proj/.zft/specs/x.json","decision":"allow","blocked":false,"gate":{"name":"L0","status":"passed","exit":0}}
+{"ts":"2026-10-19T12:00:05.000Z","event":"edit","tool":"apply_patch","mode":"enforce","session_id":"ses-1","root":"/proj","paths":["/proj/.zft/specs/a.json","/proj/.zft/specs/b.json"],"decision":"deny","blocked":true,"gate":{"name":"L0","status":"failed","exit":1},"detail_tail":"L0 FAILED: …"}
+{"ts":"2026-10-19T12:00:10.000Z","event":"PostToolUse","tool":"Edit","mode":"enforce","session_id":"ses-1","root":"/proj","paths":"/proj/.zft/specs/x.json","decision":"gate_unavailable","blocked":true,"detail_tail":"GATE_UNAVAILABLE: ZFT_BIN=…: executable not found"}
+```
+
 
 ## Configuration
 

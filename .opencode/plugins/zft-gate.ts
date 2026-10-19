@@ -103,55 +103,6 @@ const describe = (v: unknown): string => {
   return `${typeof v}(${JSON.stringify(String(v).slice(0, 100))})`;
 };
 
-/** Human-readable text for an opencode error payload. The SDK error envelope
- *  carries { name, data: { message, ref } }; a thrown Error carries .message. */
-const errorText = (e: unknown): string => {
-  if (e instanceof Error) return e.message;
-  if (e && typeof e === "object") {
-    const o = e as {
-      name?: unknown;
-      message?: unknown;
-      data?: { message?: unknown; ref?: unknown };
-    };
-    const name = typeof o.name === "string" ? o.name : "error";
-    const msg =
-      typeof o.data?.message === "string"
-        ? o.data.message
-        : typeof o.message === "string"
-          ? o.message
-          : describe(e);
-    const ref = typeof o.data?.ref === "string" ? ` (ref ${o.data.ref})` : "";
-    return `${name}: ${msg}${ref}`;
-  }
-  return describe(e);
-};
-
-/**
- * The opencode SDK client passed to a plugin resolves to a RESPONSE ENVELOPE —
- * `{ data, error, request, response }` (responseStyle "fields") — never the
- * bare payload. Reading the return directly as an array is therefore ALWAYS
- * false, which silently degraded both agent lookup and changeset scoping.
- * Unwrap `.data`; accept a bare array too (older surfaces / test doubles).
- * A discriminated result lets a failed call report the server's error instead
- * of a vague "non-array".
- */
-type ApiArray =
-  | { ok: true; value: unknown[] }
-  | { ok: false; why: string };
-
-const apiArray = (res: unknown): ApiArray => {
-  if (Array.isArray(res)) return { ok: true, value: res };
-  if (res && typeof res === "object") {
-    const r = res as { data?: unknown; error?: unknown };
-    if (Array.isArray(r.data)) return { ok: true, value: r.data };
-    if (r.error !== undefined && r.error !== null) {
-      return { ok: false, why: `call failed — ${errorText(r.error)}` };
-    }
-    return { ok: false, why: `response had no data array — ${describe(res)}` };
-  }
-  return { ok: false, why: `non-array ${describe(res)}` };
-};
-
 /** Paths an Aider-format opencode `apply_patch` writes (Gap 002 — the real
  *  patch format is `*** Add File: <path>` / `*** Update File: <path>` /
  *  `*** Move to: <path>`; the latter is a rename TARGET that must be judged).
@@ -230,20 +181,19 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
       if (!client?.app?.agents) return undefined;
       const now = Date.now();
       if (!agentCache || now > agentCache.expiry) {
-        const got = apiArray(await client.app.agents());
-        if (!got.ok) {
-          // A failed/reshaped client surface must be legible from the log, not
-          // just swallowed as a generic fallback.
+        const agents = (await client.app.agents()) as unknown;
+        if (!Array.isArray(agents)) {
+          // A changed opencode surface (e.g. {} when it used to be a list) must
+          // be legible from the log, not just swallowed as a generic fallback.
           warn(
-            `agent lookup: client.app.agents() unusable (${got.why}) — ` +
-              "falling back to lane-name classification",
+            `agent lookup: client.app.agents() returned non-array ` +
+              `${describe(agents)} — falling back to lane-name classification`,
           );
         }
         const rules = new Map<string, Rule[]>();
-        for (const a of (got.ok ? got.value : []) as Array<{
-          name?: string;
-          permission?: unknown;
-        }>) {
+        for (const a of (Array.isArray(agents)
+          ? agents
+          : []) as Array<{ name?: string; permission?: unknown }>) {
           if (a?.name) rules.set(a.name, normalizeRules(a.permission));
         }
         agentCache = { rules, expiry: now + AGENT_TTL_MS };
@@ -585,15 +535,15 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
         );
         return null;
       }
-      const childRes = apiArray(await sess.children({ sessionID }));
-      if (!childRes.ok) {
+      const children = await sess.children({ sessionID });
+      if (!Array.isArray(children)) {
         warn(
-          `changeset enumeration: session.children() unusable ` +
-            `(${childRes.why}) — falling back`,
+          `changeset enumeration: session.children() returned non-array ` +
+            `${describe(children)} — falling back`,
         );
         return null;
       }
-      const inWindow = (childRes.value as Array<{
+      const inWindow = (children as Array<{
         id?: string;
         time?: { created?: number };
       }>).filter((c) => epochMs(c?.time?.created) >= sinceMs);
@@ -601,15 +551,15 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
       const out = new Set<string>();
       for (const child of inWindow) {
         if (!child?.id) continue;
-        const msgRes = apiArray(await sess.messages({ sessionID: child.id }));
-        if (!msgRes.ok) {
+        const msgs = await sess.messages({ sessionID: child.id });
+        if (!Array.isArray(msgs)) {
           warn(
-            `changeset enumeration: session.messages() unusable ` +
-              `(${msgRes.why}) — falling back`,
+            `changeset enumeration: session.messages() returned non-array ` +
+              `${describe(msgs)} — falling back`,
           );
           return null;
         }
-        for (const msg of msgRes.value as Array<{ parts?: Array<Record<string, unknown>> }>) {
+        for (const msg of msgs as Array<{ parts?: Array<Record<string, unknown>> }>) {
           for (const part of msg?.parts ?? []) {
             if (part?.type !== "tool") continue;
             const tool = String(part.tool ?? "");

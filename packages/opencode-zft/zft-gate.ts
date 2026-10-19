@@ -82,7 +82,12 @@ const normalizeRules = (perm: unknown): Rule[] => {
   return [];
 };
 
-/** Compact, safe description of a client value for diagnostics; never throws. */
+const hookMode = (): "observe" | "enforce" =>
+  process.env.ZFT_HOOK_MODE === "enforce" ? "enforce" : "observe";
+
+/** Compact, safe description of an API-returned value for diagnostics — the
+ *  shape of what came back, so a changed opencode client surface is correctable
+ *  from the warning text alone. Never throws (JSON.stringify can on cycles). */
 const describe = (v: unknown): string => {
   if (v === null || v === undefined) return String(v);
   if (Array.isArray(v)) return `Array(${v.length})`;
@@ -98,50 +103,47 @@ const describe = (v: unknown): string => {
   return `${typeof v}(${JSON.stringify(String(v).slice(0, 100))})`;
 };
 
-/** Human-readable text for an opencode error payload. The SDK error envelope
- *  carries { name, data: { message, ref } }; a thrown Error carries .message. */
-const errorText = (e: unknown): string => {
-  if (e instanceof Error) return e.message;
-  if (e && typeof e === "object") {
-    const o = e as {
-      name?: unknown;
-      message?: unknown;
-      data?: { message?: unknown; ref?: unknown };
-    };
-    const name = typeof o.name === "string" ? o.name : "error";
-    const msg =
-      typeof o.data?.message === "string"
-        ? o.data.message
-        : typeof o.message === "string"
-          ? o.message
-          : describe(e);
-    const ref = typeof o.data?.ref === "string" ? ` (ref ${o.data.ref})` : "";
-    return `${name}: ${msg}${ref}`;
+/** Paths an Aider-format opencode `apply_patch` writes (Gap 002 — the real
+ *  patch format is `*** Add File: <path>` / `*** Update File: <path>` /
+ *  `*** Move to: <path>`; the latter is a rename TARGET that must be judged).
+ *  `*** Delete File:` lines write nothing — skipped, like /dev/null — and
+ *  results are deduped. */
+const parsePatchPaths = (patchText: string): string[] => {
+  const seen = new Set<string>();
+  for (const line of patchText.split("\n")) {
+    const m = line.match(/^\*\*\*\s+(?:Add File|Update File|Move to):\s*(\S+)\s*$/);
+    if (!m) continue;
+    const p = m[1];
+    if (p === "/dev/null") continue;
+    seen.add(p);
   }
-  return describe(e);
+  return [...seen];
 };
 
-/** The opencode SDK client passed to plugins resolves to a response envelope —
- *  { data, error, request, response } (responseStyle "fields") — never the
- *  bare payload, so reading the return directly as an array is always false
- *  and silently degrades the gate. Unwrap `.data`; accept a bare array too.
- *  Discriminated result so a failed call reports the server error, not a vague
- *  "non-array". */
-type ApiArray =
-  | { ok: true; value: unknown[] }
-  | { ok: false; why: string };
-
-const apiArray = (res: unknown): ApiArray => {
-  if (Array.isArray(res)) return { ok: true, value: res };
-  if (res && typeof res === "object") {
-    const r = res as { data?: unknown; error?: unknown };
-    if (Array.isArray(r.data)) return { ok: true, value: r.data };
-    if (r.error !== undefined && r.error !== null) {
-      return { ok: false, why: `call failed — ${errorText(r.error)}` };
-    }
-    return { ok: false, why: `response had no data array — ${describe(res)}` };
+/** Changed file paths for a write tool (edit/write/apply_patch) — the set the
+ *  after-phase L2 verdict gates. apply_patch carries no filePath, so its paths
+ *  are parsed from the patch (Gap 002: it escaped the gate entirely). Real
+ *  opencode patches are Aider `***` format (parsePatchPaths); the unified-diff
+ *  parse stays as a fallback for non-opencode patch text. */
+const changedPathsFor = (tool: string, args: unknown): string[] => {
+  const a = (args ?? {}) as Record<string, unknown>;
+  if (tool === "edit" || tool === "write") {
+    const fp = a.filePath;
+    return typeof fp === "string" && fp.trim() ? [fp] : [];
   }
-  return { ok: false, why: `non-array ${describe(res)}` };
+  if (tool === "apply_patch") {
+    const text = typeof a.patchText === "string" ? a.patchText : "";
+    const aider = parsePatchPaths(text);
+    if (aider.length) return aider;
+    const seen = new Set<string>();
+    for (const line of text.split("\n")) {
+      const m = line.match(/^(?:diff --git a\/(\S+) b\/\S+|--- a\/(\S+)|\+\+\+ b\/(\S+))/);
+      const p = m ? (m[1] ?? m[2] ?? m[3]) : undefined;
+      if (p && p !== "/dev/null") seen.add(p);
+    }
+    return [...seen];
+  }
+  return [];
 };
 
 export const ZftGate: Plugin = async ({ directory, client }) => {
@@ -179,18 +181,19 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
       if (!client?.app?.agents) return undefined;
       const now = Date.now();
       if (!agentCache || now > agentCache.expiry) {
-        const got = apiArray(await client.app.agents());
-        if (!got.ok) {
+        const agents = (await client.app.agents()) as unknown;
+        if (!Array.isArray(agents)) {
+          // A changed opencode surface (e.g. {} when it used to be a list) must
+          // be legible from the log, not just swallowed as a generic fallback.
           warn(
-            `agent lookup: client.app.agents() unusable (${got.why}) — ` +
-              "falling back to lane-name classification",
+            `agent lookup: client.app.agents() returned non-array ` +
+              `${describe(agents)} — falling back to lane-name classification`,
           );
         }
         const rules = new Map<string, Rule[]>();
-        for (const a of (got.ok ? got.value : []) as Array<{
-          name?: string;
-          permission?: unknown;
-        }>) {
+        for (const a of (Array.isArray(agents)
+          ? agents
+          : []) as Array<{ name?: string; permission?: unknown }>) {
           if (a?.name) rules.set(a.name, normalizeRules(a.permission));
         }
         agentCache = { rules, expiry: now + AGENT_TTL_MS };
@@ -236,12 +239,10 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
     if (existsSync(local) && runnable([local])) return (resolvedGate = [local]);
     const onPath = whichOr("zft");
     if (onPath && runnable([onPath])) return (resolvedGate = [onPath]);
-    // Last resort: run the module directly. Both import names are probed
-    // because the published 0.2.x wheel still exposes `zft.cli.main`.
+    // Last resort: run the module directly.
     const py = whichOr("python3") || whichOr("python");
     if (py) {
-      const mod =
-        probeModule(py, "zft.cli.main");
+      const mod = probeModule(py, "zft.cli.main");
       if (mod) return (resolvedGate = [py, "-m", mod]);
     }
     return (resolvedGate = null);
@@ -361,8 +362,12 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
   // faults fail open — a plugin error must never take the session down.
 
   const sessionEpoch = Date.now();
-  /** Sessions bound in memory: a task dispatch this gate allowed. */
-  const boundSessions = new Set<string>();
+  /** Sessions bound in memory: a task dispatch this gate allowed, or a
+   *  manual `zft task-gate before --subagent main` record the audit scan
+   *  found. The binding kind + contract/reason are retained so the
+   *  direct-write after-gate can name them in its governance description
+   *  (P-012 C2): `[contract: X]` / `[ungated: r]`. */
+  const boundSessions = new Map<string, { kind: "contract" | "ungated"; contract?: string; reason?: string }>();
   /** Negative-scan throttle: audit.log is rescanned at most every 2 s per
    *  session so the bind-then-retry loop stays instant but cheap. */
   const lastScan = new Map<string, number>();
@@ -372,12 +377,19 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
    *  plugin epoch (with a 2 s grace: a record written in the load race —
    *  same wall-clock millisecond region as this module's init — is still
    *  this session's binding, not a stale one). gated or explicitly
-   *  overridden; read-only/blocked records never bind. Scans the JSONL tail
-   *  only (bounded work per edit). */
-  const mainBindingInAudit = (): boolean => {
+   *  overridden; read-only/blocked records never bind. The binding kind and
+   *  contract/reason (r.contract / r.override / r.reason) are returned so
+   *  the after-gate can name them. Scans the JSONL tail only (bounded work
+   *  per edit); a scan error fails open as bound. */
+  const mainBindingInAudit = (): {
+    found: boolean;
+    contract: string | null;
+    override: boolean;
+    reason?: string;
+  } => {
     try {
       const f = join(directory, ".zft", "audit.log");
-      if (!existsSync(f)) return false;
+      if (!existsSync(f)) return { found: false, contract: null, override: false };
       const lines = readFileSync(f, "utf8").split("\n").filter(Boolean);
       for (let i = lines.length - 1; i >= 0 && i >= lines.length - 200; i--) {
         try {
@@ -385,20 +397,31 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
           if (r.phase !== "before" || r.subagent !== "main") continue;
           const ts = typeof r.ts === "number" ? r.ts : Date.parse(String(r.ts));
           if (!Number.isFinite(ts) || ts < sessionEpoch - 2000) continue;
-          if (r.gated === true || r.override === true) return true;
+          if (r.gated === true || r.override === true) {
+            return {
+              found: true,
+              contract: typeof r.contract === "string" ? r.contract : null,
+              override: r.override === true,
+              reason: typeof r.reason === "string" ? r.reason : undefined,
+            };
+          }
         } catch { /* one torn line never gates */ }
       }
-      return false;
+      return { found: false, contract: null, override: false };
     } catch (e) {
       warn(`session-gate audit scan failed (${e instanceof Error ? e.message : String(e)}) — failing open`);
-      return true;
+      return { found: true, contract: null, override: false };
     }
   };
 
-  const sessionGate = (input: unknown, output: unknown): void => {
+  /** Session-binding check for ONE deliverable path. edit/write pass
+   *  output.args.filePath; apply_patch passes each parsed patch path, so an
+   *  unbound multi-file patch is blocked on its first deliverable path.
+   *  Returns normally when the path is out of scope (store corpus / outside
+   *  root / unclassifiable) or the session is bound; throws GateBlock
+   *  otherwise. */
+  const sessionGatePath = (input: unknown, fp: string): void => {
     if (!active()) return;
-    const args = ((output as Record<string, unknown>)?.args ?? {}) as Record<string, unknown>;
-    const fp = typeof args.filePath === "string" ? args.filePath : "";
     if (!fp) return; // unclassifiable: the lint gate judges post-hoc
     const rel = rootRelative(fp);
     if (rel === null) return; // outside this store root
@@ -416,8 +439,15 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
     const last = lastScan.get(sessionID) ?? 0;
     if (now - last >= 2000) {
       lastScan.set(sessionID, now);
-      if (mainBindingInAudit()) {
-        if (sessionID) boundSessions.add(sessionID);
+      const binding = mainBindingInAudit();
+      if (binding.found) {
+        if (sessionID) {
+          // audit records carry contract/override/reason; a scan that
+          // failed open has none — still a binding, named as such
+          boundSessions.set(sessionID, binding.contract
+            ? { kind: "contract", contract: binding.contract }
+            : { kind: "ungated", reason: binding.reason ?? "bound via manual binding" });
+        }
         emitTaskgate({ phase: "session-gate", decision: "allow",
                        subagent: "main", sessionID });
         return;
@@ -493,16 +523,27 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
           messages?: (a: { sessionID: string }) => Promise<unknown>;
         };
       }).session;
-      if (!sessionID || !sess?.children || !sess?.messages) return null;
-      const childRes = apiArray(await sess.children({ sessionID }));
-      if (!childRes.ok) {
+      if (!sessionID || !sess?.children || !sess?.messages) {
+        const missing = [
+          !sess ? "session" : null,
+          sess && !sess.children ? "children" : null,
+          sess && !sess.messages ? "messages" : null,
+        ].filter(Boolean);
         warn(
-          `changeset enumeration: session.children() unusable ` +
-            `(${childRes.why}) — falling back`,
+          `changeset enumeration: session API unavailable (missing: ` +
+            `${missing.join(",")}) — falling back`,
         );
         return null;
       }
-      const inWindow = (childRes.value as Array<{
+      const children = await sess.children({ sessionID });
+      if (!Array.isArray(children)) {
+        warn(
+          `changeset enumeration: session.children() returned non-array ` +
+            `${describe(children)} — falling back`,
+        );
+        return null;
+      }
+      const inWindow = (children as Array<{
         id?: string;
         time?: { created?: number };
       }>).filter((c) => epochMs(c?.time?.created) >= sinceMs);
@@ -510,17 +551,15 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
       const out = new Set<string>();
       for (const child of inWindow) {
         if (!child?.id) continue;
-        const msgRes = apiArray(await sess.messages({ sessionID: child.id }));
-        if (!msgRes.ok) {
+        const msgs = await sess.messages({ sessionID: child.id });
+        if (!Array.isArray(msgs)) {
           warn(
-            `changeset enumeration: session.messages() unusable ` +
-              `(${msgRes.why}) — falling back`,
+            `changeset enumeration: session.messages() returned non-array ` +
+              `${describe(msgs)} — falling back`,
           );
           return null;
         }
-        for (const msg of msgRes.value as Array<{
-          parts?: Array<Record<string, unknown>>;
-        }>) {
+        for (const msg of msgs as Array<{ parts?: Array<Record<string, unknown>> }>) {
           for (const part of msg?.parts ?? []) {
             if (part?.type !== "tool") continue;
             const tool = String(part.tool ?? "");
@@ -582,6 +621,10 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
     try {
       const gate = resolveGate();
       if (!gate) {
+        if (hookMode() === "enforce") {
+          throw new GateBlock(
+            `${TAG} gate unavailable — enforcing (fail-closed); set ZFT_BIN or install zft`);
+        }
         warn(`no zft executable (${phase}): set ZFT_BIN or install it ` +
              "(`uv tool install zft` / `pipx install zft` / `pip install zft`) — failing open");
         return undefined;
@@ -609,6 +652,7 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
       });
       return { res, durationMs: Date.now() - t0 };
     } catch (e) {
+      if (e instanceof GateBlock) throw e; // deliberate enforce block (fail-closed)
       warn(`internal error (${phase}): ${e instanceof Error ? e.message : String(e)} — failing open`);
       return undefined;
     }
@@ -619,11 +663,18 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
       try {
         const tool = input.tool;
         if (!active()) return;
-        if (tool === "edit" || tool === "write") {
-          // session-binding boundary: deliverable edits need a recorded
-          // contract binding (dispatch, manual task-gate, or override)
+        if (tool === "edit" || tool === "write" || tool === "apply_patch") {
+          // session-binding boundary: deliverable writes need a recorded
+          // contract binding (dispatch, manual task-gate, or override).
+          // apply_patch carries patchText, not filePath — one check per
+          // parsed path (Gap 002: the patch bypassed the gate entirely).
+          const oargs = ((output as Record<string, unknown>)?.args ?? {}) as Record<string, unknown>;
+          const paths =
+            tool === "apply_patch" && typeof oargs.patchText === "string"
+              ? parsePatchPaths(oargs.patchText)
+              : [typeof oargs.filePath === "string" ? oargs.filePath : ""];
           try {
-            sessionGate(input, output);
+            for (const fp of paths) sessionGatePath(input, fp);
           } catch (e) {
             if (e instanceof GateBlock) {
               emitTaskgate({ phase: "session-gate", decision: "block",
@@ -650,8 +701,13 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
         const run = runGate("before", subagent, description, rules,
                             ["--dispatch-id", dispatchId]);
         if (!run || run.res.error) {
+          if (hookMode() === "enforce") {
+            throw new GateBlock(
+              `${TAG} gate failed to run (before) — enforcing (fail-closed): ` +
+              `${run?.res.error?.message ?? "spawn failed"}`);
+          }
           warn(`internal error (before): ${run?.res.error?.message ?? "spawn failed"} — failing open`);
-          return; // never block on an internal error
+          return; // never block on an internal error (observe mode)
         }
         // durable engagement/enforcement evidence, on disk before any
         // subagent spawns (a blocked exit 1 is an enforcement event)
@@ -670,8 +726,24 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
           warn(`unexpected exit code ${run.res.status} (before) — failing open`);
         }
         // an allowed dispatch binds the orchestrating session: its own
-        // deliverable edits then pass the session-binding gate
-        if (run.res.status === 0 && sessionID) boundSessions.add(sessionID);
+        // deliverable edits then pass the session-binding gate. The before
+        // stdout is a JSON verdict ({allow, gated, contract, reason, ...})
+        // — the binding kind is retained for the after-gate's governance
+        // description (P-012 C2).
+        if (run.res.status === 0 && sessionID) {
+          let binding: { kind: "contract" | "ungated"; contract?: string; reason?: string };
+          try {
+            const j = JSON.parse(String(run.res.stdout ?? "").trim()) as Record<string, unknown>;
+            const contract = typeof j.contract === "string" && j.contract ? j.contract : null;
+            const reason = typeof j.reason === "string" && j.reason ? j.reason : null;
+            binding = contract
+              ? { kind: "contract", contract }
+              : { kind: "ungated", reason: reason ?? "bound via dispatch" };
+          } catch {
+            binding = { kind: "ungated", reason: "unparseable gate output" };
+          }
+          boundSessions.set(sessionID, binding);
+        }
       } catch (e) {
         if (e instanceof GateBlock) throw e; // deliberate policy block
         warn(`hook error (before): ${e instanceof Error ? e.message : String(e)} — failing open`);
@@ -680,17 +752,77 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
 
     "tool.execute.after": async (input, output) => {
       try {
-        if (input.tool !== "task" || !active()) return;
-        if (typeof output.output !== "string") return;
+        if (!active()) return;
+        const tool = input.tool;
+        const direct = tool === "edit" || tool === "write" || tool === "apply_patch";
+        if (tool !== "task" && !direct) return;
         const args = (input.args ?? {}) as Record<string, unknown>;
-        const subagent = String(args.subagent_type ?? "");
-        const description = String(args.description ?? "");
-        const rules = await resolveRules(subagent);
-        const { marker, args: scopeArgs } = await scopeArgsFor(markerKey(input));
-        const dispatchId = marker?.dispatchId ?? randomUUID();
-        const sinceMs = marker?.sinceMs ?? Date.now();
+        let subagent: string;
+        let description: string;
+        let rules: Rule[] | undefined;
+        let scopeArgs: string[];
+        let dispatchId: string;
+        let sinceMs: number;
+        if (tool === "task") {
+          if (typeof output.output !== "string") return;
+          subagent = String(args.subagent_type ?? "");
+          description = String(args.description ?? "");
+          rules = await resolveRules(subagent);
+          const scope = await scopeArgsFor(markerKey(input));
+          scopeArgs = scope.args;
+          dispatchId = scope.marker?.dispatchId ?? randomUUID();
+          sinceMs = scope.marker?.sinceMs ?? Date.now();
+        } else {
+          // direct write (edit/write/apply_patch): a governance verdict
+          // (P-012 C1/C2) — is this write under a recorded binding? No
+          // dispatch marker; a fresh dispatchId stands alone as the record's
+          // identity. (Gap 002 — the after-verdict was task-only until
+          // C5; apply_patch paths come from parsePatchPaths.)
+          const changed = changedPathsFor(tool, args);
+          if (!changed.length) return;
+          // store corpus (.zft/**): the lint gate is the judge — every
+          // changed path under .zft/ skips the after-gate entirely (no
+          // spawn, no ledger record). Mixed corpus + deliverable still
+          // gates over all paths.
+          const rels = changed.map((p) => rootRelative(p)).filter((r): r is string => r !== null);
+          if (rels.length > 0 && rels.every((r) => r.startsWith(".zft/") || r === ".zft")) return;
+          subagent = "main";
+          // the description carries the binding marker so `--governance`
+          // can name it: [contract: X] / [ungated: r] / bare (ungoverned
+          // session → the CLI's exit-2 no-contract error stays live, the
+          // Gap-002 signal)
+          const directSessionID = sessionOf(input);
+          let binding = directSessionID ? boundSessions.get(directSessionID) : undefined;
+          if (!binding) {
+            // Disk fallback — the SAME source of truth the session-gate used to
+            // allow this write. The in-memory map is keyed by sessionOf(input);
+            // when that key is absent for a direct write (a manual/CLI binding
+            // the session-gate allowed from disk, or a PostToolUse input not
+            // carrying the same session identity), the miss must not be read
+            // as "ungoverned" — that records a false 'error' after-verdict
+            // instead of the binding's own contract/ungated verdict.
+            const onDisk = mainBindingInAudit();
+            if (onDisk.found) {
+              binding = onDisk.contract
+                ? { kind: "contract", contract: onDisk.contract }
+                : { kind: "ungated", reason: onDisk.reason ?? "bound via manual binding" };
+              if (directSessionID) boundSessions.set(directSessionID, binding);
+            }
+          }
+          const sanitize = (s: string): string =>
+            s.replace(/[\r\n]+/g, " ").trim().slice(0, 200);
+          description = !binding
+            ? `direct ${tool}`
+            : binding.kind === "contract"
+              ? `[contract: ${sanitize(binding.contract ?? "")}] direct ${tool}`
+              : `[ungated: ${sanitize(binding.reason ?? "bound via dispatch")}] direct ${tool}`;
+          scopeArgs = changed.flatMap((p) => ["--changed", p]);
+          dispatchId = randomUUID();
+          sinceMs = Date.now();
+        }
         const run = runGate("after", subagent, description, rules, [
           ...scopeArgs,
+          ...(tool === "task" ? [] : ["--governance"]), // direct writes only: governance, not coverage
           "--dispatch-id", dispatchId,
           "--since-ms", String(sinceMs),
         ]);
@@ -702,21 +834,39 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
         emitTaskgate({ phase: "after", dispatchId, sinceMs,
                        durationMs: run.durationMs, exit: run.res.status,
                        subagent, sessionID: sessionOf(input) });
-        // 0 = verdict green; 1 = verdict with missing clauses (still a
-        // report the orchestrator needs); 2/other = internal error.
-        if (run.res.status !== 0 && run.res.status !== 1) {
+        // 0 = green; 1 = missing clauses; 2 = error verdict (no contract
+        // reference — the Gap 002 signal); other = internal. Task verdicts
+        // are all prepended to the output; direct writes surface exit 2
+        // only (the ungoverned-write signal) — exit 0/1 go to the debug
+        // log (P-012 C3). Unknown codes are ignored.
+        if (run.res.status !== 0 && run.res.status !== 1 && run.res.status !== 2) {
           warn(`unexpected exit code ${run.res.status} (after) — ignoring`);
           return;
         }
         const out = (run.res.stdout ?? "").trim();
         if (!out) return;
-        const tag =
-          run.res.status === 1
-            ? `${TAG} coverage verdict: MISSING clauses`
-            : `${TAG} coverage verdict`;
-        output.output = `${tag}\n${out}\n\n${output.output}`;
+        if (tool === "task" && typeof output.output === "string") {
+          const tag =
+            run.res.status === 1
+              ? `${TAG} coverage verdict: MISSING clauses`
+              : run.res.status === 2
+                ? `${TAG} coverage verdict: ERROR (no contract reference)`
+                : `${TAG} coverage verdict`;
+          output.output = `${tag}\n${out}\n\n${output.output}`;
+        } else if (run.res.status === 2) {
+          // direct write: the exit-2 no-contract verdict is the Gap-002
+          // signal that the write is not under any binding — it stays
+          // surfaced (it can't rewrite the tool result, so it warns).
+          // warn() itself prefixes the tag — no double prefix (PoW S3 finding).
+          warn(`direct ${tool}: gate verdict\n${out}`);
+        } else {
+          // direct write: exit 0/1 governance verdicts (bound / ungated)
+          // are silent to the TUI (P-012 C3) — the ledger record above is
+          // the audit trail; a debug log keeps them recoverable.
+          await debug(`direct ${tool}: gate verdict (exit ${run.res.status})\n${out}`);
+        }
       } catch (e) {
-        // Never escape: the subagent result must reach the caller.
+        // Never escape: the tool result must reach the caller.
         warn(`hook error (after): ${e instanceof Error ? e.message : String(e)} — ignoring`);
       }
     },

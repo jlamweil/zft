@@ -24,6 +24,7 @@
   ],
   "files": [
     "index.ts",
+    "core",
     "zft-gate.ts",
     "zft-lint-gate.js",
     "README.md"
@@ -32,7 +33,8 @@
     "access": "public"
   },
   "scripts": {
-    "prepublishOnly": "cp ../../.opencode/plugins/zft-gate.ts ../../.opencode/plugins/zft-lint-gate.js ."
+    "prepublishOnly": "node ../../scripts/sync-zft-gates.mjs && node ../../scripts/sync-zft-gates.mjs --assert",
+    "pretest": "node ../../scripts/sync-zft-gates.mjs"
   },
   "devDependencies": {
     "@opencode-ai/plugin": "latest"

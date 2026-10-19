@@ -16,6 +16,7 @@ private/
 .zft/baseline/
 .zft/attest.json
 .zft/attest-key.pub.json
+.zft/gates-hook/
 .zft/audit.log
 .zft/tmp_oracle_batch.*
 .mutmut*

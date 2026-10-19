@@ -35,7 +35,7 @@ import path from "node:path"
 const TAG = "[zft lint]"
 const CORPUS_DIR = ".zft"
 const LOG_REL = path.join(CORPUS_DIR, "gates-hook", "log.jsonl")
-const EDIT_TOOLS = new Set(["edit", "write"])
+const EDIT_TOOLS = new Set(["edit", "write", "apply_patch"])
 const GATE_TIMEOUT_MS = 60_000
 const STORE_KEYS = ["ZFT_BIN"]
 
@@ -61,6 +61,22 @@ function findStoreRoot(startPath) {
 function inCorpus(absPath, root) {
   const rel = path.relative(root, absPath)
   return rel !== "" && !rel.startsWith("..") && rel.split(path.sep)[0] === CORPUS_DIR
+}
+
+/** Targets an Aider-format opencode `apply_patch` writes — the same
+ *  `*** Add/Update/Move to:` lines the task gate parses (Gap 002: the patch
+ *  escaped the lint gate). `*** Delete File:` writes nothing (skipped, like
+ *  /dev/null); results are deduped. */
+function parsePatchPaths(patchText) {
+  const seen = new Set()
+  for (const line of patchText.split("\n")) {
+    const m = line.match(/^\*\*\*\s+(?:Add File|Update File|Move to):\s*(\S+)\s*$/)
+    if (!m) continue
+    const p = m[1]
+    if (p === "/dev/null") continue
+    seen.add(p)
+  }
+  return [...seen]
 }
 
 /** Resolve the gate. Returns [argv, null] or [null, reason].
@@ -96,8 +112,7 @@ function resolveCandidates(directory) {
   if (fs.existsSync(local) && runnable([local])) return [[local], null]
   const onPath = whichOr("zft")
   if (onPath && runnable([onPath])) return [[onPath], null]
-  // Last resort: run the module directly. Both import names are probed
-  // because the published 0.2.x wheel still exposes `zft.cli.main`.
+  // Last resort: run the module directly.
   const py = whichOr("python3") || whichOr("python")
   if (py) {
     const mod = probeModule(py, "zft.cli.main")
@@ -197,11 +212,24 @@ export const ZftLintGate = async ({ directory, sessionID }) => {
       if (seen.has(key)) return
       seen.add(key)
 
-      const fp = input.args?.filePath
-      if (typeof fp !== "string" || !fp.trim()) return
-      const abs = path.isAbsolute(fp) ? fp : path.resolve(directory, fp)
+      // Resolve the changed absolute paths. edit/write carry a single
+      // args.filePath; apply_patch carries args.patchText (Aider *** format),
+      // so parse its Add/Update/Move-to targets (Gap 002: the patch escaped
+      // the lint gate). The gate acts on the contract corpus (.zft/**) only.
+      const tool = input.tool
+      let absPaths
+      if (tool === "apply_patch") {
+        const text = typeof input.args?.patchText === "string" ? input.args.patchText : ""
+        const parsed = parsePatchPaths(text)
+        if (!parsed.length) return // nothing written: silent (like no filePath today)
+        absPaths = parsed.map((p) => (path.isAbsolute(p) ? p : path.resolve(directory, p)))
+      } else {
+        const fp = input.args?.filePath
+        if (typeof fp !== "string" || !fp.trim()) return
+        absPaths = [path.isAbsolute(fp) ? fp : path.resolve(directory, fp)]
+      }
 
-      const root = findStoreRoot(abs)
+      const root = findStoreRoot(absPaths[0])
       if (!root) return // outside any store: stay completely silent
 
       const mode = process.env.ZFT_HOOK_MODE ?? "observe"
@@ -209,17 +237,23 @@ export const ZftLintGate = async ({ directory, sessionID }) => {
       const base = {
         ts: now(),
         event: "PostToolUse",
-        tool: input.tool === "write" ? "Write" : "Edit",
+        tool: tool === "write" ? "Write" : tool === "edit" ? "Edit" : "apply_patch",
         mode,
         session_id: sessionID ?? input.sessionID,
       }
 
-      if (!inCorpus(abs, root)) {
-        appendLog(root, { ...base, root, paths: [abs], decision: "passthrough" })
+      const corpus = absPaths.filter((p) => inCorpus(p, root))
+      if (!corpus.length) {
+        // edit/write outside the corpus are logged as passthrough (unchanged);
+        // an apply_patch with no corpus targets stays silent (nothing to lint).
+        if (tool !== "apply_patch") {
+          appendLog(root, { ...base, root, paths: absPaths, decision: "passthrough" })
+        }
         return
       }
 
-      const record = { ...base, root, paths: [abs] }
+      const primary = corpus[0] // representative path for messages
+      const record = { ...base, root, paths: corpus }
       const [gateArgv, reason] = resolveGate(root)
       if (!gateArgv) {
         appendLog(root, { ...record, decision: "gate_unavailable", detail_tail: reason })
@@ -264,9 +298,9 @@ export const ZftLintGate = async ({ directory, sessionID }) => {
           gate: { name: "L0", status: "failed", exit: 1 },
           detail_tail: out.slice(-2000) })
         if (enforce) {
-          throw new Error(`${TAG} L0 FAILED after edit to ${abs}\n${out}`.slice(0, 4000))
+          throw new Error(`${TAG} L0 FAILED after edit to ${primary}\n${out}`.slice(0, 4000))
         }
-        warn(`L0 FAILED after edit to ${abs} (observe mode — recorded, not blocked)`)
+        warn(`L0 FAILED after edit to ${primary} (observe mode — recorded, not blocked)`)
         return
       }
       appendLog(root, { ...record, decision: "gate_unavailable",

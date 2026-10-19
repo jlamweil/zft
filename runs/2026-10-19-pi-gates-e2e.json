@@ -19,5 +19,5 @@
     },
     "live_demand_give_up": "mechanism live-verified in the verification phase (V3/V6, sandbox ext-v3/ext-v6); the demand/give-up tables are contract-tested here (buildDemandText/buildGiveUpText carry explicit STOP instructions; cap-th failure gives up; give-up never repeats)"
   },
-  "machine_logs": "sandbox evidence under ~ and sandbox/evidence/B5/ (not part of this repo); the durable records are the commit graph + this file"
+  "machine_logs": "sandbox evidence under sandbox-user/pi-integration/evidence/ and sandbox/evidence/B5/ (not part of this repo); the durable records are the commit graph + this file"
 }

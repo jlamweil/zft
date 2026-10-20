@@ -43,6 +43,13 @@ def render_steps(clauses: list[dict]) -> str:
 
 def gherkin_fallback_green(clauses: list[dict], sandbox: Path, run_pytest) -> bool:
     """Write fallback artifacts into sandbox and confirm pytest passes."""
+    # Orphan cleanup: pytest_bdd auto-collects every .feature in the sandbox,
+    # so a stale feature for a removed clause (step definitions gone) fails
+    # the whole stage. Rebuild the feature set from the current clauses only.
+    wanted = {f"{clause['alias'].lower()}.feature" for clause in clauses}
+    for stale in sandbox.glob("*.feature"):
+        if stale.name not in wanted:
+            stale.unlink()
     for clause in clauses:
         (sandbox / f"{clause['alias'].lower()}.feature").write_text(render_feature(clause))
     (sandbox / "test_generated.py").write_text(render_steps(clauses))

@@ -75,7 +75,7 @@ archived (read-only, no longer worked in). Two invariants keep it
 leak-free: the `leak-sweep` pre-commit hook
 (`tests/unit/test_no_private_leaks.py`) rejects private identifiers and
 absolute home paths in tracked files, and release cuts are reviewed
-against it. The `zft check .` store in [`.zft/`](.zft/) is this
+against it. The `zft check .` store in [`.zft/specs/`](.zft/specs/) is this
 repository's own contract corpus.
 
 **Version.** 0.2.1 — leak-free maintenance cut (2026-10-15), live on PyPI.
@@ -367,9 +367,9 @@ Version table (independent per-artifact versioning):
 
 | Artifact | Registry | Version | Publish command |
 | --- | --- | --- | --- |
-| `zft` (Python) | PyPI | 0.2.1 | `python -m build && twine upload dist/*` |
+| `zft` (Python) | PyPI | 0.3.0 | `python -m build && twine upload dist/*` |
 | `opencode-zft` | npm | 0.3.0 | `cd packages/opencode-zft && npm publish` |
-| `pi-zft` | npm | 0.2.1 | `cd packages/pi-zft && npm publish` |
+| `pi-zft` | npm | 0.3.0 | `cd packages/pi-zft && npm publish` |
 | flockwork harness | PyPI | 0.4.0 | separate repository |
 
 Publishing flow (JS adapters):

@@ -1,10 +1,10 @@
-"""metrics: read-only statistics over .zft/runs ledgers (INT-REDACTED).
+"""metrics: read-only statistics over .zft/runs ledgers.
 
 Sister reader to debug/ledger.py: never writes. Every number is derived
 from ledger bytes and filesystem mtimes. Depends on nothing above the
 debug layer (plan §2 dependency direction). `dora()` adds the five DORA
 keys (ops/DORA-METRICS-MAP.md layer 2) over the same summaries —
-`zft metrics --dora` (WQ-REDACTED); same read-only observer, a section, never
+`zft metrics --dora`; same read-only observer, a section, never
 a gate.
 
 Crash taxonomy (the stop-hook crash class: runs that died mid-report):

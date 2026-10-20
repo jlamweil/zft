@@ -2,7 +2,7 @@
 """ZCode Stop hook: run the zft fast check tier before a session may stop.
 
 Contract (ZCode hooks — the documented event set includes Stop; verified
-live against the zcode-driver driver repo, 2026-09-28):
+live, 2026-09-28):
 - one JSON event on stdin: {hook_event_name: "Stop", session_id, cwd, ...};
 - exit 0 = stop allowed; exit 2 + reason on stderr = the stop is blocked and
   the reason is fed back to the session, which must resolve it and try to

@@ -98,7 +98,7 @@ def test_documented_pypi_installs_resolve_stable():
     # Premise inverted 2026-10-01: 0.2.0 STABLE is live on PyPI (uploaded
     # from the receipted cut 2d92f82d — verdicts/release-0.2.0-executed-*),
     # so the honest documented first step is bare `pip install zft`. The
-    # a8-era --pre pin (INT-REDACTED, when PyPI carried only a1..a8) taught a
+    # a8-era --pre pin (when PyPI carried only a1..a8) taught a
     # flag a fresh consumer no longer needs. Every documented install of
     # the PyPI package must be the bare stable install; a --pre remnant is
     # stale documentation.

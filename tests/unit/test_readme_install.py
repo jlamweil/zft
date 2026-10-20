@@ -1,6 +1,6 @@
 """Pin the README's documented PyPI install lines to measured reality.
 
-WQ-REDACTED (INT-REDACTED) anti-regression pin — with the direction the opposite
+Anti-regression pin — with the direction the opposite
 of the 0.2.0a6-era one: on 2026-10-02 the index carried ONLY PEP 440
 pre-releases (0.2.0a1..a6), so d560548 documented ``pip install --pre
 zft``; 0eec2ef then dropped ``--pre`` because 0.2.0 final shipped, and

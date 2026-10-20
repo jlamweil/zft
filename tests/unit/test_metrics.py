@@ -1,4 +1,4 @@
-"""zft metrics — read-only statistics over .zft/runs ledgers (INT-REDACTED).
+"""zft metrics — read-only statistics over .zft/runs ledgers.
 
 Pins the run-summary shape, crash-class taxonomy, flake detection,
 coverage trends, per-window/per-commit breakdowns, timing percentiles,
@@ -351,7 +351,7 @@ def test_cli_metrics_refuses_missing_runs_dir(tmp_path):
     assert "no runs" in err.lower()
 
 
-# ------------------------------------------------- the DORA five (WQ-REDACTED)
+# ------------------------------------------------- the DORA five
 #
 # ops/DORA-METRICS-MAP.md layer 2: deployment frequency = gate-passed
 # landings per repo per window; lead time = change arrival (first gate

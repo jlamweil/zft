@@ -48,8 +48,8 @@ def test_citation_cff_version_matches_pyproject():
 
 
 def test_npm_package_version_aligned():
-    # WQ-REDACTED (INT-REDACTED) history: at the 0.2.0a6-era public tree this
-    # package was absent by the npm-packaging decision (WQ-REDACTED) and the
+    # Anti-regression history: at the 0.2.0a6-era public tree this
+    # package was absent by the npm-packaging decision and the
     # alignment test had no surface to check (phase-1 smoke: REAL fail).
     # The tree carries packages/opencode-zft again since b580fcb /
     # f0ef81d ("0.2.0 STABLE"), so the alignment assert below runs —
@@ -62,7 +62,7 @@ def test_npm_package_version_aligned():
 
         pytest.skip(
             "packages/opencode-zft absent from this tree — the "
-            "npm-packaging decision (WQ-REDACTED) has kept the npm package "
+            "npm-packaging decision has kept the npm package "
             "out of the public repo before (npm opencode-zft "
             "0.2.0-alpha.N distribution); nothing to align-check here")
     # house convention (a4 receipt): the npm package stays version-aligned

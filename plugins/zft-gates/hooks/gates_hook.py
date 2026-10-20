@@ -6,8 +6,8 @@ ZCode twin of plugins/codex/hooks/gates_hook.py — same policy, same env
 knobs (ZFT_BIN / ZFT_ROOT / ZFT_HOOK_MODE), same log. Behavior is protected
 from drift by tests/unit/test_zcode_gates_hook.py, which drives both files.
 
-Contract (ZCode hooks — workspace .zcode/config.json shape, verified live in
-the zcode-driver driver repo, 2026-09-28; events are the documented
+Contract (ZCode hooks — workspace .zcode/config.json shape, verified live,
+2026-09-28; events are the documented
 seven: SessionStart, UserPromptSubmit, PreToolUse, PermissionRequest,
 PostToolUse, PostToolUseFailure, Stop):
 - one JSON event on stdin: {hook_event_name, tool_name, tool_input, cwd,
@@ -211,7 +211,8 @@ def main() -> int:
     status, gate_exit, detail = run_l0(root, gate_argv)
     if status == "passed":
         append_log(root, {**record, "decision": "allow",
-                          "blocked": False, "gate": {"name": "L0", "status": status, "exit": gate_exit}})
+                          "blocked": False,
+                          "gate": {"name": "L0", "status": status, "exit": gate_exit}})
         return 0
     if status == "failed":
         append_log(root, {**record, "decision": "deny" if enforce else "allow",

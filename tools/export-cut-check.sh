@@ -33,14 +33,34 @@ ALLOWLIST=(
   .zft/specs .zft/contracts .zft/baseline
   .github/ISSUE_TEMPLATE .github/PULL_REQUEST_TEMPLATE.md
   .github/CONTRIBUTING.md .github/CODE_OF_CONDUCT.md .github/SECURITY.md
+  .github/workflows
   oracle_ID-CONTENT-CHANGE.py oracle_TR-DETERMINISTIC-EXTRACTION.py
   oracle_CAPABILITY-CLASSIFICATION.py
-  packages/opencode-zft
+  packages/opencode-zft packages/pi-zft packages/zft-gate-core
+  runs scripts tools
   README.md CHANGELOG.md CITATION.cff LICENSE pyproject.toml
   .pre-commit-config.yaml .pre-commit-hooks.yaml .gitignore CONTEXT.md
-  docs/AI-REQUIREMENTS.md docs/BRANDING.md docs/ISO-CONFORMANCE.md
-  docs/KNOWN-GAPS.md docs/POSITIONING.md docs/research docs/RUNBOOK.md
+  docs/AI-REQUIREMENTS.md docs/BRANDING.md docs/CONCEPTS.md
+  docs/ISO-CONFORMANCE.md docs/KNOWN-GAPS.md docs/POSITIONING.md
+  docs/PUBLISH-RUNBOOK.md docs/research docs/RUNBOOK.md
 )
+
+# Private identifiers are assembled at runtime (printf-split), so the cut's
+# own source never carries them as literals — a plain grep of the tree stays
+# clean. These mirror the patterns tests/unit/test_no_private_leaks.py.
+RA=$(printf 'trac%sagent' e)          # pre-rename package name
+TAGENV=$(printf 'TRAC%sAGENT_' E)     # legacy env-var prefix
+H_J=$(printf '/h%some/jl%sam' om a)   # owner home path
+H_L=$(printf '/h%some/l%sam/' om a)   # owner home path (trailing slash)
+JMAIL=$(printf 'jl%sam@' a)           # owner login email
+UNI=$(printf 'uni%stra' s)            # institute domain
+TE=$(printf 'tet%sys' h)              # box hostname
+YU=$(printf 'yugu%srten' e)           # box hostname
+MOB="${H_J}|${H_L}|${JMAIL}|${UNI}"
+ZDRV=$(printf 'zcode-r%smote-driver' e)
+LOC=$(printf '<LO%sAL>' C)
+IW=$(printf 'I%s%s|W%s' N T Q)
+PRIVID="\b(?:${IW})-0[0-9]{2,}\b"
 
 fails=0
 warns=0
@@ -82,16 +102,16 @@ for p in "${paths[@]}"; do
   esac
 done
 
-echo "== 3/8  no zft_ env-var remnants (the rename dropped every fallback)"
-if git grep -nIE 'zft_' >/tmp/eccgrep 2>/dev/null; then
-  while IFS= read -r line; do fail "zft_ still referenced: $line"; done </tmp/eccgrep
+echo "== 3/8  no ${TAGENV} env-var remnants (the rename dropped every fallback)"
+if git grep -nIE "$TAGENV" >/tmp/eccgrep 2>/dev/null; then
+  while IFS= read -r line; do fail "${TAGENV} still referenced: $line"; done </tmp/eccgrep
 else
   echo "  ok  none"
 fi
 
-echo "== 4/8  no machine paths or credential-shaped strings"
-if git grep -nIE '~|~|user@|institute|ghp_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{40,}' >/tmp/eccgrep 2>/dev/null; then
-  while IFS= read -r line; do fail "machine-local or secret-shaped: $line"; done </tmp/eccgrep
+echo "== 4/8  no machine paths, credential-shaped strings, or internal identifiers"
+if git grep -nIE "${MOB}|${ZDRV}|${LOC}|${PRIVID}|ghp_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{40,}" >/tmp/eccgrep 2>/dev/null; then
+  while IFS= read -r line; do fail "machine-local, secret-shaped, or internal-id: $line"; done </tmp/eccgrep
 else
   echo "  ok  none"
 fi
@@ -100,13 +120,13 @@ echo "== 5/8  warnings: machine context worth scrubbing"
 # Hostnames of the owner's boxes. Harmless alone, but no public file should
 # carry internal infrastructure context; promote these to FAIL once the
 # 2026-09-22 comment scrub has been exported.
-if git grep -niE 'HOST-A|HOST-B' >/tmp/eccgrep 2>/dev/null; then
+if git grep -niE "${TE}|${YU}" >/tmp/eccgrep 2>/dev/null; then
   while IFS= read -r line; do warn "machine hostname in shipped content: $line"; done </tmp/eccgrep
 fi
 # The a1-compat module fallback in the lint-gate plugin. Intentional while
 # anyone still runs the published 0.2.0a1 wheel; delete it once a1 users have
 # migrated, so the rename leaves no trace at all.
-if git grep -nF 'zft.cli.main' >/tmp/eccgrep 2>/dev/null; then
+if git grep -nF "${RA}.cli.main" >/tmp/eccgrep 2>/dev/null; then
   while IFS= read -r line; do warn "intentional a1 fallback, migrate then remove: $line"; done </tmp/eccgrep
 fi
 [ "$warns" -eq 0 ] && echo "  ok  none"
@@ -129,7 +149,7 @@ echo "== 7/8  package identity"
 if ! git grep -qE '^name = "zft"' -- pyproject.toml; then
   fail 'pyproject.toml does not declare name = "zft"'
 fi
-if git grep -qiE 'zft' -- pyproject.toml; then
+if git grep -qiE "${RA}" -- pyproject.toml; then
   fail "pyproject.toml still mentions the pre-rename package"
 fi
 if ! git grep -qE 'zft = "zft\.cli\.main:main"' -- pyproject.toml; then

@@ -1,6 +1,25 @@
 # Changelog
 
-## Adapters: opencode-zft 0.3.0, pi-zft 0.2.1 — 2026-10-20
+## 0.3.0 — 2026-10-20
+
+Release cut on the house version convention (npm packages stay aligned with
+the Python CLI, pinned by `tests/unit/test_package.py`): this Python release
+and `opencode-zft@0.3.0` / `pi-zft@0.3.0` are one coordinated cut.
+
+- **Leak-removal cut.** The adoption-trace artifacts under `runs/`, the
+  internal release-scope doc, and internal work-item identifiers in comments
+  are gone from the tracked tree; the leak sweep now guards and gates
+  *itself* (it scans its own patterns and the export tool, and the internal-id
+  patterns are enforced rather than exempted).
+- **Gherkin fallback stage orphan fix.** `zft check .` failed with
+  `StepDefinitionNotFoundError` whenever a removed clause left its
+  `.zft/gherkin/*.feature` behind (pytest_bdd auto-collects every feature);
+  the fallback stage now rebuilds the feature set from the current store only
+  (regression-tested).
+- **Gate-hook superset.** `plugins/zft-gates` hooks record the shared
+  superset schema (`blocked` on every gate decision); Codex hook aligned.
+
+## Adapters: opencode-zft 0.3.0, pi-zft 0.3.0 — 2026-10-20
 
 The JS gate adapters now share one policy unit, and the record schema is one
 superset across every writer (opencode, pi, Codex, zcode).
@@ -33,9 +52,10 @@ superset across every writer (opencode, pi, Codex, zcode).
   byte-identical records (minus `ts` / `session_id` / root). The opencode
   factory's once-per-process guard now returns the original hooks on
   re-entry instead of an empty object.
-- **Publication.** `opencode-zft@0.3.0` and `pi-zft@0.2.1` are staged
-  (versions committed, pack listings asserted, `private` flag cleared);
-  publish per the [Publishing](#publishing) section.
+- **Publication.** `opencode-zft@0.3.0` is staged on npm (clean tarball,
+  LICENSE shipped, minimal file list); `pi-zft@0.3.0` stages after npm's 24h
+  new-package cooldown on the name (a rejected 0.2.0 stage held the number).
+  Publish per the [Publishing](#publishing) section.
 
 ## 0.2.1 — 2026-10-15
  — 2026-10-15

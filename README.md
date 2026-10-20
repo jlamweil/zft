@@ -78,7 +78,7 @@ absolute home paths in tracked files, and release cuts are reviewed
 against it. The `zft check .` store in [`.zft/specs/`](.zft/specs/) is this
 repository's own contract corpus.
 
-**Version.** 0.2.1 — leak-free maintenance cut (2026-10-15), live on PyPI.
+**Version.** 0.3.0 — gate-core adapters + leak-removal cut (2026-10-20); 0.2.1 was the leak-free maintenance cut (2026-10-15).
 Requires **Python 3.12+**; the `zft` console script is the only entry point.
 
 **Battle-tested.** The gates police this repository's own development: the

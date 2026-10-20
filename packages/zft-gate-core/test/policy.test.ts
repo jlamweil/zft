@@ -10,8 +10,32 @@
  * oracle; this file unit-tests the relocated units directly).
  *
  * Run: bun test packages/zft-gate-core/test/policy.test.ts
+ *     node --experimental-strip-types --test packages/zft-gate-core/test/policy.test.ts
  */
-import { test, expect, beforeEach, afterEach } from "bun:test";
+import { test, beforeEach, afterEach } from "node:test";
+import { strict as assert } from "node:assert";
+
+// minimal bun-expect subset, so this file runs under both runners
+const expect = (v: unknown) => ({
+  toBe: (e: unknown) => assert.equal(v, e),
+  toBeNull: () => assert.equal(v, null),
+  toBeUndefined: () => assert.equal(v, undefined),
+  toContain: (sub: unknown) => {
+    if (typeof v !== "string") throw new Error("toContain requires a string");
+    assert.ok(v.includes(String(sub)), `expected ${JSON.stringify(v)} to contain ${JSON.stringify(sub)}`);
+  },
+  toBeTruthy: () => assert.ok(v),
+  toEqual: (e: unknown) => assert.deepStrictEqual(v, e),
+  toMatchObject: (part: Record<string, unknown>) =>
+    Object.entries(part).forEach(([k, pv]) => {
+      const av = (v as Record<string, unknown>)[k];
+      if (pv === undefined) assert.equal(av, undefined);
+      else assert.deepStrictEqual(av, pv);
+    }),
+  not: {
+    toBe: (e: unknown) => assert.notEqual(v, e),
+  },
+});
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync, chmodSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

@@ -1,6 +1,6 @@
 # Changelog
 
-## Adapters: opencode-zft 0.3.0, pi-zft 0.2.0 — 2026-10-20
+## Adapters: opencode-zft 0.3.0, pi-zft 0.2.1 — 2026-10-20
 
 The JS gate adapters now share one policy unit, and the record schema is one
 superset across every writer (opencode, pi, Codex, zcode).
@@ -33,7 +33,7 @@ superset across every writer (opencode, pi, Codex, zcode).
   byte-identical records (minus `ts` / `session_id` / root). The opencode
   factory's once-per-process guard now returns the original hooks on
   re-entry instead of an empty object.
-- **Publication.** `opencode-zft@0.3.0` and `pi-zft@0.2.0` are staged
+- **Publication.** `opencode-zft@0.3.0` and `pi-zft@0.2.1` are staged
   (versions committed, pack listings asserted, `private` flag cleared);
   publish per the [Publishing](#publishing) section.
 
@@ -75,7 +75,7 @@ classification — ships in this build too (sections below).
   durable `taskgate.jsonl` ledger beside the existing audit log — "did the
   gate run for this dispatch, when, and how long" is answerable after the
   fact from the filesystem alone, the durable record gates-bench v3 §1
-  specifies (INT-REDACTED).
+  specifies.
 
 - **`zft negotiate` refuses a malformed manifest typed, before the state
   machine runs.** A manifest missing `version` used to sail through the

@@ -369,7 +369,7 @@ Version table (independent per-artifact versioning):
 | --- | --- | --- | --- |
 | `zft` (Python) | PyPI | 0.2.1 | `python -m build && twine upload dist/*` |
 | `opencode-zft` | npm | 0.3.0 | `cd packages/opencode-zft && npm publish` |
-| `pi-zft` | npm | 0.2.0 | `cd packages/pi-zft && npm publish` |
+| `pi-zft` | npm | 0.2.1 | `cd packages/pi-zft && npm publish` |
 | flockwork harness | PyPI | 0.4.0 | separate repository |
 
 Publishing flow (JS adapters):

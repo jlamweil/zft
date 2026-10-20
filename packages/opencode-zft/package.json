@@ -23,11 +23,11 @@
     "multiagent"
   ],
   "files": [
-    "index.ts",
     "core",
     "zft-gate.ts",
     "zft-lint-gate.js",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "publishConfig": {
     "access": "public"

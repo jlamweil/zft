@@ -113,8 +113,9 @@ def test_codex_l0_bad_exit_superset(tmp_path):
 
 # --- codex gates hook: stop (no argv / bad exit) -----------------------------
 
-# (codex stop-gate superset: private-only — the public codex hook has no
-# stop path; the pin lives in zft-private's copy of this test.)
+# (codex stop-gate superset: not pinned here — the codex hook in
+# this repo has no stop path; the stop-gate schema is pinned by the
+# zft-gates stop_gate tests below.)
 
 def test_zcode_l0_no_argv_superset_observe(tmp_path):
     _seed_store(tmp_path)

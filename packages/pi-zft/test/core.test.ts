@@ -5,10 +5,11 @@
  * function identities, not copies) so opencode-zft and pi-zft can never
  * diverge on corpus logic.
  *
- * Run: bun test packages/pi-zft/test/core.test.ts
+ * Run: node --test 'packages/pi-zft/test/*.test.ts'
  */
-import { test, expect } from "bun:test";
-import * as policy from "../lib/policy.js";
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import * as policy from "../lib/policy.ts";
 import * as core from "../core/gate-core.js";
 
 test("policy re-exports the core policy units by identity", () => {
@@ -27,12 +28,12 @@ test("policy re-exports the core policy units by identity", () => {
     "GATE_TIMEOUT_MS",
     "toAbsolute",
   ] as const) {
-    expect(policy[name], `policy.${name} should be the core export`).toBe(core[name]);
+    assert.equal(policy[name], core[name], `policy.${name} should be the core export`);
   }
 });
 
 test("pi EDIT_TOOLS is the documented subset of core EDIT_TOOLS", () => {
   const piTools = [...policy.EDIT_TOOLS];
-  for (const t of piTools) expect(core.EDIT_TOOLS.has(t), `core must accept ${t}`).toBe(true);
-  expect(piTools.sort()).toEqual(["edit", "write"]); // pi has no apply_patch
+  for (const t of piTools) assert.ok(core.EDIT_TOOLS.has(t), `core must accept ${t}`);
+  assert.deepEqual(piTools.sort(), ["edit", "write"]); // pi has no apply_patch
 });

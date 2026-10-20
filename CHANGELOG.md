@@ -1,6 +1,44 @@
 # Changelog
 
+## Adapters: opencode-zft 0.3.0, pi-zft 0.2.0 — 2026-10-20
+
+The JS gate adapters now share one policy unit, and the record schema is one
+superset across every writer (opencode, pi, Codex, zcode).
+
+- **`packages/zft-gate-core`** — the shared pure gate policy
+  (`findStoreRoot` / `inCorpus` / `parsePatchPaths` / `corpusPathsFor` /
+  `resolveGate` / `runGate` / `appendLog`, plus the
+  `gateUnavailableRecord()` superset factory). Zero dependencies, zero
+  imports, repo-relative only. `opencode-zft/zft-lint-gate.js` and
+  `pi-zft` are thin protocol shims over it, importing a synced byte copy
+  relatively (`./core/gate-core.js`) — no bare specifiers, no
+  node_modules, no symlinks.
+- **Superset record schema.** Every gate-decision record
+  (`allow` / `deny` / `gate_unavailable`) carries `blocked` on every
+  writer; meta-records (`passthrough`, `unclassified`, `outside_root`)
+  carry neither `gate` nor `blocked`. Example lines in
+  [`.opencode/plugins/README.md`](.opencode/plugins/README.md).
+- **Cross-adapter parity is tested.**
+  `packages/zft-gate-core/test/parity.test.ts` fires identical events
+  through both real adapters and diffs the records (run under both
+  `bun test` and bare `node --test`).
+- **The sync arrow is package-canonical.**
+  `scripts/sync-zft-gates.mjs` deploys the packages to
+  `.opencode/plugins/` and the packages' `core/` copies; it runs as
+  `pretest` and, in copy+assert mode, as `opencode-zft`'s
+  `prepublishOnly`.
+- **Fixes riding the cut.** pi's edit gate now reads pi's real tool
+  parameter (`input.path`, with `input.filePath` fallback) — found live
+  during side-by-side verification, where the two adapters produced
+  byte-identical records (minus `ts` / `session_id` / root). The opencode
+  factory's once-per-process guard now returns the original hooks on
+  re-entry instead of an empty object.
+- **Publication.** `opencode-zft@0.3.0` and `pi-zft@0.2.0` are staged
+  (versions committed, pack listings asserted, `private` flag cleared);
+  publish per the [Publishing](#publishing) section.
+
 ## 0.2.1 — 2026-10-15
+ — 2026-10-15
 
 Leak-free maintenance cut. Removed every reference to the project's former
 private identity (codename, hostnames, and absolute /home paths) from the

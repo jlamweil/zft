@@ -69,6 +69,15 @@ flock-core); the names are neighbors, the layers are different.
 
 ## Honest state
 
+**Canonical repository.** This is the single working repository for zft
+development and publication; the earlier private development line is
+archived (read-only, no longer worked in). Two invariants keep it
+leak-free: the `leak-sweep` pre-commit hook
+(`tests/unit/test_no_private_leaks.py`) rejects private identifiers and
+absolute home paths in tracked files, and release cuts are reviewed
+against it. The `zft check .` store in [`.zft/`](.zft/) is this
+repository's own contract corpus.
+
 **Version.** 0.2.1 — leak-free maintenance cut (2026-10-15), live on PyPI.
 Requires **Python 3.12+**; the `zft` console script is the only entry point.
 
@@ -351,3 +360,36 @@ One line, no promises: the gates are becoming the trust layer between agents
 ## License
 
 Apache-2.0 — see [LICENSE](LICENSE).
+
+## Publishing
+
+Version table (independent per-artifact versioning):
+
+| Artifact | Registry | Version | Publish command |
+| --- | --- | --- | --- |
+| `zft` (Python) | PyPI | 0.2.1 | `python -m build && twine upload dist/*` |
+| `opencode-zft` | npm | 0.3.0 | `cd packages/opencode-zft && npm publish` |
+| `pi-zft` | npm | 0.2.0 | `cd packages/pi-zft && npm publish` |
+| flockwork harness | PyPI | 0.4.0 | separate repository |
+
+Publishing flow (JS adapters):
+
+1. Change the canonical package
+   (`packages/opencode-zft/` or `packages/pi-zft/`).
+2. `node scripts/sync-zft-gates.mjs` — deploys the package to
+   `.opencode/plugins/` and the packages' `core/` byte copies; commit the
+   deploy alongside.
+3. Bump the version in the package's `package.json` and record it in
+   `CHANGELOG.md` (this table too).
+4. `npm publish` from the package directory — `prepublishOnly` re-runs the
+   sync in copy+assert mode, so a stale deploy or a stale `core/` copy
+   fails the publish rather than shipping.
+
+Install (consumers): `npm i -g opencode-zft` wires the opencode plugin;
+`pi-zft` installs by copying the package into
+`~/.pi/agent/extensions/pi-zft/` (user scope — the project scope is
+trust-gated in pi). The gate behavior itself is identical across
+adapters; see [`.opencode/plugins/README.md`](.opencode/plugins/README.md)
+for the record schema and
+[`packages/zft-gate-core/README.md`](packages/zft-gate-core/README.md)
+for the policy unit.

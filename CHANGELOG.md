@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.3.1 — 2026-10-21
+
+Patch cut on the 0.3.0 surface: four gate-correctness fixes, two of which made
+the gates report work that was not actually verified (or verified against the
+wrong changeset).
+
+- **Changeset enumeration repaired (opencode adapter).** The after-gate asked
+  the opencode SDK for `session.children({sessionID})`, but the generated
+  methods take URL-template params under `path` (`{path:{id},
+  query:{directory}}`). The literal `{id}` reached the server (`Expected a
+  string starting with "ses", got "%7Bid%7D"`), every enumeration failed, and
+  each subagent after-gate silently fell back to whole-tree / since-ref
+  coverage — crediting the subagent with files it never touched. Calls now use
+  the real signature and unwrap the SDK's `{data}`/`{error}` envelope; a
+  failed enumeration reports the server error instead of a generic
+  non-array warning.
+- **Writes outside the store root no longer produce a verdict.** Such a write
+  is exempt at the session gate, but the after-gate still emitted an `error`
+  record for it ("no [contract: …] reference in description"). It is now
+  skipped, matching the session gate.
+- **Read-only dispatches no longer bind the session.** An `oracle`/`explorer`
+  dispatch returns `lane: readonly` with no contract; the adapter nonetheless
+  bound the session as "ungated via dispatch", authorizing ungated deliverable
+  writes from a read-only lane. Only writer-lane dispatches bind now.
+- **`--governance` restored in `zft task-gate`.** The flag had been dropped
+  from the CLI (it existed in 0.2.1): back in `BOOLEAN_FLAGS`, usage, and
+  wired to `gate_after(..., governance=…)`. Gate error records now also carry
+  `reason=` for audit parity with the adapter records.
+
 ## 0.3.0 — 2026-10-20
 
 Release cut on the house version convention (npm packages stay aligned with

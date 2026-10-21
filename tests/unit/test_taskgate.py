@@ -474,3 +474,140 @@ def test_cli_taskgate_new_flags(tmp_path, monkeypatch, capsys):
             "--since-ms", "not-an-int"]
     assert cli_main.main(argv) == 2
     assert "since-ms" in capsys.readouterr().err
+
+
+# --- governance mode (P-012 C1): direct-write binding verdict ---------------
+# governance=True reports the binding state instead of coverage: "bound" if the
+# description's [contract: NAME] resolves on file, "ungated" on an [ungated:]
+# override, the no-contract / contract-unreadable errors otherwise. Contract
+# wins over override; changeset flags are ignored; read-only stays n/a because
+# the lane check runs before any marker logic. Without the flag the dispatch
+# path is byte-for-byte unchanged.
+
+# @trace("ENF-CONTRACT-VERDICT")
+def test_governance_bound_contract_on_file(tmp_path):
+    """Contract reference resolving on file -> bound, exit 0, one audit record,
+    and no coverage keys in the payload."""
+    _write_contract(tmp_path, name="zft-v0")
+    code, payload = gate_after("fixer", "[contract: zft-v0] direct edit",
+                               tmp_path, governance=True)
+    assert code == 0
+    assert payload["verdict"] == "bound"
+    assert payload["contract"] == "zft-v0"
+    assert "missing" not in payload
+    assert "due" not in payload and "covered" not in payload
+    assert "scope" not in payload
+    recs = _records(tmp_path)
+    assert len(recs) == 1  # exactly one record, no extra audit
+    rec = recs[0]
+    assert rec["phase"] == "after" and rec["gated"] is True
+    assert rec["contract"] == "zft-v0" and rec["verdict"] == "bound"
+
+
+# @trace("ENF-CONTRACT-VERDICT")
+def test_governance_contract_unreadable_keeps_error(tmp_path):
+    """Contract reference without a file on disk -> the existing
+    'contract unreadable' error (exit 2) stands unchanged."""
+    code, payload = gate_after("fixer", "[contract: no-such] direct edit",
+                               tmp_path, governance=True)
+    assert code == 2
+    assert payload["verdict"] == "error"
+    assert payload["contract"] == "no-such"
+    assert "contract unreadable" in payload["reason"]
+
+
+# @trace("ENF-AUDIT-LOGGED")
+def test_governance_ungated_override(tmp_path):
+    """An [ungated: r] marker -> ungated, exit 0, override recorded in the audit
+    record (gated False, contract None)."""
+    code, payload = gate_after("fixer", "[ungated: r] direct edit",
+                               tmp_path, governance=True)
+    assert code == 0
+    assert payload["verdict"] == "ungated"
+    assert payload["override"] is True
+    assert payload["reason"] == "r"
+    assert payload["contract"] is None
+    rec = _records(tmp_path)[-1]
+    assert rec["phase"] == "after" and rec["gated"] is False
+    assert rec["override"] is True and rec["reason"] == "r"
+    assert rec["verdict"] == "ungated" and rec["contract"] is None
+
+
+# @trace("ENF-CONTRACT-VERDICT")
+def test_governance_contract_wins_over_override(tmp_path):
+    """Both markers present -> the contract wins (bound), consistent with the
+    after-phase ignoring ungated overrides."""
+    _write_contract(tmp_path, name="zft-v0")
+    code, payload = gate_after(
+        "fixer", "[contract: zft-v0] [ungated: r] direct edit",
+        tmp_path, governance=True)
+    assert code == 0
+    assert payload["verdict"] == "bound"
+    assert payload["contract"] == "zft-v0"
+    assert "override" not in payload
+    rec = _records(tmp_path)[-1]
+    assert rec["verdict"] == "bound" and rec["gated"] is True
+
+
+# @trace("ENF-CONTRACT-VERDICT")
+def test_governance_no_marker_keeps_no_contract_error(tmp_path):
+    """No marker -> the existing no-contract error (exit 2) unchanged."""
+    code, payload = gate_after("fixer", "direct edit", tmp_path, governance=True)
+    assert code == 2
+    assert payload["verdict"] == "error"
+    assert payload["contract"] is None
+    assert payload["reason"] == "no [contract: <name>] reference in description"
+
+
+# @trace("ENF-READONLY-EXEMPT")
+def test_governance_readonly_lane_is_na_before_markers(tmp_path):
+    """The lane check precedes the governance marker logic: a read-only
+    subagent is n/a even with a contract marker present."""
+    _write_contract(tmp_path, name="zft-v0")
+    code, payload = gate_after("explorer", "[contract: zft-v0] direct edit",
+                               tmp_path, governance=True)
+    assert code == 0
+    assert payload["verdict"] == "n/a"
+    assert payload["lane"] == "readonly"
+    assert _records(tmp_path)[-1]["verdict"] == "n/a"
+
+
+# @trace("ENF-CONTRACT-VERDICT")
+def test_governance_ignores_changeset_flags(tmp_path):
+    """Changeset flags (changed/...) are ignored in governance mode: no scope
+    field, still bound exit 0."""
+    _write_contract(tmp_path, name="zft-v0")
+    code, payload = gate_after("fixer", "[contract: zft-v0] direct edit",
+                               tmp_path, governance=True, changed=["x"])
+    assert code == 0
+    assert payload["verdict"] == "bound"
+    assert payload["contract"] == "zft-v0"
+    assert "scope" not in payload
+    assert "missing" not in payload
+
+
+# @trace("ENF-CONTRACT-VERDICT")
+def test_non_governance_dispatch_after_still_computes_coverage(tmp_path):
+    """The flagless dispatch path is byte-for-byte unchanged: a contract still
+    yields the full coverage verdict (due/covered/missing + scope)."""
+    src = _changeset_store(tmp_path)
+    code, payload = gate_after("fixer", "[contract: c]", tmp_path,
+                               changed=[str(src / "a.py")])
+    assert code == 1
+    assert payload["verdict"] == "missing"
+    assert payload["due"] == ["CLAUSE-1", "CLAUSE-2", "CLAUSE-3"]
+    assert payload["covered"] == ["CLAUSE-1"]
+    assert payload["missing"] == ["CLAUSE-2", "CLAUSE-3"]
+    assert payload["scope"]["mode"] == "changeset"
+
+
+def test_after_error_verdict_carries_reason_in_audit(tmp_path):
+    # no [contract: ...] reference in the description -> governance no-contract
+    # error; the audit record must now carry the reason (debuggability).
+    code, payload = gate_after("fixer", "direct edit", tmp_path, governance=True)
+    assert code == 2 and payload["verdict"] == "error"
+    rec = json.loads(
+        (tmp_path / ".zft" / "audit.log").read_text().strip().splitlines()[-1])
+    assert rec["verdict"] == "error"
+    assert "reason" in rec, "error audit record must carry its reason"
+    assert "no [contract:" in rec["reason"]

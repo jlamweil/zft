@@ -42,6 +42,25 @@ function fakeClient() {
   return { app: { log: async () => {}, agents: async () => [] } };
 }
 
+/** A client exposing the session API the changeset enumeration uses. `calls`
+ *  records every argument so the SDK call shape is assertable (the real
+ *  signature is `{path:{id}}`, not a flat `{sessionID}`). */
+function fakeClientWithSession(children: unknown, messages: unknown, calls: unknown[] = []) {
+  return {
+    app: { log: async () => {}, agents: async () => [] },
+    session: {
+      children: async (a: unknown) => {
+        calls.push(a);
+        return children;
+      },
+      messages: async (a: unknown) => {
+        calls.push(a);
+        return messages;
+      },
+    },
+  };
+}
+
 function ledger(root: string): any[] {
   const f = join(root, ".zft", "gates-hook", "taskgate.jsonl");
   if (!existsSync(f)) return [];
@@ -321,6 +340,46 @@ test("T4.2: a direct edit emits an after-phase L2 verdict record (not task-only)
   expect(recs.length).toBe(1);
   expect(recs[0].phase).toBe("after");
   expect(recs[0].subagent).toBe("main");
+});
+
+test("changeset enumeration: SDK calls use path.id and unwrap the {data} envelope", async () => {
+  process.env.ZFT_BIN = makeRecordingZft(root);
+  const calls: unknown[] = [];
+  const client = fakeClientWithSession(
+    { data: [{ id: "ses_child", time: { created: Date.now() + 60_000 } }] },
+    {
+      data: [{
+        parts: [{
+          type: "tool",
+          tool: "edit",
+          state: { status: "completed", input: { filePath: "src/edited.py" } },
+        }],
+      }],
+    },
+    calls,
+  );
+  const h = (await ZftGate({ directory: root, client: client as never })) as Record<
+    string,
+    (i: unknown, o: unknown) => Promise<unknown>
+  >;
+  const input = {
+    tool: "task",
+    callID: "c-enum",
+    sessionID: "ses_parent",
+    args: { subagent_type: "builder", description: "[contract: perf] work" },
+  };
+  await h["tool.execute.before"](input, { args: input.args });
+  await h["tool.execute.after"](input, { output: "subagent result" });
+  // the SDK signature is {path:{id}} — a flat {sessionID} leaves {id} literal
+  // in the URL (server: 'Expected a string starting with "ses", got "%7Bid%7D"').
+  expect(calls[0]).toEqual({ path: { id: "ses_parent" }, query: { directory: root } });
+  expect(calls[1]).toEqual({ path: { id: "ses_child" }, query: { directory: root } });
+  // {data} was unwrapped, so the verdict is scoped to THIS dispatch's edits
+  // (a failed enumeration would fall back to whole-tree / since-ref coverage).
+  const argv = readFileSync(join(root, "zft-argv.txt"), "utf8");
+  expect(argv).toContain("--changed");
+  expect(argv).toContain("src/edited.py");
+  expect(ledger(root).length).toBe(2);
 });
 
 test("T4.1: apply_patch file paths are extracted and passed to the after verdict", async () => {
@@ -673,6 +732,39 @@ test("C4: a mixed corpus + deliverable patch still gates over all paths", async 
   expect(argv).toContain(".zft/specs/x.json");
   expect(argv).toContain("src/app.ts");
   expect(ledger(root).length).toBe(1);
+});
+
+test("after-gate: a write outside the store root is not a deliverable (no verdict)", async () => {
+  process.env.ZFT_BIN = makeRecordingZft(root);
+  const h = await gate(root);
+  await h["tool.execute.after"](
+    { tool: "edit", callID: "e-out", sessionID: "ses_out", args: { filePath: "/tmp/outside-store.txt" } },
+    { output: "edited" },
+  );
+  // out of root: the before/session gate exempts it, so the after-gate must not
+  // invent an ungoverned-write verdict (the reported false "no [contract]").
+  expect(existsSync(join(root, "zft-argv.txt"))).toBe(false);
+  expect(ledger(root).length).toBe(0);
+});
+
+test("session-gate: a read-only dispatch does not bind the session for writes", async () => {
+  process.env.ZFT_BIN = makeJsonZft(
+    root,
+    '{"allow":true,"gated":false,"lane":"readonly","contract":null,"reason":"read-only lane"}',
+    0,
+  );
+  const h = await gate(root);
+  await h["tool.execute.before"](
+    { tool: "task", callID: "c-ro", sessionID: "ses_ro" },
+    { args: { subagent_type: "oracle", description: "review only" } },
+  );
+  // dispatching a read-only agent must not authorize main-session deliverable writes
+  await expect(
+    h["tool.execute.before"](
+      { tool: "edit", callID: "e-ro", sessionID: "ses_ro" },
+      { args: { filePath: join(root, "src", "app.ts") } },
+    ),
+  ).rejects.toThrow(/\[contract:/);
 });
 
 test("C5: an unbound apply_patch touching a deliverable is blocked pre-write", async () => {

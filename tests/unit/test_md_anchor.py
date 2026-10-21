@@ -64,6 +64,8 @@ Some prose.
 # 5 in test_cli_wiring); taskgate's classify anchors +1 line (subprocess
 # import), the reason-noise test shifts test_since_ref_without_git 345 -> 363.
 # The negotiate manifest guard adds a src anchor (CON-VALIDATED-OR-NO-START).
+# Re-derived 2026-10-21 (0.3.1 governance-mode restore): eight new test
+# anchors in test_taskgate (governance verdict/audit + readonly n/a).
 BASELINE_PY_BINDINGS = {
     ('src/zft/spec/store.py', 50,
      'CON-VALIDATED-OR-NO-START', 'require_contract_keys'),
@@ -205,6 +207,22 @@ BASELINE_PY_BINDINGS = {
      'ENF-CHANGESET-VERDICT', 'test_since_ref_reason_names_fatal_not_usage_outside_repo'),
     ('tests/unit/test_taskgate.py', 363,
      'ENF-CHANGESET-VERDICT', 'test_since_ref_without_git_is_error'),
+    ('tests/unit/test_taskgate.py', 487,
+     'ENF-CONTRACT-VERDICT', 'test_governance_bound_contract_on_file'),
+    ('tests/unit/test_taskgate.py', 507,
+     'ENF-CONTRACT-VERDICT', 'test_governance_contract_unreadable_keeps_error'),
+    ('tests/unit/test_taskgate.py', 519,
+     'ENF-AUDIT-LOGGED', 'test_governance_ungated_override'),
+    ('tests/unit/test_taskgate.py', 536,
+     'ENF-CONTRACT-VERDICT', 'test_governance_contract_wins_over_override'),
+    ('tests/unit/test_taskgate.py', 552,
+     'ENF-CONTRACT-VERDICT', 'test_governance_no_marker_keeps_no_contract_error'),
+    ('tests/unit/test_taskgate.py', 562,
+     'ENF-READONLY-EXEMPT', 'test_governance_readonly_lane_is_na_before_markers'),
+    ('tests/unit/test_taskgate.py', 575,
+     'ENF-CONTRACT-VERDICT', 'test_governance_ignores_changeset_flags'),
+    ('tests/unit/test_taskgate.py', 589,
+     'ENF-CONTRACT-VERDICT', 'test_non_governance_dispatch_after_still_computes_coverage'),
 }
 
 

@@ -54,7 +54,7 @@ def _vals(argv: list[str], flag: str) -> list[str]:
 
 # Value-less flags (no following argument): never a flag value and never a
 # positional root (zft lineage BOOLEAN_FLAGS, unioned 2026-09-12).
-BOOLEAN_FLAGS = {"--resume", "--follow", "--dora"}
+BOOLEAN_FLAGS = {"--resume", "--follow", "--dora", "--governance"}
 
 # One-line usage per subcommand. `zft <cmd> --help` prints this instead of
 # falling through to running the command on a directory literally named
@@ -80,7 +80,7 @@ USAGE = {
     "mutation-bar": ("zft mutation-bar <results-mut-*>... [--waivers <path>] "
                      "[--source-root <path>]"),
     "task-gate": ("zft task-gate <before|after> --subagent <type> "
-                  "--description <text>"),
+                   "--description <text> [--governance]"),
     "metrics": ("zft metrics [--format summary|json] [--tail N] [--follow] "
                 "[--window day|hour] [--dora] [root]"),
 }
@@ -648,16 +648,21 @@ def main(argv: list[str] | None = None) -> int:
             # --scope changeset alone declares an (empty) changeset.
             scoped = (scope == "changeset" or bool(changed)
                       or since_ref is not None)
+            # governance (P-012 C1): the direct-write mode — report the
+            # binding state (bound/ungated/error) with no coverage; the
+            # changeset flags are ignored by gate_after in this mode.
+            governance = "--governance" in argv
             code, payload = gate_after(
                 subagent, description, root, rules=rules,
                 changed=changed if scoped else None,
                 since_ref=since_ref if scoped else None,
-                scope=scope, since_ms=since_ms, dispatch_id=dispatch_id)
+                scope=scope, since_ms=since_ms, dispatch_id=dispatch_id,
+                governance=governance)
         else:
             print("usage: zft task-gate <before|after> --subagent <type> "
                   "--description <text> [--capability '<json ruleset>'] [--explain] "
                   "[--changed <path> ...] [--since-ref <git-ref>] [--scope changeset] "
-                  "[--since-ms <int>] [--dispatch-id <uuid>]")
+                  "[--governance] [--since-ms <int>] [--dispatch-id <uuid>]")
             return 2
         print(json.dumps(payload, indent=2))
         return code

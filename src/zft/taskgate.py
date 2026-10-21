@@ -264,7 +264,8 @@ def gate_after(subagent: str, description: str, root: Path,
                since_ref: str | None = None,
                scope: str | None = None,
                since_ms: int | None = None,
-               dispatch_id: str | None = None) -> tuple[int, dict]:
+               dispatch_id: str | None = None,
+               governance: bool = False) -> tuple[int, dict]:
     """Post-task verdict (ENF-CONTRACT-VERDICT): forward coverage of the
     contract's due clauses against mechanically extracted bindings.
 
@@ -282,6 +283,18 @@ def gate_after(subagent: str, description: str, root: Path,
     since_ms/dispatch_id (plugin-supplied) and the measured gate_ms — here
     dominated by extract_bindings compute, vs the plugin's spawn-wait
     durationMs — are stamped on the audit record when supplied (O1, v3 §1).
+
+    Governance mode (P-012 C1, `governance=True`, direct writes): report the
+    binding state instead of coverage. After the lane check (read-only is
+    still n/a, before any marker logic) and before changeset resolution:
+    a description `[contract: NAME]` that resolves on file yields verdict
+    "bound" (exit 0); an `[ungated: reason]` yields "ungated" (exit 0, the
+    override recorded); a present-but-unreadable contract is the "contract
+    unreadable" error (exit 2); no marker keeps the no-contract error
+    (exit 2). Contract wins over override. No coverage is computed and the
+    changeset flags (changed/since_ref/scope) are ignored — coverage stays a
+    dispatch/commit property, not a per-write one. Without `governance` the
+    default path is byte-for-byte unchanged.
     """
     t0 = time.monotonic()
 
@@ -296,10 +309,54 @@ def gate_after(subagent: str, description: str, root: Path,
         return 0, {"verdict": "n/a", "lane": "readonly", "contract": None,
                    "missing": [], "classification": trace}
 
+    if governance:
+        # Direct-write governance verdict (P-012 C1): report whether the write
+        # was under a binding — bound if the description's contract resolves on
+        # file, ungated if an override carries it — with NO coverage
+        # computation (coverage is a dispatch/commit property, not a per-write
+        # one). Contract wins over override; the changeset flags are ignored.
+        contract = parse_contract(description)
+        if contract is not None:
+            cpath = Path(root) / ".zft" / "contracts" / f"{contract}.json"
+            try:
+                json.loads(cpath.read_text())
+            except (OSError, json.JSONDecodeError) as e:
+                _audit(root, lane, subagent, phase="after", gated=True,
+                       contract=contract, verdict="error", missing=[],
+                       reason=f"contract unreadable: {e}",
+                       classification=trace, **o1())
+                return 2, {"verdict": "error", "contract": contract,
+                           "reason": f"contract unreadable: {e}",
+                           "classification": trace}
+            _audit(root, lane, subagent, phase="after", gated=True,
+                   contract=contract, verdict="bound",
+                   classification=trace, **o1())
+            return 0, {"verdict": "bound", "contract": contract,
+                       "classification": trace}
+
+        override = parse_override(description)
+        if override is not None:
+            _audit(root, lane, subagent, phase="after", gated=False,
+                   contract=None, override=True, reason=override,
+                   verdict="ungated", classification=trace, **o1())
+            return 0, {"verdict": "ungated", "contract": None,
+                       "reason": override, "override": True,
+                       "classification": trace}
+
+        _audit(root, lane, subagent, phase="after", gated=True, contract=None,
+               verdict="error", missing=[],
+               reason="no [contract: <name>] reference in description",
+               classification=trace, **o1())
+        return 2, {"verdict": "error", "contract": None,
+                   "reason": "no [contract: <name>] reference in description",
+                   "classification": trace}
+
     contract = parse_contract(description)
     if not contract:
         _audit(root, lane, subagent, phase="after", gated=True, contract=None,
-               verdict="error", missing=[], classification=trace, **o1())
+               verdict="error", missing=[],
+               reason="no [contract: <name>] reference in description",
+               classification=trace, **o1())
         return 2, {"verdict": "error", "contract": None,
                    "reason": "no [contract: <name>] reference in description",
                    "classification": trace}
@@ -309,7 +366,9 @@ def gate_after(subagent: str, description: str, root: Path,
         c = json.loads(cpath.read_text())
     except (OSError, json.JSONDecodeError) as e:
         _audit(root, lane, subagent, phase="after", gated=True, contract=contract,
-               verdict="error", missing=[], classification=trace, **o1())
+               verdict="error", missing=[],
+               reason=f"contract unreadable: {e}",
+               classification=trace, **o1())
         return 2, {"verdict": "error", "contract": contract,
                    "reason": f"contract unreadable: {e}", "classification": trace}
 

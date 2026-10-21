@@ -103,6 +103,22 @@ const describe = (v: unknown): string => {
   return `${typeof v}(${JSON.stringify(String(v).slice(0, 100))})`;
 };
 
+/** Unwrap an opencode SDK result envelope. SDK methods return `{data}` on
+ *  success and `{error}` on failure (RequestResult, "fields" style); a bare
+ *  payload (older hosts) passes through. An error envelope is thrown so the
+ *  caller's catch reports the server's message instead of a generic
+ *  non-array warning. */
+const unwrapSdk = (res: unknown): unknown => {
+  if (res && typeof res === "object" && !Array.isArray(res)) {
+    const r = res as Record<string, unknown>;
+    if ("data" in r && r.data === undefined && r.error !== undefined) {
+      throw new Error(`SDK call failed: ${describe(r.error)}`);
+    }
+    if ("data" in r) return r.data;
+  }
+  return res;
+};
+
 /** Paths an Aider-format opencode `apply_patch` writes (Gap 002 — the real
  *  patch format is `*** Add File: <path>` / `*** Update File: <path>` /
  *  `*** Move to: <path>`; the latter is a rename TARGET that must be judged).
@@ -519,8 +535,19 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
     try {
       const sess = (client as {
         session?: {
-          children?: (a: { sessionID: string }) => Promise<unknown>;
-          messages?: (a: { sessionID: string }) => Promise<unknown>;
+          // The SDK's generated methods take the URL template's path params
+          // under `path` (SessionChildrenData = {path:{id}, query:{directory}}).
+          // A flat `{sessionID}` leaves `{id}` literal in the URL and the
+          // server answers "Expected a string starting with \"ses\", got
+          // \"%7Bid%7D\"".
+          children?: (a: {
+            path: { id: string };
+            query?: { directory?: string };
+          }) => Promise<unknown>;
+          messages?: (a: {
+            path: { id: string };
+            query?: { directory?: string };
+          }) => Promise<unknown>;
         };
       }).session;
       if (!sessionID || !sess?.children || !sess?.messages) {
@@ -535,7 +562,10 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
         );
         return null;
       }
-      const children = await sess.children({ sessionID });
+      const children = unwrapSdk(await sess.children({
+        path: { id: sessionID },
+        query: { directory },
+      }));
       if (!Array.isArray(children)) {
         warn(
           `changeset enumeration: session.children() returned non-array ` +
@@ -551,7 +581,10 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
       const out = new Set<string>();
       for (const child of inWindow) {
         if (!child?.id) continue;
-        const msgs = await sess.messages({ sessionID: child.id });
+        const msgs = unwrapSdk(await sess.messages({
+          path: { id: child.id },
+          query: { directory },
+        }));
         if (!Array.isArray(msgs)) {
           warn(
             `changeset enumeration: session.messages() returned non-array ` +
@@ -731,18 +764,27 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
         // — the binding kind is retained for the after-gate's governance
         // description (P-012 C2).
         if (run.res.status === 0 && sessionID) {
-          let binding: { kind: "contract" | "ungated"; contract?: string; reason?: string };
+          let binding: { kind: "contract" | "ungated"; contract?: string; reason?: string } | undefined;
           try {
             const j = JSON.parse(String(run.res.stdout ?? "").trim()) as Record<string, unknown>;
-            const contract = typeof j.contract === "string" && j.contract ? j.contract : null;
-            const reason = typeof j.reason === "string" && j.reason ? j.reason : null;
-            binding = contract
-              ? { kind: "contract", contract }
-              : { kind: "ungated", reason: reason ?? "bound via dispatch" };
+            // A read-only lane dispatch is not an authorization for the main
+            // session to write: only a writer-lane dispatch (gated by a
+            // contract, or explicitly ungated) binds the session. Binding on
+            // a read-only dispatch let oracle/explorer grant ungated
+            // deliverable writes.
+            if (j.lane === "readonly") {
+              binding = undefined;
+            } else {
+              const contract = typeof j.contract === "string" && j.contract ? j.contract : null;
+              const reason = typeof j.reason === "string" && j.reason ? j.reason : null;
+              binding = contract
+                ? { kind: "contract", contract }
+                : { kind: "ungated", reason: reason ?? "bound via dispatch" };
+            }
           } catch {
             binding = { kind: "ungated", reason: "unparseable gate output" };
           }
-          boundSessions.set(sessionID, binding);
+          if (binding) boundSessions.set(sessionID, binding);
         }
       } catch (e) {
         if (e instanceof GateBlock) throw e; // deliberate policy block
@@ -785,7 +827,12 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
           // spawn, no ledger record). Mixed corpus + deliverable still
           // gates over all paths.
           const rels = changed.map((p) => rootRelative(p)).filter((r): r is string => r !== null);
-          if (rels.length > 0 && rels.every((r) => r.startsWith(".zft/") || r === ".zft")) return;
+          // Nothing inside this store's root: a write outside the workspace is
+          // not a deliverable. The session gate already exempts it
+          // (rootRelative === null), so the after-gate must not invent an
+          // ungoverned-write verdict for it.
+          if (rels.length === 0) return;
+          if (rels.every((r) => r.startsWith(".zft/") || r === ".zft")) return;
           subagent = "main";
           // the description carries the binding marker so `--governance`
           // can name it: [contract: X] / [ungated: r] / bare (ungoverned

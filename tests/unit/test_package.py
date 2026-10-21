@@ -18,11 +18,14 @@ def _pyproject_version() -> str:
     return data["project"]["version"]
 
 
-def _npm_version() -> str:
+def _npm_version(pkg: str) -> str:
     import json
 
-    package_json = REPO_ROOT / "packages" / "opencode-zft" / "package.json"
+    package_json = REPO_ROOT / "packages" / pkg / "package.json"
     return json.loads(package_json.read_text())["version"]
+
+def _npm_version_opencode() -> str:
+    return _npm_version("opencode-zft")
 
 
 def test_package_imports():
@@ -68,4 +71,20 @@ def test_npm_package_version_aligned():
     # house convention (a4 receipt): the npm package stays version-aligned
     # with the CLI — PEP 440 ``0.2.0aN`` renders as npm ``0.2.0-alpha.N``.
     pep = _pyproject_version()
-    assert _npm_version() == pep.replace("a", "-alpha.")
+    assert _npm_version_opencode() == pep.replace("a", "-alpha.")
+
+
+def test_pi_zft_version_aligned():
+    # House convention (peer of test_npm_package_version_aligned): pi-zft,
+    # the pi extension adapter, must stay version-aligned with the CLI too.
+    # Silently drifting it would let a pi release ship a version the Python
+    # side no longer matches. It ships as a copied extension (no registry
+    # guard), so the pin here is the only oracle for its version.
+    package_json = REPO_ROOT / "packages" / "pi-zft" / "package.json"
+    if not package_json.exists():
+        import pytest
+
+        pytest.skip(
+            "packages/pi-zft absent from this tree — nothing to align-check")
+    pep = _pyproject_version()
+    assert _npm_version("pi-zft") == pep.replace("a", "-alpha.")

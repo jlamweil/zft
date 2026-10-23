@@ -114,6 +114,7 @@ def parse_override(description: str) -> str | None:
 ROOT_RE = re.compile(r"\[root:\s*([^\]]+)\]")
 
 
+# @trace("ENF-WRITER-REQUIRES-CONTRACT")
 def parse_root(description: str) -> str | None:
     """Extract the target-project root from `[root: PATH]`, else None.
 
@@ -123,6 +124,7 @@ def parse_root(description: str) -> str | None:
     return m.group(1).strip() if m else None
 
 
+# @trace("ENF-WRITER-REQUIRES-CONTRACT")
 def resolve_root(description: str, base: Path) -> Path:
     """The effective store root for one dispatch.
 

@@ -66,12 +66,16 @@ Some prose.
 # The negotiate manifest guard adds a src anchor (CON-VALIDATED-OR-NO-START).
 # Re-derived 2026-10-21 (0.3.1 governance-mode restore): eight new test
 # anchors in test_taskgate (governance verdict/audit + readonly n/a).
+# Re-derived 2026-10-23 (upstream 586c02a `[root: PATH]` marker): new
+# taskgate anchors for parse_root/resolve_root + the multi-project root
+# tests, and the taskgate line shifts those additions caused.
 BASELINE_PY_BINDINGS = {
-    ('src/zft/spec/store.py', 50,
-     'CON-VALIDATED-OR-NO-START', 'require_contract_keys'),
     ('src/zft/lineage/matrix.py', 125, 'TR-REVERSE-COVERAGE', 'new_unbound_elements'),
-    ('src/zft/taskgate.py', 61, 'ENF-CAPABILITY-CLASSIFICATION', 'classify'),
-    ('src/zft/taskgate.py', 79, 'ENF-CAPABILITY-CLASSIFICATION', 'classify_trace'),
+    ('src/zft/spec/store.py', 50, 'CON-VALIDATED-OR-NO-START', 'require_contract_keys'),
+    ('src/zft/taskgate.py', 65, 'ENF-CAPABILITY-CLASSIFICATION', 'classify'),
+    ('src/zft/taskgate.py', 83, 'ENF-CAPABILITY-CLASSIFICATION', 'classify_trace'),
+    ('src/zft/taskgate.py', 117, 'ENF-WRITER-REQUIRES-CONTRACT', 'parse_root'),
+    ('src/zft/taskgate.py', 127, 'ENF-WRITER-REQUIRES-CONTRACT', 'resolve_root'),
     ('tests/e2e/test_negotiate_resumption.py', 51,
      'CON-CRASH-RESUME', 'test_kill9_mid_protocol_resumes_same_run'),
     ('tests/e2e/test_negotiate_transport_resumption.py', 84,
@@ -211,8 +215,7 @@ BASELINE_PY_BINDINGS = {
      'ENF-CONTRACT-VERDICT', 'test_governance_bound_contract_on_file'),
     ('tests/unit/test_taskgate.py', 507,
      'ENF-CONTRACT-VERDICT', 'test_governance_contract_unreadable_keeps_error'),
-    ('tests/unit/test_taskgate.py', 519,
-     'ENF-AUDIT-LOGGED', 'test_governance_ungated_override'),
+    ('tests/unit/test_taskgate.py', 519, 'ENF-AUDIT-LOGGED', 'test_governance_ungated_override'),
     ('tests/unit/test_taskgate.py', 536,
      'ENF-CONTRACT-VERDICT', 'test_governance_contract_wins_over_override'),
     ('tests/unit/test_taskgate.py', 552,
@@ -223,6 +226,12 @@ BASELINE_PY_BINDINGS = {
      'ENF-CONTRACT-VERDICT', 'test_governance_ignores_changeset_flags'),
     ('tests/unit/test_taskgate.py', 589,
      'ENF-CONTRACT-VERDICT', 'test_non_governance_dispatch_after_still_computes_coverage'),
+    ('tests/unit/test_taskgate.py', 640,
+     'ENF-WRITER-REQUIRES-CONTRACT', 'test_cli_root_marker_targets_other_project'),
+    ('tests/unit/test_taskgate.py', 712,
+     'ENF-CONTRACT-VERDICT', 'test_cli_root_marker_after_verdict_from_target'),
+    ('tests/unit/test_taskgate.py', 733,
+     'ENF-WRITER-REQUIRES-CONTRACT', 'test_cli_no_root_marker_still_uses_cwd'),
 }
 
 

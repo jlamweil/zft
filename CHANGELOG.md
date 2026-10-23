@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.4.0 — 2026-10-23
+
+Minor cut: one new task-gate capability plus the release guards that landed
+after 0.3.1. Python `zft` 0.4.0, `opencode-zft` 0.4.0 and `pi-zft` 0.4.0 are
+one coordinated cut (house version convention); the adapters' code is
+unchanged from 0.3.1 — only their version is aligned.
+
+- **`[root: PATH]` task-gate marker.** A marker in the dispatch description
+  re-points contract resolution, the changeset diff, binding extraction and
+  the audit log at another project's `.zft/` store, so one gate can govern
+  work on a project other than the one it is run from. A relative PATH
+  resolves against the CWD; without the marker the CWD is the root, keeping
+  single-project dispatch byte-for-byte unchanged.
+- **History leak gate.** `tests/unit/test_no_private_leaks_in_history.py`
+  scans every object in git history — blobs, trees, commit metadata and
+  messages, annotated tags — for private identifiers. It earned its place
+  immediately: it caught a real leaked author email in a post-0.3.1 commit,
+  corrected by a metadata-only history rewrite (tree identical).
+- **pi-zft version pin.** `test_pi_zft_version_aligned` makes pi-zft's
+  version a CI oracle alongside the existing opencode-zft pin; before this
+  the alignment was convention-only.
+- **Binding hygiene.** The root-marker helpers are bound to
+  `ENF-WRITER-REQUIRES-CONTRACT`; a duplicated test definition that had
+  silently shadowed a broken test was removed, and the frozen binding
+  snapshot was re-derived.
+
+Not in this cut: Gap 001 (the acceptance gate verifies traceability, not
+conformance) remains open — see [docs/KNOWN-GAPS.md](docs/KNOWN-GAPS.md).
+
 ## 0.3.1 — 2026-10-21
 
 Patch cut on the 0.3.0 surface: four gate-correctness fixes, two of which made

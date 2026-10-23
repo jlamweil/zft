@@ -87,4 +87,21 @@ describe("package zft-gate client-API shape safety (F8 parity with deploy)", () 
     else expect(warns).toContain("returned non-array");
     expect(warns).not.toContain("is not iterable");
   });
+
+  it("agents() {data: [...]} SDK envelope is unwrapped, no fallback warning (0.4.1 fix)", async () => {
+    const w = makeWorkdir();
+    const cap = captureWarn();
+    const client = {
+      app: { agents: async () => ({ data: [{ name: "fixer", permission: [] }] }), log: async () => {} },
+      session: {},
+      tool: { execute: {} },
+    } as never;
+    const reg = await loadPackageGate(w, client);
+    await reg["tool.execute.before"](
+      { tool: "task", callID: "call-1", sessionID: "sess-1" },
+      { args: { subagent_type: "fixer", description: "d" } },
+    );
+    const warns = cap.stop();
+    expect(warns).not.toMatch(/non-array|lookup failed|not iterable/s);
+  });
 });

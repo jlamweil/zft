@@ -197,7 +197,10 @@ export const ZftGate: Plugin = async ({ directory, client }) => {
       if (!client?.app?.agents) return undefined;
       const now = Date.now();
       if (!agentCache || now > agentCache.expiry) {
-        const agents = (await client.app.agents()) as unknown;
+        // unwrapSdk like the 0.3.1 changeset-enumeration fix: the SDK returns
+        // a {data: [...]}/error envelope, not a bare list (parity with
+        // session.children/messages below).
+        const agents = unwrapSdk(await client.app.agents());
         if (!Array.isArray(agents)) {
           // A changed opencode surface (e.g. {} when it used to be a list) must
           // be legible from the log, not just swallowed as a generic fallback.

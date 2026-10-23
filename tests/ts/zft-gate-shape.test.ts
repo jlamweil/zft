@@ -102,6 +102,35 @@ describe("zft-gate client-API shape safety", () => {
     expect(warns).not.toContain("agent lookup failed");
   });
 
+  it("agents() {data: [...]} SDK envelope is unwrapped, no fallback warning (0.4.1 fix)", async () => {
+    const w = makeWorkdir();
+    const cap = captureWarn();
+    const client = {
+      app: { agents: async () => ({ data: [{ name: "fixer", permission: [] }] }), log: async () => {} },
+      session: {},
+      tool: { execute: {} },
+    } as never;
+    const reg = await loadGate(w, client);
+    await reg["tool.execute.before"](taskInput(), taskOutput(false));
+    const warns = cap.stop();
+    expect(warns).not.toMatch(/non-array|lookup failed|not iterable/s);
+  });
+
+  it("agents() {error: ...} SDK envelope reports the server error, not 'non-array'", async () => {
+    const w = makeWorkdir();
+    const cap = captureWarn();
+    const client = {
+      app: { agents: async () => ({ data: undefined, error: "boom" }), log: async () => {} },
+      session: {},
+      tool: { execute: {} },
+    } as never;
+    const reg = await loadGate(w, client);
+    await reg["tool.execute.before"](taskInput(), taskOutput(false));
+    const warns = cap.stop();
+    expect(warns).toContain("SDK call failed");
+    expect(warns).not.toContain("returned non-array");
+  });
+
   it("session.children(){...} degrades changeset scoping with a legible diagnostic (no generic crash)", async () => {
     const w = makeWorkdir();
     const cap = captureWarn();

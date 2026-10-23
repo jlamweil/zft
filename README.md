@@ -78,7 +78,8 @@ absolute home paths in tracked files, and release cuts are reviewed
 against it. The `zft check .` store in [`.zft/specs/`](.zft/specs/) is this
 repository's own contract corpus.
 
-**Version.** 0.4.0 — the task-gate `[root: PATH]` marker, so one gate can
+**Version.** 0.4.1 — task-gate `[root: PATH]` marker (0.4.0) + opencode-adapter
+agent-lookup envelope fix (0.4.1); one gate can
 govern a project other than the one it runs from (2026-10-23); 0.3.1 was the
 changeset-scoping and gate-correctness cut (2026-10-21); 0.3.0 the gate-core
 adapters + leak-removal cut (2026-10-20).
@@ -382,9 +383,9 @@ with the Python CLI, pinned by `tests/unit/test_package.py`):
 
 | Artifact | Registry | Version | Publish command |
 | --- | --- | --- | --- |
-| `zft` (Python) | PyPI | 0.4.0 | `python -m build && twine upload dist/*` |
-| `opencode-zft` | npm | 0.4.0 | `cd packages/opencode-zft && npm stage publish` → `npm stage approve <id>` |
-| `pi-zft` | npm | 0.4.0 | `cd packages/pi-zft && npm stage publish` → `npm stage approve <id>` |
+| `zft` (Python) | PyPI | 0.4.1 | `python -m build && twine upload dist/*` |
+| `opencode-zft` | npm | 0.4.1 | `cd packages/opencode-zft && npm stage publish` → `npm stage approve <id>` |
+| `pi-zft` | npm | 0.4.1 | `cd packages/pi-zft && npm stage publish` → `npm stage approve <id>` |
 | flockwork harness | PyPI | 0.4.0 | separate repository |
 
 Publishing flow (JS adapters):

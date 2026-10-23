@@ -1,6 +1,6 @@
 {
   "name": "pi-zft",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": false,
   "description": "pi extension port of the zft gates (L0 edit gate + settle gate)",
   "type": "module",

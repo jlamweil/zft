@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.1 — 2026-10-23
+
+Patch cut on the 0.4.0 surface: one adapter fix.
+
+- **Agent lookup honors the SDK envelope (opencode adapter).**
+  `client.app.agents()` is an opencode-SDK call, so like the 0.3.1
+  `session.children()` / `session.messages()` fix it returns a
+  `{data: [...]}` (or error) envelope, not a bare list. The gate checked
+  `Array.isArray` on the envelope, logged
+  "agent lookup … returned non-array" on every dispatch, and silently fell
+  back to lane-name classification — per-agent rule resolution was dead on
+  current opencode. The call now goes through the same `unwrapSdk()`: the
+  array is used, and a server error reports the server's message instead of
+  a false shape diagnostic. Regression-pinned in both the deploy and
+  package shape suites. Adapter-only cut: the Python CLI is unchanged from
+  0.4.0 (0.4.1 is version-aligned per house convention).
+
 ## 0.4.0 — 2026-10-23
 
 Minor cut: one new task-gate capability plus the release guards that landed

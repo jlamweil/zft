@@ -604,7 +604,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if cmd == "task-gate":
-        from zft.taskgate import classify_trace, gate_after, gate_before
+        from zft.taskgate import classify_trace, gate_after, gate_before, resolve_root
 
         # parse directly from argv: _split_root would misread the phase
         # positional ("before"/"after") as the root
@@ -612,7 +612,10 @@ def main(argv: list[str] | None = None) -> int:
         subagent = _val(argv, "--subagent") or ""
         description = _val(argv, "--description") or ""
         rules = _parse_capability(argv)
-        root = Path.cwd()
+        # A `[root: PATH]` marker in the description re-points the gate at
+        # another project's store; without it the CWD is the root, exactly as
+        # before (single-project dispatch is byte-for-byte unchanged).
+        root = resolve_root(description, Path.cwd())
 
         if "--explain" in argv:
             # dry run: classify and report, enforce nothing, audit nothing

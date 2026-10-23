@@ -611,3 +611,155 @@ def test_after_error_verdict_carries_reason_in_audit(tmp_path):
     assert rec["verdict"] == "error"
     assert "reason" in rec, "error audit record must carry its reason"
     assert "no [contract:" in rec["reason"]
+
+
+# --- multi-project root (ENF-ROOT-MARKER) -----------------------------------
+# A [root: PATH] marker in the dispatch description re-points the gate at
+# another project's .zft/ store, so one gate can govern work on a project
+# other than the one it is run from. No marker leaves the CWD as root, keeping
+# single-project dispatch byte-for-byte unchanged.
+
+def test_resolve_root_marker_relative_absolute_and_fallback(tmp_path):
+    from zft.taskgate import parse_root, resolve_root
+
+    assert parse_root("[root: x] hi") == "x"
+    assert parse_root("[root: ../somewhere]") == "../somewhere"
+    assert parse_root("[root:   spaced/path  ] hi") == "spaced/path"
+    assert parse_root("no marker here") is None
+    assert parse_root("[contract: c] [ungated: r]") is None
+
+    # no marker -> base unchanged (byte-compatible fallback)
+    assert resolve_root("plain work", tmp_path) == tmp_path
+    # relative marker -> resolved against base (the CWD)
+    assert resolve_root("[root: target] work", tmp_path) == (tmp_path / "target").resolve()
+    # absolute marker -> used as-is
+    abs_target = str(tmp_path / "abs-project")
+    assert resolve_root(f"[root: {abs_target}] work", tmp_path) == Path(abs_target).resolve()
+
+
+def test_cli_root_marker_targets_other_project(tmp_path, monkeypatch):
+    """[root: PATH] re-points the whole gate at another project's store: the
+    before-phase resolves the contract there, the after-phase computes coverage
+    from its bindings, and both audit to the target — the CWD store is never
+    touched."""
+    from zft.cli import main as cli_main
+
+    base = tmp_path
+    target = base / "target-project"
+    _write_contract(target, name="c", clause_ids=["CLAUSE-1"])
+    src = target / "src"
+    src.mkdir(parents=True)
+    (src / "a.py").write_text('# @trace("CLAUSE-1")\n\n\ndef a():\n    return 1\n')
+
+    monkeypatch.chdir(base)
+
+    # before: allowed because the contract resolves in the target, not the CWD
+    assert cli_main.main(["task-gate", "before", "--subagent", "fixer",
+                          "--description",
+                          "[root: target-project] [contract: c] tighten a"]) == 0
+    before = json.loads((target / ".zft" / "audit.log").read_text().splitlines()[-1])
+    assert before["phase"] == "before" and before["contract"] == "c"
+    assert not (base / ".zft" / "audit.log").exists()
+
+    # after: coverage is computed from the target's bindings (CLAUSE-1 bound)
+    assert cli_main.main(["task-gate", "after", "--subagent", "fixer",
+                          "--description", "[root: target-project] [contract: c]"]) == 0
+    after = json.loads((target / ".zft" / "audit.log").read_text().splitlines()[-1])
+    assert after["phase"] == "after" and after["contract"] == "c"
+    assert after["verdict"] == "covered" and after["due"] == ["CLAUSE-1"]
+
+
+def test_cli_no_root_marker_stays_on_cwd(tmp_path, monkeypatch):
+    """Without a [root:] marker the gate stays on the CWD store — the existing
+    single-project behavior is unchanged."""
+    from zft.cli import main as cli_main
+    _write_contract(tmp_path, name="c", clause_ids=[])
+    monkeypatch.chdir(tmp_path)
+    assert cli_main.main(["task-gate", "before", "--subagent", "fixer",
+                          "--description", "[contract: c] work"]) == 0
+    rec = json.loads((tmp_path / ".zft" / "audit.log").read_text().splitlines()[-1])
+    assert rec["phase"] == "before" and rec["contract"] == "c"
+
+
+# --- multi-project dispatch ([root: PATH]) ----------------------------------
+# A [root: PATH] marker re-points the gate at another project's store: the
+# contract is resolved there, and the after-verdict's bindings + the audit
+# log land there — not in the CWD the gate was run from. No marker leaves the
+# CWD as the root, so single-project dispatch is byte-for-byte unchanged.
+
+def test_parse_and_resolve_root(tmp_path):
+    from zft.taskgate import parse_root, resolve_root
+    assert parse_root("[root: x] hi") == "x"
+    assert parse_root("[root:  ./proj  ] hi") == "./proj"
+    assert parse_root("[root:] hi") is None      # empty value -> no marker
+    assert parse_root("hi") is None
+    # no marker -> base unchanged
+    assert resolve_root("hi", tmp_path) == tmp_path
+    # relative resolves against base, absolute is used as-is
+    assert resolve_root("[root: sibling] hi", tmp_path) == (tmp_path / "sibling").resolve()
+    assert resolve_root(f"[root: {tmp_path / 'abs'}] hi", tmp_path) == (tmp_path / "abs").resolve()
+
+
+def test_resolve_root_empty_marker_falls_back_to_base(tmp_path):
+    """'[root: ]' parses to an empty string -> treated as no marker -> base."""
+    from zft.taskgate import resolve_root
+    assert resolve_root("[root: ] hi", tmp_path) == tmp_path
+
+
+# @trace("ENF-WRITER-REQUIRES-CONTRACT")
+def test_cli_root_marker_targets_other_project(tmp_path, monkeypatch):
+    """[root: PATH] makes the before-gate resolve the contract in the target
+    project (not the CWD) and write the audit record there."""
+    from zft.cli import main as cli_main
+    base = tmp_path
+    target = base / "target-project"
+    _write_contract(target, name="c", clause_ids=["CLAUSE-1"])
+    (target / "src").mkdir(parents=True)
+    (target / "src" / "a.py").write_text('# @trace("CLAUSE-1")\n\n\ndef a():\n    return 1\n')
+    monkeypatch.chdir(base)
+    # the CWD has no contract named 'c' — only the target does; the marker
+    # must be what lets the writer dispatch pass.
+    assert cli_main.main(["task-gate", "before", "--subagent", "fixer",
+                          "--description", "[root: target-project] [contract: c] work"]) == 0
+    rec = json.loads((target / ".zft" / "audit.log").read_text().splitlines()[-1])
+    assert rec["phase"] == "before" and rec["contract"] == "c" and rec["gated"] is True
+    # and nothing was written to the CWD's audit log
+    assert not (base / ".zft" / "audit.log").exists()
+
+
+# @trace("ENF-CONTRACT-VERDICT")
+def test_cli_root_marker_after_verdict_from_target(tmp_path, monkeypatch):
+    """[root: PATH] scopes the after-verdict to the target's bindings, not the
+    CWD tree."""
+    from zft.cli import main as cli_main
+    base = tmp_path
+    target = base / "target-project"
+    _write_contract(target, name="c", clause_ids=["CLAUSE-1", "CLAUSE-2"])
+    (target / "src").mkdir(parents=True)
+    (target / "src" / "a.py").write_text('# @trace("CLAUSE-1")\n\n\ndef a():\n    return 1\n')
+    monkeypatch.chdir(base)
+    # CLAUSE-2 is unbound -> missing. Only CLAUSE-2 being missing (not both)
+    # proves the target tree — where CLAUSE-1 is bound — was read, not an
+    # empty CWD tree.
+    assert cli_main.main(["task-gate", "after", "--subagent", "fixer",
+                          "--description", "[root: target-project] [contract: c]"]) == 1
+    rec = json.loads((target / ".zft" / "audit.log").read_text().splitlines()[-1])
+    assert rec["verdict"] == "missing"
+    assert rec["missing"] == ["CLAUSE-2"]
+
+
+# @trace("ENF-WRITER-REQUIRES-CONTRACT")
+def test_cli_no_root_marker_still_uses_cwd(tmp_path, monkeypatch):
+    """Without a [root:] marker the CWD is the root — a contract that exists
+    only in a sibling project does NOT authorize the dispatch (no silent
+    re-point)."""
+    from zft.cli import main as cli_main
+    base = tmp_path
+    target = base / "target-project"
+    _write_contract(target, name="c", clause_ids=[])
+    monkeypatch.chdir(base)  # base has no contract 'c'
+    assert cli_main.main(["task-gate", "before", "--subagent", "fixer",
+                          "--description", "[contract: c] work"]) == 1
+    rec = json.loads((base / ".zft" / "audit.log").read_text().splitlines()[-1])
+    assert rec["phase"] == "before" and rec["gated"] is False
+    assert rec["contract"] == "c"

@@ -4,8 +4,12 @@ Writer lanes may only be dispatched against a contract that exists on file
 (`[contract: NAME]` in the task description resolving to
 .zft/contracts/NAME.json); read-only lanes are exempt. An ungated override
 (`[ungated: reason]` or a truthy ZFT_ALLOW_UNGATED) allows a writer
-dispatch but is flagged `gated: False` in the audit log. Every decision —
-allowed, blocked, verdict, error — appends exactly one JSONL record to
+dispatch but is flagged `gated: False` in the audit log. A `[root: PATH]`
+marker re-points the gate at another project's store — contract resolution,
+changeset diff, binding extraction, and the audit log all resolve against
+that root instead of the CWD — so one gate instance can govern work on a
+project other than the one it is run from. Every decision — allowed,
+blocked, verdict, error — appends exactly one JSONL record to
 <zft-root>/.zft/audit.log.
 """
 from __future__ import annotations
@@ -105,6 +109,37 @@ def parse_override(description: str) -> str | None:
     """Extract the ungated-override reason from `[ungated: text]`, else None."""
     m = OVERRIDE_RE.search(description)
     return m.group(1) if m else None
+
+
+ROOT_RE = re.compile(r"\[root:\s*([^\]]+)\]")
+
+
+def parse_root(description: str) -> str | None:
+    """Extract the target-project root from `[root: PATH]`, else None.
+
+    A relative PATH is resolved against the dispatch's working directory by
+    resolve_root; an absolute PATH is used as-is."""
+    m = ROOT_RE.search(description)
+    return m.group(1).strip() if m else None
+
+
+def resolve_root(description: str, base: Path) -> Path:
+    """The effective store root for one dispatch.
+
+    A description `[root: PATH]` re-points the whole gate — contract
+    resolution, changeset diff, binding extraction, and the audit log — at
+    that project's `.zft/` store instead of the CWD, so one gate can govern
+    work on a project other than the one it is run from. A relative PATH
+    resolves against `base` (the CWD); no marker leaves `base` unchanged,
+    keeping single-project dispatch byte-for-byte as before.
+    """
+    marker = parse_root(description)
+    if not marker:
+        return base
+    p = Path(marker)
+    if not p.is_absolute():
+        p = base / p
+    return p.resolve()
 
 
 def append_audit(root: Path, record: dict) -> None:

@@ -14,6 +14,10 @@ Dated: 2026-10-21. Status: **EXECUTED — C1–C4 all landed; registries are at 
 > 2026-10-21. The "npm live" table below is draft-time state, minutes before
 > that publish, not current. Nothing in this plan remains open; the open
 > question is now a **new version** for the post-tag commits.
+>
+> **Superseded 2026-10-23:** `0.4.0` was cut for that post-tag content
+> (PyPI published; npm staged, awaiting interactive 2FA approval). This file
+> stays as the 0.3.1 publish record.
 
 ## 0. Objective
 

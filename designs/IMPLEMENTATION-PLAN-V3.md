@@ -1,11 +1,19 @@
 # Implementation plan: ship `opencode-zft` & `pi-zft` to npm (0.3.1)
 
-Dated: 2026-10-21. Status: **PLANNED — no implementation yet.**
+Dated: 2026-10-21. Status: **PARTIALLY EXECUTED — C1 + C4 landed upstream 2026-10-23; the npm publishes (C2/C3) are still open.**
+
+> **State re-check 2026-10-23.** Upstream `main` moved past the tagged tree:
+> `c7169cf` lands C1 (`test_pi_zft_version_aligned`), `ce4a332` lands C4
+> (history leak gate), and `586c02a` adds the taskgate `[root: PATH]` marker
+> (now `3e00678` after a metadata-only rewrite that dropped a leaked private
+> author email; tree identical). Everything below about publishing is still
+> unexecuted. §0.5.1, C1 and C4 are historical — treat them as done.
 
 ## 0. Objective
 
 Complete the JS-adapter release. The tagged tree is already `v0.3.1`
-(commit `2d4a688`, = HEAD), and it carries the governance fix `82a1936`
+(commit `2d4a688`; HEAD has since moved on without changing the 0.3.1
+adapter content), and it carries the governance fix `82a1936`
 (reader/writer lane binding, `boundSessions` `Map` logic) **plus** the other
 three gate-correctness fixes from the 0.3.1 patch. But the npm registry is
 stale relative to that tree:
@@ -35,6 +43,8 @@ or sharpen* the drafting assumptions. Treat as authoritative.
    → If pi-zft must be version-guarded, that guard does not exist today.
    Recommendation: add a parallel `test_pi_zft_version_aligned` (own atomic
    commit) OR accept convention-only and record it.
+   → **RESOLVED 2026-10-23 (`c7169cf`):** `test_pi_zft_version_aligned` landed
+   in `tests/unit/test_package.py:77`; pi-zft is now version-guarded by CI.
 
 2. **`npm stage publish` DOES run `prepublishOnly` (opencode-zft).** Confirmed
    with `--dry-run`: it runs `sync-zft-gates.mjs && sync-zft-gates.mjs --assert`
@@ -128,10 +138,10 @@ never `git add -A`** (PUBLISH-RUNBOOK §ground rules).
 
 | # | Commit | Contents |
 | --- | --- | --- |
-| C1 | `ci(publish): pin pi-zft version alongside opencode-zft` *(optional)* — add `test_pi_zft_version_aligned` to `tests/unit/test_package.py` (pi-zft is currently **un-pinned**, correction §0.5.1) | own commit, not entangled with release |
+| ~~C1~~ | ~~`ci(publish): pin pi-zft version alongside opencode-zft`~~ — **DONE upstream `c7169cf`** (`test_pi_zft_version_aligned`, §0.5.1 resolved) | landed 2026-10-23 |
 | C2 | `release(adapter): publish opencode-zft 0.3.1 to npm` | `package.json` publish-confirm (no-op if unchanged), README/CHANGELOG already at 0.3.1 |
 | C3 | `release(adapter): publish pi-zft 0.3.1 to npm` | `package.json` publish-confirm; ensure `core/gate-core.js` in `files:` (it is) |
-| C4 | `test(leaks): land history leak gate` *(C4 only if we fold in the untracked history test)* | add `tests/unit/test_no_private_leaks_in_history.py` to the allowlist + commit |
+| ~~C4~~ | ~~`test(leaks): land history leak gate`~~ — **DONE upstream `ce4a332`** | landed 2026-10-23 |
 
 Default: **C2 + C3 are the two atomic release commits**; C4 is the
 history-gate test that is already written and untracked — land it either as
@@ -192,10 +202,10 @@ history) or defer. C1 only if we add tooling.
 | Risk | Mitigation |
 | --- | --- |
 | `npm stage approve` demands a browser OTP the agent cannot enter | Token may already automate it (§0.5.4). Only if approve truly needs 2FA does it become owner-only; everything before/after stays automated |
-| pi-zft version is unpinned by CI (§0.5.1) | Optional C1 adds the pin; until then pi-zft 0.3.1 is convention-only |
+| pi-zft version is unpinned by CI (§0.5.1) | **Resolved:** `c7169cf` landed `test_pi_zft_version_aligned` |
 | pi-zft has no `prepublishOnly` stale-guard (§0.5.3) | Manual sync/assert already in Phase A; do not assume self-check |
 | Adding `prepublishOnly` to pi-zft changes publish behavior | Do it as a **separate** atomic commit, never entangle with the release commits |
-| History-leak test is untracked & gate only sees the index (§0.5.5) | `git add` it before export-cut-check; land as C4 alone |
+| History-leak test is untracked & gate only sees the index (§0.5.5) | **Resolved:** `ce4a332` landed it (C4). It then caught a real leak — `586c02a`'s private author email — fixed by a metadata-only rewrite (now `3e00678`) |
 
 ## 7. Definition of done
 

@@ -1,13 +1,19 @@
 # Implementation plan: ship `opencode-zft` & `pi-zft` to npm (0.3.1)
 
-Dated: 2026-10-21. Status: **PARTIALLY EXECUTED — C1 + C4 landed upstream 2026-10-23; the npm publishes (C2/C3) are still open.**
+Dated: 2026-10-21. Status: **EXECUTED — C1–C4 all landed; registries are at 0.3.1. Post-0.3.1 content now needs a new version.**
 
 > **State re-check 2026-10-23.** Upstream `main` moved past the tagged tree:
 > `c7169cf` lands C1 (`test_pi_zft_version_aligned`), `ce4a332` lands C4
 > (history leak gate), and `586c02a` adds the taskgate `[root: PATH]` marker
 > (now `3e00678` after a metadata-only rewrite that dropped a leaked private
-> author email; tree identical). Everything below about publishing is still
-> unexecuted. §0.5.1, C1 and C4 are historical — treat them as done.
+> author email; tree identical). §0.5.1, C1 and C4 are historical — treat
+> them as done.
+>
+> **Correction 2026-10-23:** C2/C3 are done too — PyPI `zft@0.3.1` (09:21Z)
+> and `opencode-zft@0.3.1` / `pi-zft@0.3.1` (14:49Z) were published on
+> 2026-10-21. The "npm live" table below is draft-time state, minutes before
+> that publish, not current. Nothing in this plan remains open; the open
+> question is now a **new version** for the post-tag commits.
 
 ## 0. Objective
 
@@ -18,7 +24,9 @@ adapter content), and it carries the governance fix `82a1936`
 three gate-correctness fixes from the 0.3.1 patch. But the npm registry is
 stale relative to that tree:
 
-| Artifact | In-tree / tagged | npm live | Gap |
+> Draft-time snapshot — superseded 2026-10-21; verified live 2026-10-23: all three at 0.3.1.
+
+| Artifact | In-tree / tagged | npm live (draft time) | Gap |
 | --- | --- | --- | --- |
 | `opencode-zft` | 0.3.1 | **0.2.1** | missing 0.3.x (incl. governance fix) |
 | `pi-zft` | 0.3.1 | **0.0.0-stage** | never had a real release |
@@ -139,8 +147,8 @@ never `git add -A`** (PUBLISH-RUNBOOK §ground rules).
 | # | Commit | Contents |
 | --- | --- | --- |
 | ~~C1~~ | ~~`ci(publish): pin pi-zft version alongside opencode-zft`~~ — **DONE upstream `c7169cf`** (`test_pi_zft_version_aligned`, §0.5.1 resolved) | landed 2026-10-23 |
-| C2 | `release(adapter): publish opencode-zft 0.3.1 to npm` | `package.json` publish-confirm (no-op if unchanged), README/CHANGELOG already at 0.3.1 |
-| C3 | `release(adapter): publish pi-zft 0.3.1 to npm` | `package.json` publish-confirm; ensure `core/gate-core.js` in `files:` (it is) |
+| ~~C2~~ | ~~`release(adapter): publish opencode-zft 0.3.1 to npm`~~ — **DONE 2026-10-21 14:49Z** | registry `latest` = 0.3.1 |
+| ~~C3~~ | ~~`release(adapter): publish pi-zft 0.3.1 to npm`~~ — **DONE 2026-10-21 14:49Z** | registry `latest` = 0.3.1 |
 | ~~C4~~ | ~~`test(leaks): land history leak gate`~~ — **DONE upstream `ce4a332`** | landed 2026-10-23 |
 
 Default: **C2 + C3 are the two atomic release commits**; C4 is the

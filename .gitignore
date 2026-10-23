@@ -47,3 +47,6 @@ texput.log
 
 # paper review pipeline transient state
 paper/review/state/
+
+# ai-jail sandbox config (per-checkout; regenerate with `ai-jail --clean --init`)
+.ai-jail

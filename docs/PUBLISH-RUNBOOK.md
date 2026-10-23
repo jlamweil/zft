@@ -80,7 +80,11 @@ pytest tests/unit/test_no_private_leaks.py -q
 
 1. **Gate**: `bash tools/export-cut-check.sh` green, full suite green
    (`pytest`, `ruff`, the package test runners).
-2. **Version bump**: `pyproject.toml` + `src/zft/__init__.py` + `CITATION.cff`.
+2. **Version bump**: `pyproject.toml` + `src/zft/__init__.py` + `CITATION.cff`
+   + `packages/opencode-zft/package.json` + `packages/pi-zft/package.json`
+   (all five are pinned together by `tests/unit/test_package.py`; the two
+   `package.json`s are the part this runbook used to omit) + the README
+   version line and publishing table.
 3. **Tag**: create `vX.Y.Z` on the cut's main.
 4. **Publish**:
    - PyPI: `zft` (build + `twine upload`).
